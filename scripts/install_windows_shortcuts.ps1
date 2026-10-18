@@ -1,23 +1,22 @@
 # scripts/install_windows_shortcuts.ps1
 # Creates/refreshes Scriber shortcuts across Windows Desktop, OneDrive Desktop, and Start Menu.
+# Targets the standalone compiled binary executable: dist\Scriber\Scriber.exe
 
 $ErrorActionPreference = "Stop"
 
 $workspaceRoot = (Resolve-Path ".").Path
-$pythonwExe = Join-Path $workspaceRoot ".venv\Scripts\pythonw.exe"
-$runDesktopPy = Join-Path $workspaceRoot "run_desktop.py"
+$exePath = Join-Path $workspaceRoot "dist\Scriber\Scriber.exe"
+$workingDir = Join-Path $workspaceRoot "dist\Scriber"
 $iconIco = Join-Path $workspaceRoot "scriber\assets\icon.ico"
 
-if (-not (Test-Path $pythonwExe)) {
-    Write-Error "Could not find pythonw.exe at: $pythonwExe"
-    exit 1
+if (-not (Test-Path $exePath)) {
+    # If onedir exe not found, check root dist/Scriber.exe
+    $exePath = Join-Path $workspaceRoot "dist\Scriber.exe"
+    $workingDir = $workspaceRoot
 }
-if (-not (Test-Path $runDesktopPy)) {
-    Write-Error "Could not find run_desktop.py at: $runDesktopPy"
-    exit 1
-}
-if (-not (Test-Path $iconIco)) {
-    Write-Error "Could not find icon.ico at: $iconIco"
+
+if (-not (Test-Path $exePath)) {
+    Write-Error "Could not find compiled binary executable at: $exePath. Please run python build_desktop.py first."
     exit 1
 }
 
@@ -50,21 +49,28 @@ foreach ($dest in $destinations) {
         }
 
         $shortcut = $wshell.CreateShortcut($dest)
-        $shortcut.TargetPath = $pythonwExe
-        $shortcut.Arguments = "`"$runDesktopPy`""
-        $shortcut.WorkingDirectory = $workspaceRoot
-        $shortcut.IconLocation = "$iconIco,0"
-        $shortcut.Description = "Scriber Studio - Voice Intelligence & Diarization"
+        $shortcut.TargetPath = $exePath
+        $shortcut.Arguments = ""
+        $shortcut.WorkingDirectory = $workingDir
+        $shortcut.IconLocation = "$exePath,0"
+        $shortcut.Description = "Scriber - Studio Intelligence and Voice Synthesis"
         $shortcut.WindowStyle = 1
         $shortcut.Save()
 
-        Write-Host "[+] Installed shortcut: $dest"
+        Write-Host "[+] Installed executable shortcut: $dest -> $exePath"
     } catch {
         Write-Warning "Failed creating shortcut at $($dest): $($_.Exception.Message)"
     }
 }
 
-# Flush Windows Explorer icon cache using Python ctypes
-& $pythonwExe -c "import ctypes; ctypes.windll.shell32.SHChangeNotify(0x08000000, 0, 0, 0)"
+# Flush Windows Explorer icon cache using Python ctypes or shell notify
+try {
+    $pythonExe = Join-Path $workspaceRoot ".venv\Scripts\python.exe"
+    if (Test-Path $pythonExe) {
+        & $pythonExe -c "import ctypes; ctypes.windll.shell32.SHChangeNotify(0x08000000, 0, 0, 0)"
+    }
+} catch {
+    Start-Process -FilePath "ie4uinit.exe" -ArgumentList "-show" -NoNewWindow -ErrorAction SilentlyContinue
+}
 
-Write-Host "`nAll Windows shortcuts for Scriber successfully created and verified."
+Write-Host "`nAll Windows shortcuts now point directly to the native executable Scriber.exe."
