@@ -16,7 +16,15 @@ from __future__ import annotations
 
 import argparse
 import multiprocessing
+import os
 import sys
+
+# Windows GUI guard: ensure stdout/stderr exist when running windowless under pythonw.exe
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w", encoding="utf-8")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w", encoding="utf-8")
+
 from scriber.desktop import launch_desktop
 
 
