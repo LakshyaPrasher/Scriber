@@ -36,7 +36,7 @@ def main():
     subparsers = parser.add_subparsers(dest="command", help="Available sub-commands")
 
     # Command: process
-    proc_parser = subparsers.add_parser("process", help="Process a video/audio file through the 4-subagent pipeline")
+    proc_parser = subparsers.add_parser("process", help="Process a video/audio file through the 5-subagent swarm")
     proc_parser.add_argument("file", help="Path to input video or audio file")
     proc_parser.add_argument("--task", default="transcribe", choices=["transcribe", "translate"], help="Task to perform")
     proc_parser.add_argument("--lang", default="en", help="Language code (e.g. en, es, fr)")
@@ -47,6 +47,14 @@ def main():
         help="Comma-separated export formats (json, md, html, srt, vtt)",
     )
     proc_parser.add_argument("--ref", default=None, help="Optional ground-truth reference text for WER calculation")
+    proc_parser.add_argument("--redact-pii", action="store_true", help="Enable PII and credentials masking for privacy")
+
+    # Command: swarm
+    swarm_parser = subparsers.add_parser("swarm", help="Inspect Supreme Council multi-agent swarm roster and model tiers")
+
+    # Command: install-antigravity
+    install_parser = subparsers.add_parser("install-antigravity", help="Install Scriber plugin into Google Antigravity configuration")
+    install_parser.add_argument("--force", action="store_true", help="Overwrite existing plugin installation")
 
     # Command: benchmark
     bench_parser = subparsers.add_parser("benchmark", help="Run 99%+ accuracy verification benchmark suite")
@@ -80,6 +88,10 @@ def main():
 
     if args.command == "process":
         run_process(args)
+    elif args.command == "swarm":
+        run_swarm()
+    elif args.command == "install-antigravity":
+        run_install_antigravity(args)
     elif args.command == "benchmark":
         run_benchmark()
     elif args.command == "info":
