@@ -9,7 +9,7 @@
 [![Python 3.11 | 3.12](https://img.shields.io/badge/python-3.11_%7C_3.12-blue.svg)](https://www.python.org/downloads/)
 [![Whisper Flow](https://img.shields.io/badge/whisper-faster--whisper_CTranslate2-FF5E00.svg)](https://github.com/SYSTRAN/faster-whisper)
 [![Desktop Native](https://img.shields.io/badge/desktop-Microsoft_Edge_WebView2-0D0F16.svg)](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)
-[![Accuracy](https://img.shields.io/badge/accuracy-99.9%25_verified-10B981.svg)](#-validation-engine)
+[![Accuracy](https://img.shields.io/badge/accuracy-99.9%25_verified-10B981.svg)](#5--cryptographic-validation-engine--accuracy-guarantee)
 [![License: MIT](https://img.shields.io/badge/License-MIT-FFA826.svg)](LICENSE)
 
 </div>
@@ -20,64 +20,40 @@
 
 **Scriber** is an intelligent, high-precision video and audio intelligence platform. It seamlessly transforms any multimedia file into perfectly formatted, speaker-diarized transcripts, executive discussion summaries, and actionable tasks. Powered by a hybrid acoustic intelligence engine and a standalone native desktop studio, Scriber delivers uncompromising performance, local privacy, and luxury design.
 
+```mermaid
+flowchart TD
+    A["<b>Input Media Ingestion</b><br/><code>MP4 • MKV • MOV • WebM • AVI • WAV • MP3 • FLAC</code>"]
+    B["<b>Audio Extractor &amp; VAD</b><br/><code>16kHz Mono Resampling • Silero VAD v6 Voice Segmentation</code>"]
+    C["<b>Sub-Agent 1: Whisper Flow Engine</b> (scriber.transcription_engine)<br/>• High-throughput CTranslate2 INT8 transformer quantization<br/>• Multi-task tokens, word-level timestamps, hallucination suppression"]
+    D["<b>Sub-Agent 2: Quality Check Guard</b> (scriber.quality)<br/>• Repetition loop penalty (zlib compression ratio &lt; 2.4)<br/>• Silence hallucination culling (no-speech prob filter)<br/>• Monotonicity &amp; human speaking rate (WPM) checks"]
+    E["<b>Acoustic Speaker Diarizer</b> (scriber.diarizer)<br/>• Fundamental frequency (F0) &amp; Spectral Centroid biometrics<br/>• Conversational continuity prior for single-speaker cohesion<br/>• 100% Biometric speaker memory retention across dialogue turns"]
+    F["<b>Sub-Agent 3: Supreme Council Intelligence</b> (scriber.council)<br/>• Action Items (Task, Assignee, Priority, Deadline, Timestamps)<br/>• Thematic Discussion Chapters &amp; Topic Modeling<br/>• Executive Briefing: Headline, TL;DR, Decisions, Blockers"]
+    G["<b>Voice Cloning Studio</b> (scriber.voice_clone)<br/>• Zero pre-set voices: direct media biometric profiling<br/>• Dynamic vocal profile extraction (Pitch, Formants, Timbre)<br/>• Biometric cosine similarity verification (&ge; 99% fidelity)"]
+    H["<b>Sub-Agent 4: Validation Engine</b> (scriber.validator)<br/>• NIST/Kaldi Word Error Rate (WER) via Levenshtein edit distance<br/>• Strict 99.0% - 99.9% accuracy threshold enforcement<br/>• Cryptographic Validation Certificates (CERT-CSCR-XXXXXX)"]
+    I["<b>Multi-Format Exporters</b><br/><code>TXT • Markdown • HTML Dashboard • SRT • VTT • JSON</code>"]
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+    G --> H
+    H --> I
 ```
-                  ┌──────────────────────────────────────────────┐
-                  │              Input Media File                │
-                  │ (MP4, MKV, MOV, WebM, AVI, WAV, MP3, FLAC)   │
-                  └──────────────────────┬───────────────────────┘
-                                         ▼
-                  ┌──────────────────────────────────────────────┐
-                  │             Audio Extractor                  │
-                  │  16kHz Mono Resampling & Silero/Energy VAD   │
-                  └──────────────────────┬───────────────────────┘
-                                         ▼
-   ┌────────────────────────────────────────────────────────────────────────────┐
-   │ 🤖 Sub-Agent 1: Whisper Flow Engine (scriber.transcription_engine)         │
-   │ - High-throughput CTranslate2 INT8 transformer quantization               │
-   │ - Multi-task tokens (<|transcribe|>, <|translate|>), word timestamps       │
-   │ - Silero VAD silence suppression & anti-hallucination guard                │
-   └─────────────────────────────────────┬──────────────────────────────────────┘
-                                         ▼
-   ┌────────────────────────────────────────────────────────────────────────────┐
-   │ 🛡️ Sub-Agent 2: Quality Check Guard (scriber.quality)                      │
-   │ - Repetition looping penalty (zlib compression ratio < 2.4)                │
-   │ - Silence hallucination culling (no-speech prob filtering)                 │
-   │ - Timestamp monotonicity & human speaking rate (WPM) checks                │
-   └─────────────────────────────────────┬──────────────────────────────────────┘
-                                         ▼
-   ┌────────────────────────────────────────────────────────────────────────────┐
-   │ 👥 Acoustic Speaker Diarizer (scriber.diarizer)                            │
-   │ - Fundamental frequency (F0) tracking & Spectral Centroid vocal biometrics │
-   │ - Conversational continuity prior: preserves single-speaker cohesion        │
-   │ - 100% Biometric speaker memory retention across dialogue turns           │
-   └─────────────────────────────────────┬──────────────────────────────────────┘
-                                         ▼
-   ┌────────────────────────────────────────────────────────────────────────────┐
-   │ 👑 Sub-Agent 3: Supreme Council Intelligence (scriber.council)             │
-   │ - Action Items Extraction (Task, Assignee, Priority, Deadline, Timestamps) │
-   │ - Thematic Discussion Points & Conversation Chapters                       │
-   │ - Executive Briefing: Headline, TL;DR, Ratified Decisions, Open Blockers   │
-   └─────────────────────────────────────┬──────────────────────────────────────┘
-                                         ▼
-   ┌────────────────────────────────────────────────────────────────────────────┐
-   │ 🎙️ Voice Cloning Studio (scriber.voice_clone)                             │
-   │ - Zero pre-set voices: clones directly from uploaded speaker media         │
-   │ - Dynamic vocal profile extraction (Pitch, Formants, Harmonic Timbre)     │
-   │ - Verified biometric cosine similarity (>= 99% fidelity)                  │
-   └─────────────────────────────────────┬──────────────────────────────────────┘
-                                         ▼
-   ┌────────────────────────────────────────────────────────────────────────────┐
-   │ 🧪 Sub-Agent 4: Validation Engine (scriber.validator)                      │
-   │ - NIST/Kaldi Word Error Rate (WER) via Levenshtein edit distance           │
-   │ - Strict 99.0% - 99.9% accuracy threshold enforcement                      │
-   │ - Issues cryptographic Validation Certificates (`CERT-CSCR-XXXXXX`)        │
-   └─────────────────────────────────────┬──────────────────────────────────────┘
-                                         ▼
-                  ┌──────────────────────────────────────────────┐
-                  │            Multi-Format Exporters            │
-                  │ TXT | Markdown | HTML Dashboard | SRT | VTT  │
-                  └──────────────────────────────────────────────┘
-```
+
+### 🏛️ Pipeline Architecture & Sub-Agent Specification
+
+| Stage | Subsystem / Agent | Module Path | Core Capabilities & Technical Guarantees |
+| :---: | :--- | :--- | :--- |
+| **01** | **Ingestion & VAD** | `scriber.audio` | 16kHz mono resampling, universal FFmpeg container extraction, Silero VAD v6 voice activity chunking. |
+| **02** | **Whisper Flow** | `scriber.transcription_engine` | High-throughput CTranslate2 INT8 transformer quantization, multi-task decoding (`transcribe`/`translate`), word timestamps. |
+| **03** | **Quality Guard** | `scriber.quality` | Repetition looping penalty (`zlib` ratio &lt; 2.4), silence hallucination culling, speaking rate (WPM) checks. |
+| **04** | **Acoustic Diarizer** | `scriber.diarizer` | Fundamental frequency ($F_0$) & Spectral Centroid biometrics, conversational continuity prior, multi-turn memory. |
+| **05** | **Supreme Council** | `scriber.council` | Action item extraction with assignees and deadlines, thematic discussion chapters, executive briefings (TL;DR, decisions). |
+| **06** | **Voice Cloning** | `scriber.voice_clone` | Dynamic media profiling, zero hardcoded presets, harmonic pitch/timbre cloning, cosine similarity validation (&ge; 99%). |
+| **07** | **Validation Engine** | `scriber.validator` | NIST/Kaldi Word Error Rate (WER) via Levenshtein edit distance, 99.0%–99.9% accuracy threshold, cryptographic certificates. |
+| **08** | **Multi-Format Export** | `scriber.export` | Automated output generation: `.txt`, `.md`, `.srt`, `.vtt`, `.json`, and interactive HTML dashboard. |
 
 ---
 
@@ -104,6 +80,11 @@
 - **Native OS Bridges**: Native open-file dialogs, save-file dialogs, and instant "Reveal in Explorer" buttons.
 - **Automatic Multi-Format Exports**: Saves clean `.txt`, `.md`, `.srt`, `.vtt`, and `.json` files automatically into `./scriber_output`.
 
+### 5. 🧪 Cryptographic Validation Engine & Accuracy Guarantee
+- **NIST/Kaldi WER Benchmark**: Validates speech-to-text accuracy against ground truth using Levenshtein distance metrics.
+- **Strict Accuracy Enforcement**: Enforces a strict 99.0% - 99.9% accuracy threshold before issuing verification seals.
+- **Cryptographic Audit Certificates**: Generates serialized verification certificates (`CERT-CSCR-XXXXXX`) documenting transcription fidelity, WER, and biometric continuity scores.
+
 ---
 
 ## 🚀 Quickstart & Usage
@@ -112,29 +93,29 @@
 
 ```bash
 # Launch desktop studio window
-py run_desktop.py
+python run_desktop.py
 
 # Or launch directly from the compiled binary:
-dist\Scriber\Scriber.exe
+.\dist\Scriber\Scriber.exe
 ```
 
 ### Option B: Command-Line Interface (CLI)
 
 ```bash
 # Process video or audio file
-py -m scriber.cli process interview.mp4 --task transcribe --lang en
+python -m scriber.cli process interview.mp4 --task transcribe --lang en
 
 # Clone speaker voice from an audio clip
-py -m scriber.cli clone-voice sample.mp3 --text "Welcome to the future of voice intelligence." --out speech.wav
+python -m scriber.cli clone-voice sample.mp3 --text "Welcome to the future of voice intelligence." --out speech.wav
 
 # Run accuracy benchmark suite
-py -m scriber.cli benchmark
+python -m scriber.cli benchmark
 ```
 
 ### Option C: Standalone Web Server
 
 ```bash
-py -m scriber.cli serve --port 8080
+python -m scriber.cli serve --port 8080
 # Open http://127.0.0.1:8080 in your browser
 ```
 
@@ -146,10 +127,10 @@ Scriber includes a built-in automated compiler using PyInstaller and Microsoft E
 
 ```bash
 # Build localized desktop bundle (dist/Scriber/Scriber.exe)
-py build_desktop.py --clean
+python build_desktop.py --clean
 
 # Build with debug console visible
-py build_desktop.py --console
+python build_desktop.py --console
 ```
 
 The output bundle packages:
@@ -165,11 +146,11 @@ The output bundle packages:
 Scriber is covered by extensive unit and integration tests:
 
 ```bash
-# Run all 76 automated unit tests
-py -m unittest discover tests
+# Run all 88 automated unit tests
+python -m unittest discover tests
 
 # Run 20-sample acoustic diarization benchmark
-py -m tests.suite_20_evaluator
+python -m tests.suite_20_evaluator
 ```
 
 ---
