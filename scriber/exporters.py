@@ -116,7 +116,32 @@ class ScriberExporter:
 
         lines.extend([
             "",
-            "## 🛡️ Quality & Accuracy Audit",
+            "## 🤖 Multi-Agent Council Swarm Telemetry",
+            "> Architecture inspired by wshobson/agents (https://github.com/wshobson/agents)",
+            "",
+            "| Agent ID | Specialist Role | Model Tier | Runtime | Confidence | Telemetry Summary |",
+            "| :--- | :--- | :--- | :--- | :--- | :--- |",
+        ])
+        for telem in cs.agent_telemetry:
+            lines.append(
+                f"| `{telem.agent_id}` | {telem.agent_name} | `{telem.model_tier.upper()}` | {telem.runtime_ms:.1f}ms | {telem.confidence * 100:.1f}% | {telem.summary} |"
+            )
+
+        if cs.pii_report or output.pii_report:
+            pii = cs.pii_report or output.pii_report
+            lines.extend([
+                "",
+                "## 🔒 PII Privacy Shield & Compliance Audit",
+                f"- **Shield Status:** {'ACTIVE (Shielded)' if pii.is_shielded else 'MONITORING'}",
+                f"- **Entities Masked:** {pii.redacted_count} sensitive tokens",
+                f"- **Compliance Score:** {pii.compliance_score * 100:.1f}%",
+            ])
+            for ent, cnt in pii.entities_found.items():
+                lines.append(f"  - `{ent}`: {cnt} occurrences secured")
+
+        lines.extend([
+            "",
+            "## 🛡️ Quality & Cryptographic Accuracy Audit",
             f"- **Confidence Score:** {qual.confidence_avg * 100:.1f}%",
             f"- **Quality Audit:** {qual.overall_score * 100:.1f}%",
             f"- **Repetition Looping Detected:** {'Yes' if qual.repetition_looping_detected else 'No'}",
@@ -124,9 +149,25 @@ class ScriberExporter:
             f"- **Word Error Rate (WER):** {val.wer * 100:.2f}%",
             f"- **Net Accuracy Score:** {val.accuracy_score * 100:.2f}% ({'✅ PASSED 99%+ ACCURACY' if val.passed_99_percent else '⚠️ REVIEW NEEDED'})",
             f"- **Validation Certificate:** `{val.certificate_id}`",
+        ])
+        if val.root_hash:
+            lines.append(f"- **Cryptographic SHA-256 Root Hash:** `{val.root_hash}`")
+        if val.hash_chain:
+            lines.extend([
+                "",
+                "### 🔗 Tamper-Evident Hash Chain Audit Log",
+                "| Block # | Milestone Name | Hash Anchor (SHA-256) | Payload Verification Summary |",
+                "| :---: | :--- | :--- | :--- |",
+            ])
+            for blk in val.hash_chain:
+                lines.append(
+                    f"| `{blk.index}` | **{blk.block_name}** | `{blk.block_hash[:16]}...` | {blk.payload_summary} |"
+                )
+
+        lines.extend([
             "",
             "---",
-            "*Report processed by Scriber autonomous pipeline.*",
+            "*Report processed by Scriber autonomous multi-agent pipeline.*",
         ])
 
         return "\n".join(lines)

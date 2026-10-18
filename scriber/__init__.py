@@ -8,14 +8,20 @@ from scriber.audio_editor import AudioEditor
 from scriber.council import SupremeCouncil
 from scriber.exporters import ScriberExporter
 from scriber.transcription_engine import TOP_LEVERAGED_REPOS, GitHubEngine, TranscriptionEngine
+from scriber.agent_swarm import CouncilAgentSwarm
+from scriber.pii_security import PIISecurityOfficer
 from scriber.models import (
     ActionItem,
+    AgentProfile,
+    AgentTelemetry,
     AudioMetadata,
     AudioSegment,
     CouncilAnalysis,
     ScriberOutput,
     DiscussionPoint,
     ExecutiveSummary,
+    HashChainBlock,
+    PIIRedactionReport,
     QualityReport,
     TranscriptionResult,
     ValidationReport,
@@ -35,6 +41,8 @@ __all__ = [
     "TranscriptionEngine",
     "GitHubEngine",
     "SupremeCouncil",
+    "CouncilAgentSwarm",
+    "PIISecurityOfficer",
     "QualityChecker",
     "ResultValidator",
     "VoiceCloner",
@@ -54,6 +62,10 @@ __all__ = [
     "VoiceCloneResult",
     "CouncilAnalysis",
     "WordTimestamp",
+    "AgentProfile",
+    "AgentTelemetry",
+    "PIIRedactionReport",
+    "HashChainBlock",
     "TOP_LEVERAGED_REPOS",
     "ScriberDesktopApp",
     "launch_desktop",

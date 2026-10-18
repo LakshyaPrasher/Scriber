@@ -67,6 +67,7 @@ class ScriberPipeline:
         export_dir: Optional[str] = None,
         export_formats: Optional[List[str]] = None,
         model: str = "turbo",
+        redact_pii: bool = False,
     ) -> ScriberOutput:
         """Processes any video or audio file through the 4-subagent pipeline."""
         start_time = time.time()
@@ -122,10 +123,18 @@ class ScriberPipeline:
             )
             translation_result, _ = self.quality_checker.audit_and_clean(raw_translation)
 
-        # Step 6: Supreme Council Sub-Agent - Extract Action Items, Discussion Points, Summary
-        council_analysis = self.supreme_council.analyze(cleaned_transcription)
+        # Step 6: Supreme Council Sub-Agent (Multi-Agent Swarm) - Extract Action Items, Discussion Points, Summary
+        council_analysis = self.supreme_council.analyze(cleaned_transcription, redact_pii=redact_pii)
 
-        # Step 7: Validation Sub-Agent - Accuracy Verification (99%+ threshold)
+        # If PII redaction was explicitly requested, also sanitize the main transcript segments
+        pii_report = council_analysis.pii_report
+        if redact_pii and hasattr(self.supreme_council, "swarm"):
+            sanitized_segs, pii_rep = self.supreme_council.swarm.pii_officer.officer.sanitize_segments(cleaned_transcription.segments)
+            cleaned_transcription.segments = sanitized_segs
+            cleaned_transcription.text = " ".join(s.text for s in sanitized_segs).strip()
+            pii_report = pii_rep
+
+        # Step 7: Validation Sub-Agent - Accuracy Verification (99%+ threshold & Cryptographic Hash Chain)
         if reference_text:
             validation_report = self.result_validator.evaluate_transcription(
                 hypothesis_text=cleaned_transcription.text,
@@ -159,6 +168,7 @@ class ScriberPipeline:
             processing_time_seconds=duration_sec,
             repos_leveraged=[repo["repo"] for repo in self.transcription_engine.leveraged_repos],
             voice_profiles=voice_profiles,
+            pii_report=pii_report,
         )
 
         # Step 9: Multi-format Exporters (JSON, Markdown, HTML, SRT, VTT)

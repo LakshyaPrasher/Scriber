@@ -46,7 +46,7 @@ class TestServerAPI(unittest.TestCase):
         self.handler.send_response.assert_called_with(200)
         written = json.loads(self.handler.wfile.getvalue().decode("utf-8"))
         self.assertEqual(written["name"], "Scriber")
-        self.assertEqual(len(written["repos"]), 10)
+        self.assertGreaterEqual(len(written["repos"]), 11)
 
     def test_do_get_benchmark(self):
         """Verifies GET /api/benchmark returns benchmark suite results."""

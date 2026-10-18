@@ -55,9 +55,16 @@ class SupremeCouncil:
 
     def __init__(self, use_llm_if_available: bool = True):
         self.use_llm_if_available = use_llm_if_available
+        from scriber.agent_swarm import CouncilAgentSwarm
+        self.swarm = CouncilAgentSwarm(use_llm_if_available=use_llm_if_available)
 
-    def analyze(self, transcription: TranscriptionResult) -> CouncilAnalysis:
-        """Processes transcription segments to produce a consolidated Supreme Council analysis."""
+    def analyze(
+        self, transcription: TranscriptionResult, redact_pii: bool = False
+    ) -> CouncilAnalysis:
+        """Processes transcription segments to produce a consolidated Supreme Council analysis via the Multi-Agent Swarm."""
+        if hasattr(self, "swarm") and self.swarm:
+            return self.swarm.execute_swarm(transcription, redact_pii=redact_pii)
+
         segments = transcription.segments
         full_text = transcription.text
 
