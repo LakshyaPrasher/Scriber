@@ -114,9 +114,9 @@ class TestUIContracts(unittest.TestCase):
         self.assertIn("Zero Bulk Download", self.html)
 
     def test_minimalist_harmonic_logo_everywhere(self):
-        """Verifies ultra-minimalist harmonic S wave brandmark is present."""
-        self.assertIn("Minimalist Scriber Harmonic S Logo Mark", self.html)
-        self.assertIn('stroke-width="32"', self.html)
+        """Verifies complete, authoritative harmonic S monogram emblem is present."""
+        self.assertIn("Scriber Harmonic S Monogram Emblem", self.html)
+        self.assertIn("scWaveGrad", self.html)
         self.assertIn("/assets/icon.svg", self.html)
 
     def test_realtime_audio_editor_controls(self):
