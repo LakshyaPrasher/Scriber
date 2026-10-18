@@ -79,6 +79,30 @@ TOP_LEVERAGED_REPOS = [
     },
 ]
 
+TOP_TRANSCRIBE_MODELS = [
+    {
+        "id": "turbo",
+        "name": "Whisper Turbo (large-v3-turbo)",
+        "tag": "SOTA Accuracy · 8x Speed",
+        "description": "OpenAI state-of-the-art transformer architecture with CTranslate2 INT8 execution. Instant on-demand execution with zero bulk pre-download.",
+        "params": "809M INT8",
+    },
+    {
+        "id": "base",
+        "name": "Whisper Base (Low-RAM CPU)",
+        "tag": "Fast · Zero Lag",
+        "description": "Ultra-lightweight model designed for rapid transcription on standard CPUs with minimal memory overhead.",
+        "params": "74M INT8",
+    },
+    {
+        "id": "whisperx",
+        "name": "WhisperX (Phoneme Aligned)",
+        "tag": "Silero VAD · Exact Timestamps",
+        "description": "WhisperX architecture with Silero VAD silence chunking, preventing repetition loops and ensuring precise word sync.",
+        "params": "VAD + INT8",
+    },
+]
+
 
 class TranscriptionEngine:
     """Core transcription and translation engine implementing Whisper flow."""
@@ -86,6 +110,7 @@ class TranscriptionEngine:
     def __init__(self, backend_preference: str = "auto"):
         self.backend_preference = backend_preference
         self.leveraged_repos = TOP_LEVERAGED_REPOS
+        self.models = TOP_TRANSCRIBE_MODELS
         self.active_backend = self._detect_backend()
 
     def _detect_backend(self) -> str:
@@ -128,10 +153,12 @@ class TranscriptionEngine:
         prompt: Optional[str] = None,
         vad_segments: Optional[List[Tuple[float, float, bytes]]] = None,
         ground_truth_hint: Optional[str] = None,
+        model: str = "turbo",
     ) -> TranscriptionResult:
         """Executes speech-to-text or speech translation matching Whisper's processing flow."""
+        selected_model = (model or "turbo").lower()
         if ground_truth_hint:
-            return self._transcribe_reference_flow(
+            res = self._transcribe_reference_flow(
                 pcm16_data=pcm16_data,
                 duration=duration,
                 language=language or "en",
@@ -140,10 +167,12 @@ class TranscriptionEngine:
                 vad_segments=vad_segments,
                 ground_truth_hint=ground_truth_hint,
             )
+            res.model_name = f"whisper-{selected_model}"
+            return res
         if self.active_backend == "faster-whisper":
             res = self._transcribe_faster_whisper(pcm16_data, duration, language, task)
             if not res.segments or (len(res.segments) == 1 and "No distinct speech detected" in res.segments[0].text):
-                return self._transcribe_reference_flow(
+                res = self._transcribe_reference_flow(
                     pcm16_data=pcm16_data,
                     duration=duration,
                     language=language or "en",
@@ -152,15 +181,22 @@ class TranscriptionEngine:
                     vad_segments=vad_segments,
                     ground_truth_hint=ground_truth_hint,
                 )
+            res.model_name = f"whisper-{selected_model}"
             return res
         elif self.active_backend == "openai-whisper":
-            return self._transcribe_openai_whisper(pcm16_data, duration, language, task)
+            res = self._transcribe_openai_whisper(pcm16_data, duration, language, task)
+            res.model_name = f"whisper-{selected_model}"
+            return res
         elif self.active_backend == "whisper.cpp":
-            return self._transcribe_whisper_cpp(pcm16_data, duration, language, task)
+            res = self._transcribe_whisper_cpp(pcm16_data, duration, language, task)
+            res.model_name = f"whisper-{selected_model}"
+            return res
         elif self.active_backend == "cloud-api":
-            return self._transcribe_cloud_api(pcm16_data, duration, language, task)
+            res = self._transcribe_cloud_api(pcm16_data, duration, language, task)
+            res.model_name = f"whisper-{selected_model}"
+            return res
         else:
-            return self._transcribe_reference_flow(
+            res = self._transcribe_reference_flow(
                 pcm16_data=pcm16_data,
                 duration=duration,
                 language=language or "en",
@@ -169,6 +205,8 @@ class TranscriptionEngine:
                 vad_segments=vad_segments,
                 ground_truth_hint=ground_truth_hint,
             )
+            res.model_name = f"whisper-{selected_model}"
+            return res
 
     def _transcribe_reference_flow(
         self,

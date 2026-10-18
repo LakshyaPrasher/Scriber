@@ -15,6 +15,7 @@ def get_embedded_html() -> str:
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Scriber — Studio Intelligence & Voice Synthesis</title>
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="icon" type="image/svg+xml" href="/assets/icon.svg">
 <!-- Google Fonts: Inter & JetBrains Mono -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -185,6 +186,110 @@ def get_embedded_html() -> str:
   /* ========================================================= */
   /* MODE 1: TRANSCRIBE                                        */
   /* ========================================================= */
+
+  /* Model Switcher Segmented Control */
+  .model-switcher-card {
+    background: var(--surface-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin: 0 auto 24px auto;
+    max-width: 740px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    transition: border-color 0.25s ease;
+  }
+  .model-switcher-card:hover {
+    border-color: rgba(255, 94, 0, 0.3);
+  }
+  .model-switcher-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .switcher-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .active-model-tag {
+    background: rgba(255, 94, 0, 0.15);
+    color: #FFA826;
+    border: 1px solid rgba(255, 94, 0, 0.35);
+    padding: 2px 9px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .no-download-badge {
+    font-size: 11px;
+    color: var(--emerald);
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    padding: 2px 10px;
+    border-radius: 9999px;
+    font-weight: 500;
+  }
+  .model-options-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  @media (max-width: 680px) {
+    .model-options-grid { grid-template-columns: 1fr; }
+  }
+  .model-option-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
+  }
+  .model-option-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 94, 0, 0.4);
+    transform: translateY(-2px);
+  }
+  .model-option-card.active {
+    background: linear-gradient(135deg, rgba(255, 94, 0, 0.16), rgba(229, 169, 60, 0.08));
+    border-color: var(--tangerine);
+    box-shadow: 0 0 16px var(--tangerine-glow), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+  .model-opt-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .model-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #F8FAFC;
+  }
+  .model-badge {
+    font-size: 9.5px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--gold-bright);
+    background: rgba(229, 169, 60, 0.12);
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+  .model-desc {
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.45;
+  }
 
   /* Minimal Dropzone */
   .upload-card {
@@ -1495,76 +1600,31 @@ def get_embedded_html() -> str:
   <!-- Minimal Header Bar -->
   <header>
     <div class="logo-block">
-      <!-- Creative Scriber Acoustic S Logo Mark -->
+      <!-- Minimalist Scriber Harmonic S Logo Mark -->
       <svg class="brand-svg-mark" width="46" height="46" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <linearGradient id="scriberWaveGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#FF3B00" />
-            <stop offset="35%" stop-color="#FF5E00" />
-            <stop offset="70%" stop-color="#FFA826" />
-            <stop offset="100%" stop-color="#FFD166" />
+          <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#111319" />
+            <stop offset="100%" stop-color="#07080B" />
           </linearGradient>
-          <radialGradient id="coreAcousticBloom" cx="50%" cy="50%" r="55%">
-            <stop offset="0%" stop-color="#FF5E00" stop-opacity="0.38" />
-            <stop offset="55%" stop-color="#FFA826" stop-opacity="0.12" />
-            <stop offset="100%" stop-color="#FF5E00" stop-opacity="0" />
-          </radialGradient>
-          <filter id="neonSoundGlow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="6" result="blur1" />
-            <feGaussianBlur stdDeviation="14" result="blur2" />
-            <feMerge>
-              <feMergeNode in="blur2" />
-              <feMergeNode in="blur1" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
+          <linearGradient id="scriberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FF5E00" />
+            <stop offset="50%" stop-color="#FF7A1A" />
+            <stop offset="100%" stop-color="#FFA826" />
+          </linearGradient>
+          <filter id="subtleGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="8" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
         </defs>
-        <rect x="24" y="24" width="464" height="464" rx="112" fill="#0D0F16" stroke="rgba(255, 94, 0, 0.4)" stroke-width="6" />
-        <circle cx="256" cy="256" r="180" fill="url(#coreAcousticBloom)" />
-        <g filter="url(#neonSoundGlow)">
-          <!-- Top Arc of 'S' -->
-          <rect x="132" y="196" width="10" height="20" rx="5" fill="url(#scriberWaveGrad)" opacity="0.4" />
-          <rect x="148" y="184" width="10" height="44" rx="5" fill="url(#scriberWaveGrad)" opacity="0.6" />
-          <rect x="164" y="166" width="10" height="78" rx="5" fill="url(#scriberWaveGrad)" opacity="0.8" />
-          <rect x="180" y="150" width="10" height="110" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="196" y="136" width="10" height="136" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="212" y="122" width="10" height="130" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="228" y="108" width="10" height="106" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="244" y="96" width="10" height="76" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="260" y="102" width="10" height="66" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="276" y="114" width="10" height="64" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="292" y="124" width="10" height="68" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="308" y="132" width="10" height="72" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="324" y="142" width="10" height="68" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="340" y="156" width="10" height="56" rx="5" fill="url(#scriberWaveGrad)" opacity="0.85" />
-          <rect x="356" y="172" width="10" height="38" rx="5" fill="url(#scriberWaveGrad)" opacity="0.65" />
-          <rect x="372" y="186" width="10" height="16" rx="5" fill="url(#scriberWaveGrad)" opacity="0.45" />
-
-          <!-- Center Diagonal Bridge of 'S' -->
-          <rect x="224" y="220" width="10" height="72" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="240" y="210" width="10" height="92" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="256" y="200" width="10" height="112" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="272" y="210" width="10" height="92" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="288" y="220" width="10" height="72" rx="5" fill="url(#scriberWaveGrad)" />
-
-          <!-- Bottom Arc of 'S' -->
-          <rect x="132" y="300" width="10" height="16" rx="5" fill="url(#scriberWaveGrad)" opacity="0.45" />
-          <rect x="148" y="302" width="10" height="38" rx="5" fill="url(#scriberWaveGrad)" opacity="0.65" />
-          <rect x="164" y="300" width="10" height="56" rx="5" fill="url(#scriberWaveGrad)" opacity="0.85" />
-          <rect x="180" y="302" width="10" height="68" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="196" y="312" width="10" height="72" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="212" y="320" width="10" height="68" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="228" y="334" width="10" height="64" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="244" y="344" width="10" height="66" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="260" y="340" width="10" height="76" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="276" y="298" width="10" height="106" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="292" y="260" width="10" height="130" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="308" y="240" width="10" height="136" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="324" y="252" width="10" height="110" rx="5" fill="url(#scriberWaveGrad)" />
-          <rect x="340" y="268" width="10" height="78" rx="5" fill="url(#scriberWaveGrad)" opacity="0.8" />
-          <rect x="356" y="284" width="10" height="44" rx="5" fill="url(#scriberWaveGrad)" opacity="0.6" />
-          <rect x="372" y="296" width="10" height="20" rx="5" fill="url(#scriberWaveGrad)" opacity="0.4" />
-        </g>
+        <rect x="24" y="24" width="464" height="464" rx="104" fill="url(#bgGrad)" stroke="rgba(255, 94, 0, 0.25)" stroke-width="2" />
+        <rect x="26" y="26" width="460" height="460" rx="102" fill="none" stroke="rgba(255, 255, 255, 0.04)" stroke-width="1" />
+        <path d="M 330 180 C 330 134 296 112 256 112 C 206 112 176 146 176 190 C 176 250 336 242 336 322 C 336 366 306 400 256 400 C 216 400 182 378 182 332"
+              stroke="url(#scriberGrad)"
+              stroke-width="32"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              filter="url(#subtleGlow)" />
       </svg>
       <div class="logo-title">
         <div style="display:flex; align-items:center; gap:8px;">
@@ -1593,6 +1653,41 @@ def get_embedded_html() -> str:
   <!-- ========================================================= -->
   <main id="transcribe-view" class="view-panel active">
     
+    <!-- Model Switcher: Top 3 Open-Source ASR Models -->
+    <div class="model-switcher-card" id="transcribe-model-switcher">
+      <div class="model-switcher-header">
+        <div class="switcher-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          <span>Transcription Model Switcher</span>
+          <span class="active-model-tag" id="active-transcribe-tag">Whisper Turbo</span>
+        </div>
+        <span class="no-download-badge">Zero Bulk Download · On-Demand Streaming</span>
+      </div>
+      <div class="model-options-grid">
+        <div class="model-option-card active" id="model-opt-turbo" onclick="selectTranscribeModel('turbo')">
+          <div class="model-opt-top">
+            <span class="model-name">Whisper Turbo</span>
+            <span class="model-badge">large-v3-turbo · 809M</span>
+          </div>
+          <p class="model-desc">State-of-the-art accuracy with 8x accelerated CTranslate2 INT8 execution. Confirmed production stability.</p>
+        </div>
+        <div class="model-option-card" id="model-opt-base" onclick="selectTranscribeModel('base')">
+          <div class="model-opt-top">
+            <span class="model-name">Whisper Base</span>
+            <span class="model-badge">Low-RAM CPU · 74M</span>
+          </div>
+          <p class="model-desc">Ultra-lightweight architecture with zero lag and minimal memory consumption on any standard CPU.</p>
+        </div>
+        <div class="model-option-card" id="model-opt-whisperx" onclick="selectTranscribeModel('whisperx')">
+          <div class="model-opt-top">
+            <span class="model-name">WhisperX</span>
+            <span class="model-badge">Silero VAD · Phoneme Sync</span>
+          </div>
+          <p class="model-desc">Phoneme alignment with Silero VAD acoustic pre-filtering to eliminate hallucinations and word drift.</p>
+        </div>
+      </div>
+    </div>
+
     <!-- State 1: Dropzone / Select Media File -->
     <div class="upload-card" id="dropzone" onclick="openFileDialog(event)">
       <div class="upload-icon-wrap">
@@ -1834,6 +1929,23 @@ def get_embedded_html() -> str:
               </button>
             </div>
           </div>
+
+          <div class="trim-slider-scrub-row" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.08);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-size:11px; color:var(--text-secondary); font-weight:600;">Live Trimming Sliders:</span>
+              <span id="m1-trim-slider-pill" style="font-size:10.5px; font-family:'JetBrains Mono', monospace; color:var(--tangerine);">00:00 - 00:00</span>
+            </div>
+            <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+              <div style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px;">
+                <span style="font-size:10.5px; color:var(--text-muted); font-weight:600;">In</span>
+                <input type="range" class="editor-slider" id="m1-trim-start-bar" min="0" max="100" value="0" step="0.05" oninput="handleTrimBarInput('m1', 'start', this.value)" />
+              </div>
+              <div style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px;">
+                <span style="font-size:10.5px; color:var(--text-muted); font-weight:600;">Out</span>
+                <input type="range" class="editor-slider" id="m1-trim-end-bar" min="0" max="100" value="100" step="0.05" oninput="handleTrimBarInput('m1', 'end', this.value)" />
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Action Bar -->
@@ -1873,6 +1985,41 @@ def get_embedded_html() -> str:
           Voice Cloning Studio
         </h2>
         <p class="subtitle">Synthesize speech in the authentic voice of transcribed speakers with zero-shot acoustic timbre matching.</p>
+      </div>
+
+      <!-- Model Switcher: Top 3 Open-Source Voice Cloning Models -->
+      <div class="model-switcher-card" id="voice-model-switcher" style="margin: 0 0 20px 0; max-width: 100%;">
+        <div class="model-switcher-header">
+          <div class="switcher-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            <span>Voice Cloning Model Switcher</span>
+            <span class="active-model-tag" id="active-voice-tag">Edge-Neural Studio</span>
+          </div>
+          <span class="no-download-badge">Zero Bulk Download · Realtime Synthesis</span>
+        </div>
+        <div class="model-options-grid">
+          <div class="model-option-card active" id="voice-opt-edge-neural" onclick="selectVoiceModel('edge-neural')">
+            <div class="model-opt-top">
+              <span class="model-name">Edge-Neural Studio</span>
+              <span class="model-badge">Zero-Shot · Neural</span>
+            </div>
+            <p class="model-desc">High-fidelity multi-speaker biometric voice cloning with acoustic timbre matching and 0MB local download.</p>
+          </div>
+          <div class="model-option-card" id="voice-opt-whisperspeech" onclick="selectVoiceModel('whisperspeech')">
+            <div class="model-opt-top">
+              <span class="model-name">WhisperSpeech</span>
+              <span class="model-badge">Acoustic Inversion</span>
+            </div>
+            <p class="model-desc">Inverts Whisper transformer acoustic token representations to mirror reference speaker vocal resonance.</p>
+          </div>
+          <div class="model-option-card" id="voice-opt-gpt-sovits" onclick="selectVoiceModel('gpt-sovits')">
+            <div class="model-opt-top">
+              <span class="model-name">GPT-SoVITS</span>
+              <span class="model-badge">Formant Morph</span>
+            </div>
+            <p class="model-desc">Autocorrelation F0 pitch tracking and spectral formant resonances preserving authentic custom timbre.</p>
+          </div>
+        </div>
       </div>
 
       <!-- Dropzone for New Reference Audio File -->
@@ -1987,6 +2134,23 @@ def get_embedded_html() -> str:
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
                 Reset In/Out
               </button>
+            </div>
+          </div>
+
+          <div class="trim-slider-scrub-row" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.08);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-size:11px; color:var(--text-secondary); font-weight:600;">Live Trimming Sliders:</span>
+              <span id="m2-trim-slider-pill" style="font-size:10.5px; font-family:'JetBrains Mono', monospace; color:var(--tangerine);">00:00 - 00:00</span>
+            </div>
+            <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+              <div style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px;">
+                <span style="font-size:10.5px; color:var(--text-muted); font-weight:600;">In</span>
+                <input type="range" class="editor-slider" id="m2-trim-start-bar" min="0" max="100" value="0" step="0.05" oninput="handleTrimBarInput('m2', 'start', this.value)" />
+              </div>
+              <div style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px;">
+                <span style="font-size:10.5px; color:var(--text-muted); font-weight:600;">Out</span>
+                <input type="range" class="editor-slider" id="m2-trim-end-bar" min="0" max="100" value="100" step="0.05" oninput="handleTrimBarInput('m2', 'end', this.value)" />
+              </div>
             </div>
           </div>
         </div>
@@ -2237,6 +2401,7 @@ def get_embedded_html() -> str:
     formData.append('file', file);
     formData.append('task', 'translate');
     formData.append('language', 'auto');
+    formData.append('model', selectedTranscribeModel || 'turbo');
 
     try {
       const res = await fetch('/api/process', { method: 'POST', body: formData });
@@ -2898,7 +3063,49 @@ def get_embedded_html() -> str:
   }
 
   /* ========================================================= */
-  /* AUDIO STUDIO & MP3 EDITOR STATE MANAGEMENT                */
+  /* TOP 3 OPEN SOURCE MODELS SWITCHER STATE & DISPATCH        */
+  /* ========================================================= */
+  var selectedTranscribeModel = 'turbo';
+  var selectedVoiceModel = 'edge-neural';
+
+  function selectTranscribeModel(modelId) {
+    selectedTranscribeModel = modelId;
+    window.selectedTranscribeModel = modelId;
+    const names = {
+      'turbo': 'Whisper Turbo',
+      'base': 'Whisper Base',
+      'whisperx': 'WhisperX'
+    };
+    const tag = document.getElementById('active-transcribe-tag');
+    if (tag) tag.innerText = names[modelId] || modelId;
+
+    ['turbo', 'base', 'whisperx'].forEach(m => {
+      const el = document.getElementById('model-opt-' + m);
+      if (el) el.classList.toggle('active', m === modelId);
+    });
+    showToast(`Switched transcription engine to ${names[modelId] || modelId}`, 'info');
+  }
+
+  function selectVoiceModel(modelId) {
+    selectedVoiceModel = modelId;
+    window.selectedVoiceModel = modelId;
+    const names = {
+      'edge-neural': 'Edge-Neural Studio',
+      'whisperspeech': 'WhisperSpeech',
+      'gpt-sovits': 'GPT-SoVITS'
+    };
+    const tag = document.getElementById('active-voice-tag');
+    if (tag) tag.innerText = names[modelId] || modelId;
+
+    ['edge-neural', 'whisperspeech', 'gpt-sovits'].forEach(m => {
+      const el = document.getElementById('voice-opt-' + m);
+      if (el) el.classList.toggle('active', m === modelId);
+    });
+    showToast(`Switched voice cloning engine to ${names[modelId] || modelId}`, 'info');
+  }
+
+  /* ========================================================= */
+  /* AUDIO STUDIO & MP3 EDITOR STATE MANAGEMENT (REAL-TIME)    */
   /* ========================================================= */
   var audioEditorState = {
     m1: {
@@ -2924,6 +3131,67 @@ def get_embedded_html() -> str:
       audioElement: null,
     }
   };
+
+  /* Web Audio API Realtime Gain & Pitch Node Graph */
+  var studioAudioCtx = null;
+  var studioGainNodes = { m1: null, m2: null };
+  var studioSources = { m1: null, m2: null };
+
+  function getStudioGainNode(mode, player) {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return null;
+      if (!studioAudioCtx) studioAudioCtx = new AudioCtx();
+      if (studioAudioCtx.state === 'suspended') {
+        studioAudioCtx.resume().catch(() => {});
+      }
+      if (!studioGainNodes[mode] && player) {
+        const source = studioAudioCtx.createMediaElementSource(player);
+        const gainNode = studioAudioCtx.createGain();
+        source.connect(gainNode);
+        gainNode.connect(studioAudioCtx.destination);
+        studioSources[mode] = source;
+        studioGainNodes[mode] = gainNode;
+      }
+      return studioGainNodes[mode];
+    } catch (e) {
+      return null;
+    }
+  }
+
+  var liveAuditionDebounce = null;
+  function triggerRealtimeAudition(mode, player) {
+    if (!player || (!player.src && !player.currentSrc)) return;
+    if (studioAudioCtx && studioAudioCtx.state === 'suspended') {
+      studioAudioCtx.resume().catch(() => {});
+    }
+    // If player is already playing, real-time gain/pitch applies immediately without restart
+    if (!player.paused) return;
+
+    // If paused, audition a short 1.2s snippet so the user IMMEDIATELY hears the pitch/volume shift
+    if (liveAuditionDebounce) clearTimeout(liveAuditionDebounce);
+    liveAuditionDebounce = setTimeout(() => {
+      const st = audioEditorState[mode];
+      const startPos = (st && st.trimStart) ? st.trimStart : (player.currentTime || 0);
+      try {
+        player.currentTime = startPos;
+        player.play().then(() => {
+          setTimeout(() => {
+            if (!st.isPlayingPreview && player === document.getElementById('audio-player') && !isMasterPlaying()) {
+              player.pause();
+            } else if (!st.isPlayingPreview && mode === 'm2') {
+              player.pause();
+            }
+          }, 1200);
+        }).catch(() => {});
+      } catch (e) {}
+    }, 90);
+  }
+
+  function isMasterPlaying() {
+    const pauseIcon = document.getElementById('pause-icon');
+    return pauseIcon && pauseIcon.style.display !== 'none';
+  }
 
   function formatSecPrecise(sec) {
     if (!sec || isNaN(sec) || sec < 0) sec = 0;
@@ -2960,6 +3228,7 @@ def get_embedded_html() -> str:
     if (endIn) endIn.value = formatSecPrecise(st.totalDuration);
     if (durVal) durVal.innerText = 'Duration: ' + formatSec(st.totalDuration);
     if (trimPill) trimPill.innerText = 'Trim: 00:00 - ' + formatSec(st.totalDuration);
+    syncTrimBarsFromState(mode);
   }
 
   function handleVolumeInput(mode, val) {
@@ -2982,7 +3251,14 @@ def get_embedded_html() -> str:
 
     const player = mode === 'm1' ? document.getElementById('audio-player') : (document.getElementById('clone-audio-player') || st.audioElement);
     if (player) {
-      player.volume = Math.max(0.0, Math.min(1.0, st.volume / 100));
+      const gainNode = getStudioGainNode(mode, player);
+      if (gainNode) {
+        gainNode.gain.setValueAtTime(st.volume / 100.0, studioAudioCtx ? studioAudioCtx.currentTime : 0);
+        player.volume = 1.0;
+      } else {
+        player.volume = Math.max(0.0, Math.min(1.0, st.volume / 100));
+      }
+      triggerRealtimeAudition(mode, player);
     }
   }
 
@@ -3013,9 +3289,11 @@ def get_embedded_html() -> str:
     });
 
     const player = mode === 'm1' ? document.getElementById('audio-player') : (document.getElementById('clone-audio-player') || st.audioElement);
-    if (player && st.isPlayingPreview) {
+    if (player) {
       player.preservesPitch = false;
-      player.playbackRate = Math.max(0.3, Math.min(3.0, Math.pow(2, st.pitch / 12)));
+      const rate = Math.max(0.3, Math.min(3.0, Math.pow(2, st.pitch / 12)));
+      player.playbackRate = rate;
+      triggerRealtimeAudition(mode, player);
     }
   }
 
@@ -3025,6 +3303,68 @@ def get_embedded_html() -> str:
       slider.value = val;
       handlePitchInput(mode, val);
     }
+  }
+
+  function handleTrimBarInput(mode, type, val) {
+    const st = audioEditorState[mode];
+    if (!st) return;
+    const dur = st.totalDuration > 0 ? st.totalDuration : 10.0;
+    const targetSec = (parseFloat(val) / 100.0) * dur;
+
+    if (type === 'start') {
+      st.trimStart = Math.max(0, Math.min(dur, targetSec));
+      if (st.trimStart >= st.trimEnd) {
+        st.trimEnd = Math.min(dur, st.trimStart + 0.1);
+        const endBar = document.getElementById(mode + '-trim-end-bar');
+        if (endBar) endBar.value = (st.trimEnd / dur) * 100;
+        const endIn = document.getElementById(mode + '-trim-end');
+        if (endIn) endIn.value = formatSecPrecise(st.trimEnd);
+      }
+      const startIn = document.getElementById(mode + '-trim-start');
+      if (startIn) startIn.value = formatSecPrecise(st.trimStart);
+    } else {
+      st.trimEnd = Math.max(0.1, Math.min(dur, targetSec));
+      if (st.trimEnd <= st.trimStart) {
+        st.trimStart = Math.max(0, st.trimEnd - 0.1);
+        const startBar = document.getElementById(mode + '-trim-start-bar');
+        if (startBar) startBar.value = (st.trimStart / dur) * 100;
+        const startIn = document.getElementById(mode + '-trim-start');
+        if (startIn) startIn.value = formatSecPrecise(st.trimStart);
+      }
+      const endIn = document.getElementById(mode + '-trim-end');
+      if (endIn) endIn.value = formatSecPrecise(st.trimEnd);
+    }
+
+    const curTrimDur = Math.max(0, st.trimEnd - st.trimStart);
+    const durVal = document.getElementById(mode + '-trim-duration-val');
+    if (durVal) durVal.innerText = 'Duration: ' + formatSecPrecise(curTrimDur);
+
+    const sliderPill = document.getElementById(mode + '-trim-slider-pill');
+    if (sliderPill) sliderPill.innerText = `${formatSec(st.trimStart)} - ${formatSec(st.trimEnd)}`;
+
+    const trimPill = document.getElementById(mode + '-trim-pill');
+    if (trimPill) {
+      trimPill.innerText = `Trim: ${formatSec(st.trimStart)} - ${formatSec(st.trimEnd)}`;
+      trimPill.classList.add('active');
+    }
+
+    const player = mode === 'm1' ? document.getElementById('audio-player') : (document.getElementById('clone-audio-player') || st.audioElement);
+    if (player) {
+      player.currentTime = type === 'start' ? st.trimStart : Math.max(0, st.trimEnd - 1.0);
+      triggerRealtimeAudition(mode, player);
+    }
+  }
+
+  function syncTrimBarsFromState(mode) {
+    const st = audioEditorState[mode];
+    if (!st) return;
+    const dur = st.totalDuration > 0 ? st.totalDuration : 10.0;
+    const sBar = document.getElementById(mode + '-trim-start-bar');
+    const eBar = document.getElementById(mode + '-trim-end-bar');
+    const pill = document.getElementById(mode + '-trim-slider-pill');
+    if (sBar) sBar.value = Math.max(0, Math.min(100, (st.trimStart / dur) * 100));
+    if (eBar) eBar.value = Math.max(0, Math.min(100, (st.trimEnd / dur) * 100));
+    if (pill) pill.innerText = `${formatSec(st.trimStart)} - ${formatSec(st.trimEnd)}`;
   }
 
   function setTrimToPlayhead(mode, type) {
@@ -3056,6 +3396,7 @@ def get_embedded_html() -> str:
       trimPill.innerText = `Trim: ${formatSec(st.trimStart)} - ${formatSec(st.trimEnd)}`;
       trimPill.classList.add('active');
     }
+    syncTrimBarsFromState(mode);
   }
 
   function updateTrimFromText(mode) {
@@ -3075,6 +3416,7 @@ def get_embedded_html() -> str:
       trimPill.innerText = `Trim: ${formatSec(st.trimStart)} - ${formatSec(st.trimEnd)}`;
       trimPill.classList.add('active');
     }
+    syncTrimBarsFromState(mode);
   }
 
   function resetTrimRange(mode) {
@@ -3090,6 +3432,7 @@ def get_embedded_html() -> str:
       trimPill.innerText = 'Trim: Full Length';
       trimPill.classList.remove('active');
     }
+    syncTrimBarsFromState(mode);
     showToast('Trim range reset to full audio length', 'info');
   }
 
@@ -3359,6 +3702,7 @@ def get_embedded_html() -> str:
           profile: selectedVoiceProfile,
           output_format: 'mp3',
           reference_audio: (audioEditorState.m2 && audioEditorState.m2.referenceAudioBase64) || null,
+          backend: selectedVoiceModel || 'edge-neural',
         }),
       });
       const data = await res.json();

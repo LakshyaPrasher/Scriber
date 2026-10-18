@@ -72,6 +72,13 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif path == "/api/benchmark":
             results = ResultValidator.run_benchmark_suite()
             self._send_json_response(200, results)
+        elif path == "/api/models":
+            from scriber.transcription_engine import TOP_TRANSCRIBE_MODELS
+            from scriber.voice_clone import TOP_VOICE_MODELS
+            self._send_json_response(200, {
+                "transcribe_models": TOP_TRANSCRIBE_MODELS,
+                "voice_models": TOP_VOICE_MODELS,
+            })
         elif path == "/api/info":
             self._send_json_response(200, {
                 "name": "Scriber",
@@ -162,7 +169,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             body_bytes = self.rfile.read(content_length)
 
-            # Support direct JSON payload: {"file_path": "path/to/media.mp3", "task": "translate"}
+            # Support direct JSON payload: {"file_path": "path/to/media.mp3", "task": "translate", "model": "turbo"}
             if content_type.startswith("application/json"):
                 data = json.loads(body_bytes.decode("utf-8"))
                 file_path_arg = data.get("file_path", "")
@@ -174,6 +181,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     task=data.get("task", "translate"),
                     language=None if data.get("language") in ("auto", "none", "", None) else data.get("language"),
                     reference_text=data.get("reference_text"),
+                    model=data.get("model", "turbo"),
                 )
                 output.video_source = os.path.basename(file_path_arg)
                 try:
@@ -204,6 +212,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             language = "auto"
             ref_text = None
             file_path_param = None
+            model = "turbo"
 
             for part in msg.walk():
                 if part.is_multipart():
@@ -229,6 +238,10 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     payload = part.get_payload(decode=True)
                     if payload:
                         language = payload.decode("utf-8", errors="replace").strip() or "auto"
+                elif name == "model":
+                    payload = part.get_payload(decode=True)
+                    if payload:
+                        model = payload.decode("utf-8", errors="replace").strip() or "turbo"
                 elif name == "reference_text":
                     payload = part.get_payload(decode=True)
                     if payload:
@@ -241,6 +254,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     task=task,
                     language=None if language in ("auto", "none", "", None) else language,
                     reference_text=ref_text,
+                    model=model,
                 )
                 output.video_source = os.path.basename(file_path_param)
                 try:
@@ -278,6 +292,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 task=task,
                 language=None if language in ("auto", "none", "", None) else language,
                 reference_text=ref_text,
+                model=model,
             )
             output.video_source = filename
             try:
@@ -399,6 +414,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 except Exception:
                     pass
 
+            backend = req_data.get("backend") or req_data.get("model") or "edge-neural"
             output_format = req_data.get("output_format") or req_data.get("format") or "mp3"
             result = self.pipeline.clone_voice(
                 profile=profile,
@@ -407,6 +423,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 rate_shift_pct=rate_shift,
                 output_format=output_format,
                 reference_pcm=ref_pcm,
+                backend=backend,
             )
             if result.audio_pcm16:
                 self.pipeline.last_pcm_data = result.audio_pcm16

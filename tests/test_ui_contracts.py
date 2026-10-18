@@ -99,6 +99,38 @@ class TestUIContracts(unittest.TestCase):
         self.assertIn('id="voice-ref-input"', self.html)
         self.assertIn("handleVoiceRefSelected", self.html)
 
+    def test_top_models_switchers(self):
+        """Verifies presence of Top 3 Open-Source Models Switcher in both Transcribe & Voice Clone modes."""
+        self.assertIn('id="transcribe-model-switcher"', self.html)
+        self.assertIn('id="voice-model-switcher"', self.html)
+        self.assertIn("selectTranscribeModel", self.html)
+        self.assertIn("selectVoiceModel", self.html)
+        self.assertIn("Whisper Turbo", self.html)
+        self.assertIn("Whisper Base", self.html)
+        self.assertIn("WhisperX", self.html)
+        self.assertIn("Edge-Neural Studio", self.html)
+        self.assertIn("WhisperSpeech", self.html)
+        self.assertIn("GPT-SoVITS", self.html)
+        self.assertIn("Zero Bulk Download", self.html)
+
+    def test_minimalist_harmonic_logo_everywhere(self):
+        """Verifies ultra-minimalist harmonic S wave brandmark is present."""
+        self.assertIn("Minimalist Scriber Harmonic S Logo Mark", self.html)
+        self.assertIn('stroke-width="32"', self.html)
+        self.assertIn("/assets/icon.svg", self.html)
+
+    def test_realtime_audio_editor_controls(self):
+        """Verifies real-time volume gain, pitch shift, and trimming sliders with Web Audio integration."""
+        self.assertIn("handleVolumeInput", self.html)
+        self.assertIn("handlePitchInput", self.html)
+        self.assertIn("handleTrimBarInput", self.html)
+        self.assertIn('id="m1-trim-start-bar"', self.html)
+        self.assertIn('id="m1-trim-end-bar"', self.html)
+        self.assertIn('id="m2-trim-start-bar"', self.html)
+        self.assertIn('id="m2-trim-end-bar"', self.html)
+        self.assertIn("getStudioGainNode", self.html)
+        self.assertIn("triggerRealtimeAudition", self.html)
+
 
 if __name__ == "__main__":
     unittest.main()

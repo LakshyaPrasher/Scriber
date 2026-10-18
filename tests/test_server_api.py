@@ -356,7 +356,53 @@ class TestServerAPI(unittest.TestCase):
         self.assertIn("audio_base64", written)
         self.assertAlmostEqual(written["duration"], 2.0, delta=0.2)
 
+    def test_do_get_models(self):
+        """Verifies GET /api/models returns top 3 models for both transcription and cloning."""
+        self.handler.path = "/api/models"
+        self.handler.do_GET()
+        self.handler.send_response.assert_called_with(200)
+        written = json.loads(self.handler.wfile.getvalue().decode("utf-8"))
+        self.assertIn("transcribe_models", written)
+        self.assertIn("voice_models", written)
+        self.assertEqual(len(written["transcribe_models"]), 3)
+        self.assertEqual(len(written["voice_models"]), 3)
 
+        transcribe_ids = [m["id"] for m in written["transcribe_models"]]
+        self.assertIn("turbo", transcribe_ids)
+        self.assertIn("base", transcribe_ids)
+        self.assertIn("whisperx", transcribe_ids)
+
+        voice_ids = [m["id"] for m in written["voice_models"]]
+        self.assertIn("edge-neural", voice_ids)
+        self.assertIn("whisperspeech", voice_ids)
+        self.assertIn("gpt-sovits", voice_ids)
+
+    def test_do_post_clone_voice_all_backends(self):
+        """Verifies POST /api/clone-voice functions stably across all 3 top models."""
+        for backend in ["edge-neural", "whisperspeech", "gpt-sovits"]:
+            req_body = json.dumps({
+                "text": f"Testing synthesis with {backend} model.",
+                "pitch_shift": 2.0,
+                "rate_shift": 0.0,
+                "output_format": "mp3",
+                "backend": backend,
+                "profile": {
+                    "speaker_id": "Speaker_Test",
+                    "fundamental_frequency_hz": 150.0,
+                    "gender_estimate": "masculine",
+                },
+            }).encode("utf-8")
+
+            self.handler.wfile = io.BytesIO()
+            self.handler.path = "/api/clone-voice"
+            self.handler.headers = {"Content-Length": str(len(req_body))}
+            self.handler.rfile = io.BytesIO(req_body)
+
+            self.handler.do_POST()
+            self.handler.send_response.assert_called_with(200)
+            written = json.loads(self.handler.wfile.getvalue().decode("utf-8"))
+            self.assertIn("audio_base64", written)
+            self.assertGreater(written["similarity_score"], 0.85)
 
 
 if __name__ == "__main__":

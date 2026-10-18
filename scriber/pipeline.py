@@ -66,6 +66,7 @@ class ScriberPipeline:
         reference_text: Optional[str] = None,
         export_dir: Optional[str] = None,
         export_formats: Optional[List[str]] = None,
+        model: str = "turbo",
     ) -> ScriberOutput:
         """Processes any video or audio file through the 4-subagent pipeline."""
         start_time = time.time()
@@ -92,6 +93,7 @@ class ScriberPipeline:
             prompt=prompt,
             vad_segments=vad_segments,
             ground_truth_hint=reference_text,
+            model=model,
         )
 
         # Step 3.5: Acoustic Diarizer with Speaker Memory & Proper English Formatting
@@ -116,6 +118,7 @@ class ScriberPipeline:
                 task="translate",
                 prompt=prompt,
                 vad_segments=vad_segments,
+                model=model,
             )
             translation_result, _ = self.quality_checker.audit_and_clean(raw_translation)
 
@@ -171,6 +174,7 @@ class ScriberPipeline:
         task: str = "translate",
         language: Optional[str] = None,
         reference_text: Optional[str] = None,
+        model: str = "turbo",
     ) -> ScriberOutput:
         """Processes in-memory PCM bytes (useful for serverless Lambda execution)."""
         start_time = time.time()
@@ -199,6 +203,7 @@ class ScriberPipeline:
             task=task,
             vad_segments=vad_segments,
             ground_truth_hint=reference_text,
+            model=model,
         )
 
         # Step 3.5: Acoustic Diarizer with Speaker Memory & Proper English Formatting
@@ -244,6 +249,7 @@ class ScriberPipeline:
         rate_shift_pct: float = 0.0,
         output_format: str = "mp3",
         reference_pcm: Optional[bytes] = None,
+        backend: str = "edge-neural",
     ) -> VoiceCloneResult:
         """Clones speech matching the given speaker profile and reference audio."""
         target_ref = reference_pcm or getattr(self, "reference_pcm", None) or self.last_pcm_data
@@ -254,6 +260,7 @@ class ScriberPipeline:
             rate_shift_pct=rate_shift_pct,
             output_format=output_format,
             reference_pcm=target_ref,
+            backend=backend,
         )
 
     def _extract_speaker_voice_profiles(
