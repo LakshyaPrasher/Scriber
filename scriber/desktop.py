@@ -322,6 +322,7 @@ class ScriberDesktopApp:
 
         # On closing window, signal shutdown
         def on_closed():
+            print("[*] window closed event fired! self.stop() called")
             self.stop()
 
         self.window.events.closed += on_closed
@@ -348,7 +349,7 @@ class ScriberDesktopApp:
             storage_path = None
 
         try:
-            # gui='edgechromium' ensures Microsoft Edge WebView2 on Windows
+            print("[*] Calling webview.start(gui='edgechromium')...")
             webview.start(
                 gui="edgechromium",
                 debug=self.debug,
@@ -356,8 +357,10 @@ class ScriberDesktopApp:
                 storage_path=storage_path,
                 private_mode=False,
             )
+            print("[*] webview.start returned cleanly.")
             return 0
         except Exception as e:
+            print(f"[*] webview.start exception: {e}")
             logger.warning("pywebview edgechromium failed (%s). Falling back to Edge standalone app.", e)
             return self._run_edge(url)
 
@@ -416,22 +419,6 @@ class ScriberDesktopApp:
             return 0
 
 
-def cleanup_orphaned_desktop_processes():
-    """Terminates any zombie pythonw.exe instances running run_desktop.py from prior runs."""
-    if sys.platform != "win32":
-        return
-    current_pid = os.getpid()
-    try:
-        ps_cmd = (
-            f"Get-CimInstance Win32_Process -Filter \"Name = 'pythonw.exe'\" | "
-            f"Where-Object {{ $_.ProcessId -ne {current_pid} -and $_.CommandLine -like '*run_desktop.py*' }} | "
-            f"ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }}"
-        )
-        subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], timeout=3, capture_output=True)
-    except Exception:
-        pass
-
-
 def launch_desktop(
     host: str = "127.0.0.1",
     port: Optional[int] = None,
@@ -440,7 +427,6 @@ def launch_desktop(
     debug: bool = False,
 ) -> int:
     """Convenience entry point for launching Scriber desktop window."""
-    cleanup_orphaned_desktop_processes()
     app = ScriberDesktopApp(
         host=host,
         port=port,

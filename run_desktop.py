@@ -87,4 +87,23 @@ def parse_and_run() -> int:
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
-    sys.exit(parse_and_run())
+    try:
+        sys.exit(parse_and_run())
+    except Exception as exc:
+        import traceback
+        err_text = traceback.format_exc()
+        try:
+            import tempfile
+            log_dir = os.path.join(os.environ.get("LOCALAPPDATA", tempfile.gettempdir()), "Scriber", "Logs")
+            os.makedirs(log_dir, exist_ok=True)
+            with open(os.path.join(log_dir, "desktop_crash.log"), "a", encoding="utf-8") as f:
+                f.write(err_text + "\n")
+        except Exception:
+            pass
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                ctypes.windll.user32.MessageBoxW(0, f"Scriber encountered an error during launch:\n\n{exc}", "Scriber Desktop Error", 0x10)
+            except Exception:
+                pass
+        sys.exit(1)

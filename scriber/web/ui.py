@@ -16,6 +16,11 @@ def get_embedded_html() -> str:
 <title>Scriber — Studio Intelligence & Voice Synthesis</title>
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <link rel="icon" type="image/svg+xml" href="/assets/icon.svg">
+<link rel="apple-touch-icon" href="/assets/icon.png">
+<meta name="application-name" content="Scriber Studio">
+<meta name="msapplication-TileColor" content="#08090C">
+<meta name="msapplication-TileImage" content="/assets/icon.png">
+<meta name="theme-color" content="#08090C">
 <!-- Google Fonts: Syne, Plus Jakarta Sans & JetBrains Mono (Anti-Slop Editorial Pairing) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

@@ -1,17 +1,4 @@
-$wshell = New-Object -ComObject WScript.Shell
-$icoPath = (Resolve-Path "scriber\assets\icon.ico").Path
-
-$destinations = @(
-    [System.IO.Path]::Combine($env:USERPROFILE, "Desktop", "Scriber.lnk"),
-    [System.IO.Path]::Combine($env:USERPROFILE, "OneDrive", "Desktop", "Scriber.lnk"),
-    [System.IO.Path]::Combine($env:APPDATA, "Microsoft\Windows\Start Menu\Programs", "Scriber.lnk")
-)
-
-foreach ($dest in $destinations) {
-    if (Test-Path $dest) {
-        $shortcut = $wshell.CreateShortcut($dest)
-        $shortcut.IconLocation = "$icoPath,0"
-        $shortcut.Save()
-        Write-Host "Updated shortcut icon: $dest"
-    }
-}
+# scripts/update_shortcuts.ps1
+# Wrapper that invokes the comprehensive shortcut installer script.
+$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+& (Join-Path $PSScriptRoot "install_windows_shortcuts.ps1")
