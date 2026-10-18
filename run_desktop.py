@@ -19,7 +19,10 @@ import multiprocessing
 import os
 import sys
 
-# Windows GUI guard: ensure stdout/stderr exist and record errors when running under pythonw.exe
+# Call freeze_support() at the very top of the script for frozen Windows executables
+multiprocessing.freeze_support()
+
+# Windows GUI guard: ensure stdout/stderr/stdin exist and record errors when running under Subsystem 2 (GUI / pythonw.exe)
 if sys.stdout is None or sys.stderr is None:
     try:
         import tempfile
@@ -39,6 +42,12 @@ if sys.stdout is None or sys.stderr is None:
             sys.stdout = open(os.devnull, "w", encoding="utf-8")
         if sys.stderr is None:
             sys.stderr = open(os.devnull, "w", encoding="utf-8")
+
+if sys.stdin is None:
+    try:
+        sys.stdin = open(os.devnull, "r", encoding="utf-8")
+    except Exception:
+        pass
 
 from scriber.desktop import launch_desktop
 

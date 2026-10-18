@@ -257,6 +257,31 @@ class TestDesktopApplication(unittest.TestCase):
             self.assertEqual(win.title, "Scriber Test Window")
             mock_create.assert_called_once()
 
+    def test_cleanup_webview_storage_locks(self):
+        """Verifies cleanup_webview_storage_locks cleans stale locks and creates fallback if locked."""
+        from scriber.desktop import cleanup_webview_storage_locks
+        with tempfile.TemporaryDirectory() as td:
+            # Create dummy stale locks
+            lock1 = os.path.join(td, "SingletonLock")
+            lock2 = os.path.join(td, "test.lock")
+            with open(lock1, "w") as f:
+                f.write("test")
+            with open(lock2, "w") as f:
+                f.write("test")
+
+            cleaned = cleanup_webview_storage_locks(td)
+            self.assertEqual(cleaned, td)
+            self.assertFalse(os.path.exists(lock1))
+            self.assertFalse(os.path.exists(lock2))
+
+    def test_cleanup_stale_webview_processes_safe(self):
+        """Verifies cleanup_stale_webview_processes executes safely without throwing exceptions."""
+        from scriber.desktop import cleanup_stale_webview_processes
+        try:
+            cleanup_stale_webview_processes()
+        except Exception as e:
+            self.fail(f"cleanup_stale_webview_processes failed: {e}")
+
 
 if __name__ == "__main__":
     unittest.main()

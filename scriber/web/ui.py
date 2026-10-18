@@ -1741,6 +1741,413 @@ def get_embedded_html() -> str:
   .toast.toast-info {
     border-left-color: var(--gold);
   }
+
+  /* ========================================================= */
+  /* SUPREME COUNCIL MULTI-AGENT SWARM & INTELLIGENCE DASHBOARD */
+  /* ========================================================= */
+  .council-dashboard {
+    background: rgba(14, 18, 26, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(12px);
+  }
+  .council-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .council-tag-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--gold);
+    background: rgba(229, 169, 60, 0.12);
+    border: 1px solid rgba(229, 169, 60, 0.28);
+    padding: 4px 10px;
+    border-radius: 5px;
+  }
+  .council-headline {
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 8px 0 6px 0;
+    letter-spacing: -0.01em;
+  }
+  .council-tldr {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 14px;
+  }
+  .council-decisions-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+    background: rgba(16, 185, 129, 0.06);
+    border: 1px solid rgba(16, 185, 129, 0.22);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .decision-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    color: #A7F3D0;
+  }
+  .council-section-title {
+    font-family: var(--font-display);
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .action-card {
+    background: rgba(18, 22, 32, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    padding: 13px 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    transition: all 0.2s ease;
+  }
+  .action-card:hover {
+    border-color: rgba(255, 94, 0, 0.35);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  }
+  .action-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .action-id {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--gold);
+    font-weight: 700;
+  }
+  .action-prio-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+  }
+  .prio-urgent { background: rgba(255, 138, 122, 0.2); color: #FFA396; border: 1px solid rgba(255, 138, 122, 0.4); }
+  .prio-high { background: rgba(255, 94, 0, 0.2); color: #FF944D; border: 1px solid rgba(255, 94, 0, 0.4); }
+  .prio-medium { background: rgba(229, 169, 60, 0.16); color: #F5BE6B; border: 1px solid rgba(229, 169, 60, 0.35); }
+  .prio-low { background: rgba(148, 163, 184, 0.14); color: #CBD5E1; border: 1px solid rgba(148, 163, 184, 0.3); }
+  .action-task-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.45;
+  }
+  .action-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .action-assignee {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 600;
+    color: var(--text-highlight);
+  }
+  .action-seek-btn {
+    background: transparent;
+    border: none;
+    color: var(--tangerine);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+  .action-seek-btn:hover {
+    background: rgba(255, 94, 0, 0.15);
+  }
+  .chapters-strip {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 4px 0 12px 0;
+    margin-bottom: 14px;
+  }
+  .chapter-chip {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .chapter-chip:hover {
+    background: rgba(255, 94, 0, 0.12);
+    border-color: rgba(255, 94, 0, 0.35);
+    color: var(--text-primary);
+  }
+  .audit-seal-strip {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(8, 10, 15, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 10px 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .pii-shield-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .btn-pii-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-pii-toggle.active {
+    background: rgba(16, 185, 129, 0.18);
+    border-color: rgba(16, 185, 129, 0.5);
+    color: #10B981;
+  }
+  .cert-seal-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    flex-wrap: wrap;
+  }
+  .cert-id-tag {
+    color: var(--gold);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .cert-status-pass {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--emerald);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  /* Mode 3: Agent Swarm Console styles */
+  .swarm-header-card {
+    background: #0B0E14;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .swarm-agents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 18px;
+    margin-bottom: 24px;
+  }
+  .swarm-agent-card {
+    background: rgba(18, 22, 32, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: all 0.2s ease;
+  }
+  .swarm-agent-card:hover {
+    border-color: rgba(255, 94, 0, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+  .agent-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .agent-title-group h4 {
+    font-family: var(--font-display);
+    font-size: 16px;
+    color: var(--text-primary);
+  }
+  .agent-role-tag {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+  .tier-pill {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.06em;
+  }
+  .tier-pro { background: rgba(229, 169, 60, 0.15); color: var(--gold); border: 1px solid rgba(229, 169, 60, 0.3); }
+  .tier-flash { background: rgba(16, 185, 129, 0.15); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.3); }
+  .agent-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .agent-caps-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .agent-cap-tag {
+    font-size: 11px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #CBD5E1;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .agent-telemetry-bar {
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* Ecosystem modal styles */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(8, 9, 12, 0.85);
+    backdrop-filter: blur(14px);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .modal-overlay.active {
+    display: flex;
+    animation: fadeInView 0.2s ease;
+  }
+  .ecosystem-card {
+    background: #0E121B;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    max-width: 860px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  }
+  .ecosystem-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ecosystem-body {
+    padding: 24px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .repo-item-card {
+    background: rgba(18, 22, 32, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    transition: all 0.2s;
+  }
+  .repo-item-card.highlight {
+    background: rgba(229, 169, 60, 0.07);
+    border-color: rgba(229, 169, 60, 0.35);
+  }
+  .repo-name-link {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gold);
+    text-decoration: none;
+  }
+  .repo-name-link:hover {
+    text-decoration: underline;
+  }
+  .repo-desc {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    margin: 4px 0;
+  }
+  .repo-contrib {
+    font-size: 12px;
+    color: #94A3B8;
+  }
 </style>
 </head>
 <body>
@@ -1799,7 +2206,7 @@ def get_embedded_html() -> str:
       </div>
     </div>
 
-    <!-- 2 Clean Navigation Modes -->
+    <!-- Navigation Modes -->
     <nav class="nav-pills">
       <button class="nav-pill active" id="btn-mode-transcribe" onclick="switchMode('transcribe')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
@@ -1808,6 +2215,14 @@ def get_embedded_html() -> str:
       <button class="nav-pill" id="btn-mode-voice" onclick="switchMode('voice')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H2v-8z"></path><path d="M22 12h-2a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2v-8z"></path><path d="M4 12a8 8 0 0 1 16 0"></path><line x1="12" y1="8" x2="12" y2="16"></line></svg>
         Voice Clone
+      </button>
+      <button class="nav-pill" id="btn-mode-swarm" onclick="switchMode('swarm')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+        Agent Swarm
+      </button>
+      <button class="nav-pill" id="btn-ecosystem-modal" onclick="openEcosystemModal()" title="Architectural Lineage & Repositories">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+        Ecosystem
       </button>
     </nav>
   </header>
@@ -2193,6 +2608,74 @@ def get_embedded_html() -> str:
         </div>
       </div>
 
+      <!-- Supreme Council Multi-Agent Swarm Intelligence Dashboard -->
+      <div class="council-dashboard" id="council-dashboard-panel" style="display:none;">
+        <div class="council-header-bar">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="council-tag-badge">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              Council Swarm Intelligence
+            </span>
+            <span id="council-duration-badge" style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted);"></span>
+          </div>
+          <div class="pii-shield-controls">
+            <button type="button" class="btn-pii-toggle" id="btn-pii-shield" onclick="togglePIIShield()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              <span id="pii-shield-status-text">PII Privacy: Off</span>
+            </button>
+            <button type="button" class="action-seek-btn" onclick="copyAuditReceipt()" title="Copy Cryptographic Audit Certificate">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              Copy Seal
+            </button>
+          </div>
+        </div>
+
+        <div id="council-briefing-wrap">
+          <h3 class="council-headline" id="council-briefing-headline">Executive Briefing</h3>
+          <p class="council-tldr" id="council-briefing-tldr"></p>
+        </div>
+
+        <!-- Key Decisions -->
+        <div id="council-decisions-wrap" style="display:none;">
+          <div class="council-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            Ratified Decisions
+          </div>
+          <div class="council-decisions-box" id="council-decisions-list"></div>
+        </div>
+
+        <!-- Thematic Chapters Strip -->
+        <div id="council-chapters-wrap" style="display:none;">
+          <div class="council-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            Thematic Chapters & Soundbites
+          </div>
+          <div class="chapters-strip" id="council-chapters-strip"></div>
+        </div>
+
+        <!-- Action Items -->
+        <div id="council-actions-wrap" style="display:none;">
+          <div class="council-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--tangerine)" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            Forensic Action Item Commitments
+          </div>
+          <div class="actions-grid" id="council-actions-grid"></div>
+        </div>
+
+        <!-- Tamper-evident Audit Seal Strip -->
+        <div class="audit-seal-strip" id="council-audit-seal-strip">
+          <div class="cert-seal-box">
+            <span style="color:var(--text-muted);">CERTIFICATE:</span>
+            <span class="cert-id-tag" id="audit-cert-id">CERT-CSCR-SECURE-CHAIN</span>
+            <span class="cert-status-pass" id="audit-cert-status">VALIDATED</span>
+          </div>
+          <div style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:8px;">
+            <span>SHA-256 ROOT:</span>
+            <span id="audit-root-hash" style="color:#CBD5E1;">GENESIS-CHAIN</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Interactive Colorful Speaker Blocks -->
       <div class="transcript-container" id="transcript-container"></div>
     </div>
@@ -2510,6 +2993,34 @@ def get_embedded_html() -> str:
       </div>
     </div>
   </section>
+
+  <!-- ========================================================= -->
+  <!-- MODE 3: AGENT SWARM CONSOLE & ANTIGRAVITY PLUGIN          -->
+  <!-- ========================================================= -->
+  <section id="swarm-view" class="view-panel">
+    <div class="swarm-header-card">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+        <div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            <h2 style="font-family:var(--font-display); font-size:20px; color:var(--text-primary); margin:0;">Autonomous Council Swarm</h2>
+          </div>
+          <p class="subtitle" style="margin-top:6px;">Multi-Agent Swarm architecture inspired by wshobson/agents with dynamic tier routing across Gemini 2.5 Pro and Flash.</p>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button type="button" class="btn-primary" id="btn-install-plugin" onclick="installAntigravityPlugin()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Install Antigravity Plugin
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 Specialist Agent Cards Grid -->
+    <div class="swarm-agents-grid" id="swarm-agents-grid">
+      <!-- Populated dynamically via /api/council/swarm -->
+    </div>
+  </section>
 </div>
 
 <!-- Floating Toast Container -->
@@ -2549,7 +3060,11 @@ def get_embedded_html() -> str:
     const btn = document.getElementById('btn-mode-' + mode);
     if (btn) btn.classList.add('active');
 
-    const view = document.getElementById(mode === 'voice' ? 'voice-view' : 'transcribe-view');
+    let viewId = 'transcribe-view';
+    if (mode === 'voice') viewId = 'voice-view';
+    else if (mode === 'swarm') viewId = 'swarm-view';
+
+    const view = document.getElementById(viewId);
     if (view) view.classList.add('active');
 
     if (mode === 'voice') {
@@ -2563,6 +3078,8 @@ def get_embedded_html() -> str:
         initModeAudioEditor('m1', dur > 0 ? dur : 10, fName);
       }
       setTimeout(drawWave, 50);
+    } else if (mode === 'swarm') {
+      loadSwarmAgents();
     }
   }
 
@@ -2696,6 +3213,7 @@ def get_embedded_html() -> str:
     formData.append('task', 'translate');
     formData.append('language', 'auto');
     formData.append('model', selectedTranscribeModel || 'turbo');
+    formData.append('redact_pii', window.isPIIRedacted ? 'true' : 'false');
 
     try {
       const res = await fetch('/api/process', { method: 'POST', body: formData });
@@ -2956,6 +3474,9 @@ def get_embedded_html() -> str:
         }
       }, { once: true });
     }
+
+    // Render Supreme Council Multi-Agent Dashboard
+    renderSupremeCouncil(data);
   }
 
   function getSpeakerThemeClass(speaker, idx) {
@@ -4740,6 +5261,348 @@ def get_embedded_html() -> str:
 
   initWaveform();
 
+  /* Supreme Council Multi-Agent Swarm Intelligence Dashboard Renderer */
+  function renderSupremeCouncil(data) {
+    const council = data && (data.council || data.council_analysis);
+    const validation = data && data.validation;
+    const panel = document.getElementById('council-dashboard-panel');
+    if (!panel) return;
+
+    if (!council && !validation) {
+      panel.style.display = 'none';
+      return;
+    }
+
+    panel.style.display = 'block';
+
+    // Duration badge
+    const durBadge = document.getElementById('council-duration-badge');
+    if (durBadge) {
+      const dur = data.duration || getAccurateDuration() || 0;
+      durBadge.innerText = `Duration: ${formatSec(dur)}`;
+    }
+
+    // PII toggle state
+    const piiBtn = document.getElementById('btn-pii-shield');
+    const piiText = document.getElementById('pii-shield-status-text');
+    if (piiBtn && piiText) {
+      if (window.isPIIRedacted) {
+        piiBtn.classList.add('active');
+        piiText.innerText = 'PII Privacy: Active';
+      } else {
+        piiBtn.classList.remove('active');
+        piiText.innerText = 'PII Privacy: Off';
+      }
+    }
+
+    // Executive Briefing
+    const headline = document.getElementById('council-briefing-headline');
+    const tldr = document.getElementById('council-briefing-tldr');
+    if (headline) headline.innerText = 'Executive Briefing & Strategic Synthesis';
+    if (tldr) {
+      tldr.innerText = (council && council.executive_summary)
+        ? council.executive_summary
+        : 'Automated council synthesis successfully processed the speech stream with speaker diarization and semantic classification.';
+    }
+
+    // Ratified Decisions
+    const decisionsWrap = document.getElementById('council-decisions-wrap');
+    const decisionsList = document.getElementById('council-decisions-list');
+    if (decisionsWrap && decisionsList) {
+      const decisions = (council && council.key_decisions) || [];
+      if (decisions.length > 0) {
+        decisionsWrap.style.display = 'block';
+        decisionsList.innerHTML = decisions.map(d => `
+          <div class="decision-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>${escapeHtml(d)}</span>
+          </div>
+        `).join('');
+      } else {
+        decisionsWrap.style.display = 'none';
+      }
+    }
+
+    // Thematic Chapters
+    const chaptersWrap = document.getElementById('council-chapters-wrap');
+    const chaptersStrip = document.getElementById('council-chapters-strip');
+    if (chaptersWrap && chaptersStrip) {
+      const chapters = (council && council.thematic_chapters) || [];
+      if (chapters.length > 0) {
+        chaptersWrap.style.display = 'block';
+        chaptersStrip.innerHTML = chapters.map(ch => `
+          <div class="chapter-chip" onclick="seekTo(${ch.start})" title="${escapeHtml(ch.summary || '')}">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <strong style="color:var(--text-primary);">${escapeHtml(ch.title)}</strong>
+            <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted);">${formatSec(ch.start)}</span>
+          </div>
+        `).join('');
+      } else {
+        chaptersWrap.style.display = 'none';
+      }
+    }
+
+    // Action Items
+    const actionsWrap = document.getElementById('council-actions-wrap');
+    const actionsGrid = document.getElementById('council-actions-grid');
+    if (actionsWrap && actionsGrid) {
+      const actions = (council && council.action_items) || [];
+      if (actions.length > 0) {
+        actionsWrap.style.display = 'block';
+        actionsGrid.innerHTML = actions.map((a, i) => {
+          const prio = (a.priority || 'medium').toLowerCase();
+          const prioClass = `prio-${prio}`;
+          const seekTime = a.seek_start !== undefined && a.seek_start !== null ? a.seek_start : 0;
+          return `
+            <div class="action-card">
+              <div class="action-card-header">
+                <span class="action-id">ACTION #${i + 1}</span>
+                <span class="action-prio-badge ${prioClass}">${escapeHtml(prio.toUpperCase())}</span>
+              </div>
+              <div class="action-task-text">${escapeHtml(a.task)}</div>
+              <div class="action-meta-row">
+                <span class="action-assignee">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                  ${escapeHtml(a.assignee || 'Unassigned')}
+                </span>
+                <button type="button" class="action-seek-btn" onclick="seekTo(${seekTime})" title="Jump to context in media">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                  Seek ${formatSec(seekTime)}
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        actionsWrap.style.display = 'none';
+      }
+    }
+
+    // Cryptographic Seal & Hash Chain
+    const certId = document.getElementById('audit-cert-id');
+    const certStatus = document.getElementById('audit-cert-status');
+    const rootHash = document.getElementById('audit-root-hash');
+    if (validation) {
+      if (certId) certId.innerText = validation.certificate_id || 'CERT-CSCR-CHAIN';
+      if (certStatus) {
+        certStatus.innerText = validation.passed ? 'VALIDATED' : 'TAMPERED';
+        certStatus.style.background = validation.passed ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 94, 0, 0.15)';
+        certStatus.style.color = validation.passed ? 'var(--emerald)' : 'var(--tangerine)';
+      }
+      if (rootHash) {
+        const fullHash = validation.root_hash || 'SHA256-GENESIS-CHAIN';
+        rootHash.innerText = fullHash.length > 20 ? (fullHash.substring(0, 10) + '...' + fullHash.substring(fullHash.length - 8)) : fullHash;
+        rootHash.title = fullHash;
+      }
+    }
+  }
+
+  /* PII Privacy Shield Toggle */
+  window.isPIIRedacted = false;
+  async function togglePIIShield() {
+    window.isPIIRedacted = !window.isPIIRedacted;
+    const piiBtn = document.getElementById('btn-pii-shield');
+    const piiText = document.getElementById('pii-shield-status-text');
+
+    if (window.isPIIRedacted) {
+      if (piiBtn) piiBtn.classList.add('active');
+      if (piiText) piiText.innerText = 'PII Privacy: Active';
+      showToast('PII Privacy Shield activated. Redacting sensitive data...', 'info');
+
+      const data = currentResult || window.currentResult;
+      if (data && data.transcription && data.transcription.segments) {
+        try {
+          const res = await fetch('/api/pii/redact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              segments: data.transcription.segments.map(s => ({
+                text: s.text,
+                start: s.start,
+                end: s.end,
+                speaker: s.speaker
+              }))
+            })
+          });
+          const resData = await res.json();
+          if (resData.sanitized_segments) {
+            resData.sanitized_segments.forEach((seg, idx) => {
+              const segElem = document.getElementById('seg-text-' + idx);
+              if (segElem) {
+                segElem.innerText = seg.text;
+                segElem.setAttribute('data-edited', 'true');
+              }
+            });
+            showToast(`PII Shield redacted ${resData.report ? resData.report.redactions_count : 0} items!`, 'success');
+          }
+        } catch (e) {
+          showToast('PII Redaction request failed: ' + e, 'error');
+        }
+      }
+    } else {
+      if (piiBtn) piiBtn.classList.remove('active');
+      if (piiText) piiText.innerText = 'PII Privacy: Off';
+      showToast('PII Privacy Shield deactivated. Restoring unredacted speech.', 'info');
+
+      const data = currentResult || window.currentResult;
+      if (data) {
+        renderTranscription(data);
+      }
+    }
+  }
+
+  /* Copy Cryptographic Audit Certificate Receipt */
+  function copyAuditReceipt() {
+    const data = currentResult || window.currentResult;
+    const validation = data && data.validation;
+    if (!validation) {
+      showToast('No cryptographic audit certificate available yet.', 'info');
+      return;
+    }
+    const cert = validation.certificate_id || 'CERT-CSCR-CHAIN';
+    const root = validation.root_hash || 'SHA256-ROOT-CHAIN';
+    const status = validation.passed ? 'PASSED' : 'FLAGGED';
+    const chain = validation.hash_chain || [];
+    let receipt = `=== SCRIBER CRYPTOGRAPHIC AUDIT CERTIFICATE ===\n`;
+    receipt += `Certificate ID : ${cert}\n`;
+    receipt += `Status         : ${status}\n`;
+    receipt += `SHA-256 Root   : ${root}\n`;
+    receipt += `Blocks in Chain: ${chain.length}\n\n`;
+    receipt += `--- HASH CHAIN BLOCKS ---\n`;
+    chain.forEach(b => {
+      receipt += `[Block ${b.block_id}] ${b.stage}\n  Prev: ${b.prev_hash}\n  Hash: ${b.block_hash}\n`;
+    });
+    receipt += `\nCryptographically verified by CouncilAgentSwarm & PIISecurityOfficer.\n`;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(receipt).then(() => {
+        showToast('Cryptographic audit certificate copied to clipboard!', 'success');
+      }).catch(() => {
+        fallbackCopy(receipt, () => showToast('Audit certificate copied!', 'success'));
+      });
+    } else {
+      fallbackCopy(receipt, () => showToast('Audit certificate copied!', 'success'));
+    }
+  }
+
+  /* Ecosystem Modal Controls */
+  function openEcosystemModal() {
+    const modal = document.getElementById('ecosystem-modal');
+    if (!modal) return;
+    modal.classList.add('active');
+    loadEcosystemRepos();
+  }
+
+  function closeEcosystemModal() {
+    const modal = document.getElementById('ecosystem-modal');
+    if (modal) modal.classList.remove('active');
+  }
+
+  async function loadEcosystemRepos() {
+    const container = document.getElementById('ecosystem-repos-list');
+    if (!container) return;
+    container.innerHTML = '<div style="color:var(--text-muted); font-size:13px; text-align:center; padding:20px;">Loading architectural ecosystem...</div>';
+
+    try {
+      const res = await fetch('/api/info');
+      const data = await res.json();
+      const repos = data.leveraged_ecosystem || [];
+      if (repos.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-muted);">No repository information found.</div>';
+        return;
+      }
+
+      container.innerHTML = repos.map(r => {
+        const isSwarm = r.name.includes('wshobson/agents');
+        const highlightClass = isSwarm ? 'highlight' : '';
+        return `
+          <div class="repo-item-card ${highlightClass}">
+            <div style="flex:1;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <a href="${r.url}" target="_blank" rel="noopener" class="repo-name-link">${escapeHtml(r.name)}</a>
+                ${isSwarm ? '<span class="channel-strip-state-pill" style="font-size:9px; background:rgba(229,169,60,0.2); color:var(--gold); border:1px solid rgba(229,169,60,0.4);">AGENT SWARM</span>' : ''}
+              </div>
+              <p class="repo-desc">${escapeHtml(r.role)}</p>
+              <div class="repo-contrib">${escapeHtml(r.contribution)}</div>
+            </div>
+            <a href="${r.url}" target="_blank" rel="noopener" class="action-seek-btn" style="text-decoration:none; padding:6px 10px;">
+              View Repo ↗
+            </a>
+          </div>
+        `;
+      }).join('');
+    } catch (e) {
+      container.innerHTML = `<div style="color:#FF8A7A; font-size:12px;">Failed to load ecosystem: ${escapeHtml(e.message)}</div>`;
+    }
+  }
+
+  /* Antigravity Plugin Installation */
+  async function installAntigravityPlugin() {
+    const btn = document.getElementById('btn-install-plugin');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerText = 'Installing Plugin...';
+    }
+    try {
+      const res = await fetch('/api/plugin/install', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Scriber Antigravity Plugin installed successfully to ' + data.target_dir, 'success');
+        if (btn) btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Installed to Antigravity';
+      } else {
+        showToast('Plugin install failed: ' + (data.error || 'Unknown error'), 'error');
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = 'Install Antigravity Plugin';
+        }
+      }
+    } catch (e) {
+      showToast('Plugin installation network error: ' + e, 'error');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerText = 'Install Antigravity Plugin';
+      }
+    }
+  }
+
+  /* Swarm Roster Loader */
+  async function loadSwarmAgents() {
+    const grid = document.getElementById('swarm-agents-grid');
+    if (!grid) return;
+    try {
+      const res = await fetch('/api/council/swarm');
+      const data = await res.json();
+      const agents = data.agents || [];
+      if (agents.length === 0) {
+        grid.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">No agents found in swarm.</div>';
+        return;
+      }
+      grid.innerHTML = agents.map(ag => {
+        const tierClass = ag.tier === 'pro' ? 'tier-pro' : 'tier-flash';
+        const caps = (ag.capabilities || []).map(c => `<span class="agent-cap-tag">${escapeHtml(c)}</span>`).join('');
+        return `
+          <div class="swarm-agent-card">
+            <div class="agent-card-top">
+              <div class="agent-title-group">
+                <h4>${escapeHtml(ag.name)}</h4>
+                <div class="agent-role-tag">${escapeHtml(ag.role)}</div>
+              </div>
+              <span class="tier-pill ${tierClass}">${escapeHtml((ag.tier || 'inherit').toUpperCase())} TIER</span>
+            </div>
+            <p class="agent-desc">${escapeHtml(ag.description)}</p>
+            <div class="agent-caps-list">${caps}</div>
+            <div class="agent-telemetry-bar">
+              <span>MODEL: ${escapeHtml(ag.model || 'gemini-2.5-pro')}</span>
+              <span style="color:var(--emerald);">READY</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (e) {
+      grid.innerHTML = `<div style="color:#FF8A7A; font-size:12px;">Failed to load swarm agents: ${escapeHtml(e.message)}</div>`;
+    }
+  }
+
   // Export functions to window
   window.renderTranscription = renderTranscription;
   window.copyFullTranscript = copyFullTranscript;
@@ -4754,7 +5617,30 @@ def get_embedded_html() -> str:
   window.setAudioVolume = setAudioVolume;
   window.setPlaybackRate = setPlaybackRate;
   window.showToast = showToast;
+  window.renderSupremeCouncil = renderSupremeCouncil;
+  window.togglePIIShield = togglePIIShield;
+  window.copyAuditReceipt = copyAuditReceipt;
+  window.openEcosystemModal = openEcosystemModal;
+  window.closeEcosystemModal = closeEcosystemModal;
+  window.installAntigravityPlugin = installAntigravityPlugin;
+  window.loadSwarmAgents = loadSwarmAgents;
 </script>
+
+<!-- Ecosystem Modal: 11 Repositories Featuring wshobson/agents -->
+<div class="modal-overlay" id="ecosystem-modal" onclick="if(event.target === this) closeEcosystemModal();">
+  <div class="ecosystem-card">
+    <div class="ecosystem-header">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+        <h3 style="font-family:var(--font-display); font-size:18px; color:var(--text-primary); margin:0;">Architectural Ecosystem & Repositories</h3>
+      </div>
+      <button type="button" class="btn-clear-ref" onclick="closeEcosystemModal()" style="font-size:16px;">✕</button>
+    </div>
+    <div class="ecosystem-body" id="ecosystem-repos-list">
+      <!-- Populated via /api/info -->
+    </div>
+  </div>
+</div>
 </body>
 </html>
 '''

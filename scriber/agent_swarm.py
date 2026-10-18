@@ -478,6 +478,16 @@ class CouncilAgentSwarm:
             self.acoustic_qa.PROFILE,
         ]
 
+    def get_agent_roster(self) -> List[AgentProfile]:
+        """Alias for get_registered_agents."""
+        return self.get_registered_agents()
+
+    def execute(
+        self, transcription: TranscriptionResult, redact_pii: bool = False
+    ) -> CouncilAnalysis:
+        """Alias for execute_swarm."""
+        return self.execute_swarm(transcription, redact_pii=redact_pii)
+
     def execute_swarm(
         self, transcription: TranscriptionResult, redact_pii: bool = False
     ) -> CouncilAnalysis:

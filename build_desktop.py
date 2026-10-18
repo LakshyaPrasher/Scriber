@@ -15,11 +15,16 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 if sys.stdout and hasattr(sys.stdout, "reconfigure"):
     try:
         sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+if sys.stderr and hasattr(sys.stderr, "reconfigure"):
+    try:
         sys.stderr.reconfigure(encoding="utf-8")
     except Exception:
         pass
@@ -80,11 +85,61 @@ def ensure_brand_assets(root_dir: Path) -> Path:
 
 
 def clean_build_artifacts(root_dir: Path):
-    """Removes previous build and dist directories."""
+    """Removes previous build and dist directories, terminating any lingering Scriber instances."""
+    if sys.platform == "win32":
+        try:
+            subprocess.run(
+                ["taskkill", "/F", "/IM", "Scriber.exe", "/T"],
+                capture_output=True,
+                check=False,
+            )
+            time.sleep(0.5)
+        except Exception:
+            pass
     for d in [root_dir / "build", root_dir / "dist"]:
         if d.exists():
             print(f"[*] Removing existing {d.name}/ directory...")
             shutil.rmtree(d, ignore_errors=True)
+
+
+def verify_pe_subsystem(exe_path: Path, expected_subsystem: int = 2) -> bool:
+    """Verifies that the compiled Windows executable has the expected PE Subsystem.
+    Subsystem 2 = IMAGE_SUBSYSTEM_WINDOWS_GUI (Windowed Native, no console window)
+    Subsystem 3 = IMAGE_SUBSYSTEM_WINDOWS_CUI (Console, forces background terminal window)
+    """
+    import struct
+    try:
+        with open(exe_path, "rb") as f:
+            data = f.read(1024)
+        if len(data) < 0x40 or data[:2] != b"MZ":
+            print(f"[-] PE Header Error: {exe_path} is not a valid MZ executable.", file=sys.stderr)
+            return False
+        pe_offset = struct.unpack_from("<I", data, 0x3C)[0]
+        if data[pe_offset:pe_offset+4] != b"PE\0\0":
+            print(f"[-] PE Header Error: {exe_path} has invalid PE signature.", file=sys.stderr)
+            return False
+        magic = struct.unpack_from("<H", data, pe_offset + 24)[0]
+        subsystem_offset = pe_offset + 24 + 68
+        subsystem = struct.unpack_from("<H", data, subsystem_offset)[0]
+        subsystem_names = {
+            1: "IMAGE_SUBSYSTEM_NATIVE",
+            2: "IMAGE_SUBSYSTEM_WINDOWS_GUI (Native Window, No Background Terminal)",
+            3: "IMAGE_SUBSYSTEM_WINDOWS_CUI (Console, Forces Background Terminal)",
+        }
+        subsystem_str = subsystem_names.get(subsystem, f"Unknown ({subsystem})")
+        print(f"[+] PE Subsystem Check: Subsystem = {subsystem} [{subsystem_str}]")
+        if subsystem != expected_subsystem:
+            print(
+                f"\n[-] CRITICAL PACKAGING ERROR: {exe_path.name} was compiled with Subsystem {subsystem}!\n"
+                f"    Expected Subsystem {expected_subsystem} ({subsystem_names.get(expected_subsystem, 'Unknown')}).\n"
+                f"    Aborting build to prevent deployment of console terminal window.",
+                file=sys.stderr,
+            )
+            return False
+        return True
+    except Exception as e:
+        print(f"[-] Error verifying PE header: {e}", file=sys.stderr)
+        return False
 
 
 def build_executable(onefile: bool = False, console: bool = False, clean: bool = False) -> int:
@@ -121,11 +176,13 @@ def build_executable(onefile: bool = False, console: bool = False, clean: bool =
         "PyInstaller",
     ]
 
+    # Strictly enforce console=False as default; eliminate accidental environment overrides
     build_env = os.environ.copy()
+    build_env.pop("SCRIBER_BUILD_CONSOLE", None)
     if console:
-        build_env["SCRIBER_BUILD_CONSOLE"] = "1"
+        build_env["SCRIBER_FORCE_CONSOLE_DEBUG"] = "1"
     else:
-        build_env["SCRIBER_BUILD_CONSOLE"] = "0"
+        build_env["SCRIBER_FORCE_CONSOLE_DEBUG"] = "0"
 
     if onefile:
         # Onefile build
@@ -211,6 +268,11 @@ def build_executable(onefile: bool = False, console: bool = False, clean: bool =
         print(f"Mode:         {'Standalone Single-File' if onefile else 'Localized Portable Bundle'}")
         print(f"Launch with:  {dist_exe}")
         print("-------------------------------------------------------\n")
+
+        # Verify PE Subsystem (Subsystem 2 = IMAGE_SUBSYSTEM_WINDOWS_GUI)
+        expected_sub = 3 if console else 2
+        if not verify_pe_subsystem(dist_exe, expected_subsystem=expected_sub):
+            return 1
 
         # Smoke-test executable help output
         try:

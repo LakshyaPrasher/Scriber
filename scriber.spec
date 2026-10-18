@@ -79,7 +79,12 @@ icon_path = os.path.join(assets_src, "icon.ico")
 if not os.path.exists(icon_path):
     icon_path = None
 
-build_console = os.environ.get("SCRIBER_BUILD_CONSOLE", "0").lower() in ("1", "true", "yes")
+# Standalone Native Desktop Build: Windows GUI Subsystem (Subsystem 2: IMAGE_SUBSYSTEM_WINDOWS_GUI).
+# Subsystem 3 (Console) causes Windows to spawn an unwanted black terminal window on startup.
+# console=False is strictly enforced as the default to guarantee the compiled binary is Subsystem 2.
+# Accidental environment variables are disregarded.
+force_debug_console = os.environ.get("SCRIBER_FORCE_CONSOLE_DEBUG", "0").lower() in ("1", "true")
+build_console = force_debug_console
 
 a = Analysis(
     [os.path.join(project_root, "run_desktop.py")],

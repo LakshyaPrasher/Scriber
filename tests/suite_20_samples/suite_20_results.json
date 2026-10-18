@@ -17,7 +17,7 @@
       "segments_count": 1,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 1.63,
+      "elapsed_sec": 1.56,
       "transcript_preview": "Speaker_1: The attackers are now targeting sty..."
     },
     {
@@ -30,7 +30,7 @@
       "speakers_list": [],
       "segments_count": 0,
       "passed": false,
-      "error": "File not found: C:\\Users\\laksh\\.gemini\\antigravity\\scratch\\scriber\\uploaded_media_1792251817215.mp3",
+      "error": "File not found: C:\\Users\\laksh\\.gemini\\antigravity\\scratch\\criber\\uploaded_media_1792251817215.mp3",
       "elapsed_sec": 0.0
     },
     {

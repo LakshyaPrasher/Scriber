@@ -118,13 +118,14 @@ def run_process(args):
     print(f"Task:        {args.task}")
     print(f"Language:    {args.lang}")
     print(f"Export Dir:  {args.out_dir}")
+    print(f"PII Shield:  {'ACTIVE (Masking enabled)' if getattr(args, 'redact_pii', False) else 'OFF (Raw)'}")
     print(f"-------------------------------------------------------")
     print(f"[*] Ingesting media and extracting 16kHz PCM...")
     print(f"[*] Running Voice Activity Detection (VAD) chunking...")
     print(f"[*] Whisper Flow Engine transcribing...")
     print(f"[*] Sub-agent 2: Quality Check Guard auditing & culling hallucinations...")
-    print(f"[*] Sub-agent 3: Supreme Council synthesizing action items & summary...")
-    print(f"[*] Sub-agent 4: Result Validator verifying 99%+ accuracy...")
+    print(f"[*] Sub-agent 3: Supreme Council Multi-Agent Swarm synthesizing intelligence...")
+    print(f"[*] Sub-agent 4: Result Validator verifying 99%+ accuracy & hash chain...")
 
     pipeline = ScriberPipeline()
     formats = [f.strip() for f in args.formats.split(",")]
@@ -135,6 +136,7 @@ def run_process(args):
         reference_text=args.ref,
         export_dir=args.out_dir,
         export_formats=formats,
+        redact_pii=getattr(args, "redact_pii", False),
     )
 
     cs = output.council_analysis
@@ -150,17 +152,81 @@ def run_process(args):
     print(f"Spoken Words: {qual.word_count} ({qual.estimated_speaking_wpm:.1f} WPM)")
     print(f"Action Items: {len(cs.action_items)} extracted")
     print(f"Discussions:  {len(cs.discussion_points)} topics identified")
+    if cs.pii_report:
+        print(f"PII Shield:   {cs.pii_report.redacted_count} entities secured | Compliance: {cs.pii_report.compliance_score * 100:.1f}%")
     print(f"Net Accuracy: {val.accuracy_score * 100:.2f}% (WER: {val.wer * 100:.2f}%)")
     print(f"Audit Status: {'✅ PASSED 99%+ ACCURACY AUDIT' if val.passed_99_percent else '⚠️ REVIEW NEEDED'}")
     print(f"Certificate:  {val.certificate_id}")
+    if val.root_hash:
+        print(f"Hash Chain:   {val.root_hash[:20]}... (Verifiable SHA-256 root)")
 
     print(f"\n[+] Key Action Items:")
     for a in cs.action_items[:5]:
         print(f"  - [{a.id}] {a.task} (Owner: {a.assignee}, Priority: {a.priority.upper()})")
 
+    print(f"\n[+] Supreme Council Swarm Telemetry:")
+    for telem in cs.agent_telemetry:
+        print(f"  - [{telem.agent_id}] {telem.agent_name} ({telem.model_tier.upper()}): {telem.runtime_ms:.1f}ms - {telem.summary}")
+
     print(f"\n[+] Exported Artifacts saved to: {os.path.abspath(args.out_dir)}")
     for f in formats:
         print(f"  - {f.upper()} report generated.")
+
+
+def run_swarm():
+    """Displays Supreme Council multi-agent swarm roster, model mappings, and capabilities."""
+    from scriber.agent_swarm import CouncilAgentSwarm
+
+    swarm = CouncilAgentSwarm()
+    agents = swarm.get_registered_agents()
+
+    print(f"\n================================================================================")
+    print(f"  🤖 Scriber Supreme Council: Multi-Agent Swarm Registry")
+    print(f"  Architecture: wshobson/agents (https://github.com/wshobson/agents)")
+    print(f"================================================================================")
+    print(f"{'Agent ID':<24} {'Specialist Role':<42} {'Model Tier':<12}")
+    print(f"{'-'*24} {'-'*42} {'-'*12}")
+    for a in agents:
+        print(f"{a.id:<24} {a.role:<42} {a.model_tier.upper():<12}")
+        print(f"  └─ Description: {a.description}")
+        print(f"  └─ Key Capabilities: {', '.join(a.capabilities[:2])}\n")
+
+
+def run_install_antigravity(args):
+    """Installs the Scriber plugin bundle into user's Google Antigravity configuration directory."""
+    import shutil
+    from pathlib import Path
+
+    home = Path.home()
+    dest_dir = home / ".gemini" / "config" / "plugins" / "scriber"
+    src_dir = Path(__file__).resolve().parent.parent / ".antigravity" / "plugins" / "scriber"
+
+    print(f"\n=======================================================")
+    print(f"  🚀 Installing Scriber Plugin for Google Antigravity")
+    print(f"=======================================================")
+    print(f"Source: {src_dir}")
+    print(f"Target: {dest_dir}")
+
+    if not src_dir.exists():
+        print(f"Error: Plugin source directory '{src_dir}' does not exist.", file=sys.stderr)
+        sys.exit(1)
+
+    if dest_dir.exists():
+        if not args.force:
+            print(f"[!] Plugin already installed at {dest_dir}. Use --force to reinstall.")
+            return
+        shutil.rmtree(dest_dir)
+
+    dest_dir.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(src_dir, dest_dir)
+    print(f"\n✅ Scriber plugin successfully installed into Google Antigravity!")
+    print(f"Agents registered:")
+    print(f"  - scriber-intelligence")
+    print(f"  - scriber-whisper-flow")
+    print(f"  - scriber-council-auditor")
+    print(f"  - scriber-voice-studio")
+    print(f"  - scriber-pii-shield")
+    print(f"\nYou can now invoke Scriber commands in Antigravity chat: /scriber:process, /scriber:swarm\n")
 
 
 def run_benchmark():

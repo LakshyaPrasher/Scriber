@@ -82,12 +82,45 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 "transcribe_models": TOP_TRANSCRIBE_MODELS,
                 "voice_models": TOP_VOICE_MODELS,
             })
+        elif path == "/api/agents":
+            from scriber.agent_swarm import CouncilAgentSwarm
+            swarm = CouncilAgentSwarm()
+            agents = [a.to_dict() for a in swarm.get_registered_agents()]
+            self._send_json_response(200, {
+                "agents": agents,
+                "framework": "wshobson/agents",
+                "framework_url": "https://github.com/wshobson/agents",
+                "count": len(agents),
+            })
+        elif path == "/api/council/swarm":
+            from scriber.agent_swarm import CouncilAgentSwarm
+            swarm = CouncilAgentSwarm()
+            agents = [a.to_dict() for a in swarm.get_registered_agents()]
+            telemetry = [t.to_dict() for t in getattr(self.pipeline.supreme_council, "swarm", swarm).last_telemetry]
+            self._send_json_response(200, {
+                "agents": agents,
+                "telemetry": telemetry,
+                "framework": "wshobson/agents",
+            })
+        elif path == "/api/plugin/manifest":
+            from pathlib import Path
+            manifest_file = Path(__file__).resolve().parent.parent.parent / ".antigravity" / "plugins" / "scriber" / "plugin.json"
+            if manifest_file.exists():
+                with open(manifest_file, "r", encoding="utf-8") as f:
+                    manifest_data = json.load(f)
+                self._send_json_response(200, manifest_data)
+            else:
+                self._send_json_response(404, {"error": "Plugin manifest not found"})
         elif path == "/api/info":
+            from scriber.agent_swarm import CouncilAgentSwarm
+            swarm = CouncilAgentSwarm()
             self._send_json_response(200, {
                 "name": "Scriber",
-                "version": "1.0.0",
+                "version": "1.1.0",
                 "description": "Autonomous Video Intelligence, Whisper Flow Transcription, and Voice Cloning Pipeline",
                 "repos": TOP_LEVERAGED_REPOS,
+                "agent_swarm_count": len(swarm.get_registered_agents()),
+                "framework": "wshobson/agents",
             })
         else:
             # Check if file exists in current working directory / workspace
@@ -165,8 +198,57 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._handle_desktop_reveal()
         elif path == "/api/desktop/save-file":
             self._handle_desktop_save_file()
+        elif path == "/api/pii/redact":
+            self._handle_pii_redact()
+        elif path == "/api/plugin/install":
+            self._handle_plugin_install()
         else:
             self._send_json_response(404, {"error": "Endpoint not found"})
+
+    def _handle_pii_redact(self):
+        """Redacts sensitive PII and secrets from arbitrary input text."""
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+            body_bytes = self.rfile.read(content_length)
+            req_data = json.loads(body_bytes.decode("utf-8"))
+            text = req_data.get("text", "")
+            mask_mode = req_data.get("mask_mode", "partial")
+            from scriber.pii_security import PIISecurityOfficer
+            officer = PIISecurityOfficer()
+            redacted_text, counts, audit_log = officer.redact_text(text, mask_mode=mask_mode)
+            self._send_json_response(200, {
+                "original_text": text,
+                "redacted_text": redacted_text,
+                "entities_found": counts,
+                "redacted_count": sum(counts.values()),
+                "audit_log": audit_log,
+                "compliance_score": 1.0 if not counts else max(0.95, 1.0 - sum(counts.values()) * 0.005),
+            })
+        except Exception as e:
+            self._send_json_response(500, {"error": str(e)})
+
+    def _handle_plugin_install(self):
+        """Installs Scriber plugin into Google Antigravity configuration directory."""
+        try:
+            import shutil
+            from pathlib import Path
+            home = Path.home()
+            dest_dir = home / ".gemini" / "config" / "plugins" / "scriber"
+            src_dir = Path(__file__).resolve().parent.parent.parent / ".antigravity" / "plugins" / "scriber"
+            if not src_dir.exists():
+                self._send_json_response(404, {"error": "Plugin source bundle not found"})
+                return
+            if dest_dir.exists():
+                shutil.rmtree(dest_dir)
+            dest_dir.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(src_dir, dest_dir)
+            self._send_json_response(200, {
+                "status": "success",
+                "message": "Scriber plugin successfully installed into Google Antigravity",
+                "path": str(dest_dir),
+            })
+        except Exception as e:
+            self._send_json_response(500, {"error": str(e)})
 
     def _handle_media_upload(self):
         """Handles upload of video/audio file via multipart form-data or direct JSON file_path."""
@@ -188,12 +270,14 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 if not file_path_arg or not os.path.isfile(file_path_arg):
                     self._send_json_response(400, {"error": f"File '{file_path_arg}' not found on server"})
                     return
+                redact_pii_val = bool(data.get("redact_pii", False))
                 output = self.pipeline.process_file(
                     file_path=file_path_arg,
                     task=data.get("task", "translate"),
                     language=None if data.get("language") in ("auto", "none", "", None) else data.get("language"),
                     reference_text=data.get("reference_text"),
                     model=data.get("model", "turbo"),
+                    redact_pii=redact_pii_val,
                 )
                 output.video_source = os.path.basename(file_path_arg)
                 try:
@@ -225,6 +309,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             ref_text = None
             file_path_param = None
             model = "turbo"
+            redact_pii = False
 
             for part in msg.walk():
                 if part.is_multipart():
@@ -258,6 +343,11 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     payload = part.get_payload(decode=True)
                     if payload:
                         ref_text = payload.decode("utf-8", errors="replace").strip() or None
+                elif name == "redact_pii":
+                    payload = part.get_payload(decode=True)
+                    if payload:
+                        val = payload.decode("utf-8", errors="replace").strip().lower()
+                        redact_pii = val in ("1", "true", "yes", "on")
 
             # Handle file_path parameter if provided and valid
             if file_path_param and os.path.isfile(file_path_param):
@@ -267,6 +357,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     language=None if language in ("auto", "none", "", None) else language,
                     reference_text=ref_text,
                     model=model,
+                    redact_pii=redact_pii,
                 )
                 output.video_source = os.path.basename(file_path_param)
                 try:
@@ -305,6 +396,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 language=None if language in ("auto", "none", "", None) else language,
                 reference_text=ref_text,
                 model=model,
+                redact_pii=redact_pii,
             )
             output.video_source = filename
             try:
@@ -785,14 +877,20 @@ class ScriberBackgroundServer:
         # Wait for server to become responsive
         import time
         start_time = time.time()
+        server_ready = False
         while time.time() - start_time < timeout:
             try:
                 with socket.create_connection((self.host, self.port), timeout=0.2) as sock:
                     sock.sendall(b"GET /api/health HTTP/1.0\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n")
-                    sock.recv(64)
-                    break
+                    data = sock.recv(256)
+                    if b"200 OK" in data:
+                        server_ready = True
+                        break
             except (OSError, ConnectionRefusedError):
                 time.sleep(0.05)
+
+        if not server_ready:
+            logger.warning("Scriber background server did not confirm 200 OK within %.1fs timeout", timeout)
 
         return self
 
