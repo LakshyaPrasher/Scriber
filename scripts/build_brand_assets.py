@@ -1,17 +1,18 @@
 """Builds Scriber's complete, authoritative, and bespoke brand assets:
-- icon.svg (Vector brandmark with interlocking acoustic harmonic ribbons)
-- icon.png (512x512 high-resolution master icon)
+- icon.svg (Mathematically symmetrical vector brandmark with sculpted acoustic ribbon)
+- icon.png (512x512 high-resolution master icon with Lanczos antialiasing)
 - icon.ico (Multi-resolution Windows desktop icon)
 - hero_banner.jpg (1200x500 luxury editorial obsidian hero banner)
 """
 
 import math
 import os
+import subprocess
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFilter
 
 
-SVG_CONTENT = '''<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+SYMMETRIC_SVG_CONTENT = '''<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <!-- Deep Obsidian Canvas -->
     <linearGradient id="scBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -41,128 +42,146 @@ SVG_CONTENT = '''<svg width="512" height="512" viewBox="0 0 512 512" fill="none"
     </filter>
   </defs>
 
-  <!-- Obsidian Precision Beveled Squircle -->
+  <!-- Obsidian Precision Beveled Squircle (100% Symmetrical) -->
   <rect x="28" y="28" width="456" height="456" rx="96" fill="url(#scBgGrad)" stroke="rgba(255, 94, 0, 0.22)" stroke-width="2" />
   <rect x="30" y="30" width="452" height="452" rx="94" fill="none" stroke="rgba(255, 255, 255, 0.05)" stroke-width="1" />
 
-  <!-- Harmonic Monogram Emblem -->
+  <!-- Symmetrical Harmonic Monogram Emblem -->
   <g filter="url(#scSubtleBloom)">
-    <!-- Upper Acoustic Loop of S (Solid Sculpted Ribbon) -->
-    <path d="M 364 192 C 364 136 320 100 256 100 C 188 100 148 142 148 196 C 148 248 194 278 262 298 C 322 316 348 336 348 376 C 348 424 308 456 250 456 C 190 456 148 420 144 368 L 196 368 C 200 396 220 416 252 416 C 282 416 304 398 304 372 C 304 338 274 322 216 302 C 160 282 106 254 106 194 C 106 122 166 64 256 64 C 344 64 406 116 406 192 Z"
+    <!-- Continuous Symmetrical Sculpted Ribbon S -->
+    <path d="M 364 196 C 364 126 316 76 256 76 C 196 76 148 126 148 184 C 148 268 364 244 364 328 C 364 386 316 436 256 436 C 196 436 148 386 148 316 L 204 316 C 204 362 228 380 256 380 C 284 380 308 362 308 328 C 308 276 204 236 204 184 C 204 150 228 132 256 132 C 284 132 308 150 308 196 Z"
           fill="url(#scWaveGrad)" />
 
-    <!-- Interior Soundwave Harmonics (Horizontal Precision Slits) -->
+    <!-- Interior Soundwave Harmonics (Symmetrically Positioned Negative Space Slits) -->
     <rect x="210" y="146" width="92" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
     <rect x="176" y="174" width="160" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
     <rect x="176" y="330" width="160" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
     <rect x="210" y="358" width="92" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
 
-    <!-- Central Resonant Pulse Nodes -->
-    <circle cx="256" cy="236" r="14" fill="url(#scCoreGrad)" />
-    <circle cx="256" cy="276" r="10" fill="url(#scCoreGrad)" />
+    <!-- Central Symmetrical Resonant Pulse Nodes -->
+    <circle cx="256" cy="256" r="14" fill="url(#scCoreGrad)" />
+    <circle cx="256" cy="216" r="7" fill="url(#scCoreGrad)" />
+    <circle cx="256" cy="296" r="7" fill="url(#scCoreGrad)" />
   </g>
 </svg>
 '''
 
 
+def eval_cubic_bezier(p0, p1, p2, p3, steps=60):
+    """Evaluates points along a cubic Bezier curve."""
+    pts = []
+    for i in range(steps + 1):
+        t = i / float(steps)
+        u = 1.0 - t
+        x = u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0]
+        y = u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1]
+        pts.append((x, y))
+    return pts
+
+
 def generate_png_and_ico(output_dir: Path):
     """Draws pixel-perfect anti-aliased bitmap icon and builds multi-resolution ICO."""
     size = 1024
+    scale = size / 512.0
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
     # 1. Background Squircle
-    margin = 56
-    rx = 192
+    margin = int(28 * scale)
+    rx = int(96 * scale)
     bg_box = [margin, margin, size - margin, size - margin]
-    draw.rounded_rectangle(bg_box, radius=rx, fill=(11, 13, 19, 255), outline=(255, 94, 0, 60), width=4)
+    draw.rounded_rectangle(bg_box, radius=rx, fill=(10, 12, 17, 255), outline=(255, 94, 0, 65), width=int(3 * scale))
 
     # Inner hairline border
-    inner_box = [margin + 4, margin + 4, size - margin - 4, size - margin - 4]
-    draw.rounded_rectangle(inner_box, radius=rx - 4, fill=None, outline=(255, 255, 255, 14), width=2)
+    inner_box = [margin + 3, margin + 3, size - margin - 3, size - margin - 3]
+    draw.rounded_rectangle(inner_box, radius=rx - 3, fill=None, outline=(255, 255, 255, 12), width=int(1.5 * scale))
 
-    # 2. Draw Sculpted Monogram "S" with Soundwave Frequency Slits
-    # High-resolution supersampling canvas
-    scale = size / 512.0
-    
-    # Gradient rendering using supersampled horizontal spans
-    # Draw core sculpted arcs
-    cx, cy = size / 2.0, size / 2.0
-    
-    # Monogram ribbon paths
-    def draw_ribbon(points, width, color):
-        for i in range(len(points) - 1):
-            p1 = points[i]
-            p2 = points[i + 1]
-            draw.line([p1, p2], fill=color, width=int(width))
+    # 2. Build full polygon matching the exact cubic Beziers of the SVG
+    bezier_segments = [
+        # Segment 1: (364, 196) -> C(364, 126), C(316, 76) -> P(256, 76)
+        ((364, 196), (364, 126), (316, 76), (256, 76)),
+        # Segment 2: (256, 76) -> C(196, 76), C(148, 126) -> P(148, 184)
+        ((256, 76), (196, 76), (148, 126), (148, 184)),
+        # Segment 3 (waist): (148, 184) -> C(148, 268), C(364, 244) -> P(364, 328)
+        ((148, 184), (148, 268), (364, 244), (364, 328)),
+        # Segment 4: (364, 328) -> C(364, 386), C(316, 436) -> P(256, 436)
+        ((364, 328), (364, 386), (316, 436), (256, 436)),
+        # Segment 5: (256, 436) -> C(196, 436), C(148, 386) -> P(148, 316)
+        ((256, 436), (196, 436), (148, 386), (148, 316)),
+        # Segment 6 (inner bottom): (204, 316) -> C(204, 362), C(228, 380) -> P(256, 380)
+        ((204, 316), (204, 362), (228, 380), (256, 380)),
+        # Segment 7: (256, 380) -> C(284, 380), C(308, 362) -> P(308, 328)
+        ((256, 380), (284, 380), (308, 362), (308, 328)),
+        # Segment 8 (inner waist): (308, 328) -> C(308, 276), C(204, 236) -> P(204, 184)
+        ((308, 328), (308, 276), (204, 236), (204, 184)),
+        # Segment 9 (inner top): (204, 184) -> C(204, 150), C(228, 132) -> P(256, 132)
+        ((204, 184), (204, 150), (228, 132), (256, 132)),
+        # Segment 10: (256, 132) -> C(284, 132), C(308, 150) -> P(308, 196)
+        ((256, 132), (284, 132), (308, 150), (308, 196)),
+    ]
 
-    # Upper arc points
-    upper_pts = []
-    for deg in range(-40, 210, 2):
-        rad = math.radians(deg)
-        r = 135 * scale
-        x = cx + r * math.cos(rad) - 10 * scale
-        y = cy - 80 * scale + r * 0.9 * math.sin(rad)
-        upper_pts.append((x, y))
+    # Evaluate polygon points in sequence
+    polygon_points = []
+    # Segments 1-5 (outer)
+    for seg in bezier_segments[:5]:
+        pts = eval_cubic_bezier(seg[0], seg[1], seg[2], seg[3], steps=80)
+        polygon_points.extend(pts[:-1])
+    # Add bottom terminal cap point (204, 316)
+    polygon_points.append((204, 316))
+    # Segments 6-10 (inner)
+    for seg in bezier_segments[5:]:
+        pts = eval_cubic_bezier(seg[0], seg[1], seg[2], seg[3], steps=80)
+        polygon_points.extend(pts[:-1])
+    # Connects back to (364, 196) automatically
+    scaled_polygon = [(p[0] * scale, p[1] * scale) for p in polygon_points]
 
-    # Lower arc points
-    lower_pts = []
-    for deg in range(140, 390, 2):
-        rad = math.radians(deg)
-        r = 135 * scale
-        x = cx + r * math.cos(rad) + 10 * scale
-        y = cy + 80 * scale + r * 0.9 * math.sin(rad)
-        lower_pts.append((x, y))
-
-    # Center connecting wave spine
-    spine_pts = []
-    for t in range(0, 101, 2):
-        prog = t / 100.0
-        # Smooth S-curve
-        x = cx + 80 * scale * math.cos(prog * math.pi)
-        y = cy - 80 * scale + 160 * scale * prog
-        spine_pts.append((x, y))
-
-    # Layered glow and core rendering
-    # Outer ambient glow
+    # 3. Ambient bloom / glow layer
     glow_img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     glow_draw = ImageDraw.Draw(glow_img)
-    glow_color = (255, 94, 0, 110)
-    
-    for pts in [upper_pts, lower_pts, spine_pts]:
-        for i in range(len(pts) - 1):
-            glow_draw.line([pts[i], pts[i + 1]], fill=glow_color, width=int(64 * scale))
-    
-    glow_img = glow_img.filter(ImageFilter.GaussianBlur(radius=18 * scale))
+    glow_draw.polygon(scaled_polygon, fill=(255, 94, 0, 120))
+    glow_img = glow_img.filter(ImageFilter.GaussianBlur(radius=20 * scale))
     img.paste(glow_img, (0, 0), glow_img)
 
-    # Core high-precision ribbon
-    for pts in [upper_pts, lower_pts, spine_pts]:
-        for i in range(len(pts) - 1):
-            # Dynamic gradient from vermilion to amber
-            vert_y = pts[i][1]
-            factor = max(0.0, min(1.0, vert_y / size))
-            r = int(255)
-            g = int(58 + factor * (168 - 58))
-            b = int(0 + factor * 38)
-            draw.line([pts[i], pts[i + 1]], fill=(r, g, b, 255), width=int(44 * scale))
+    # 4. Fill Ribbon with Vermilion to Amber Gradient
+    # Render horizontal gradient onto a mask
+    mask = Image.new("L", (size, size), 0)
+    mask_draw = ImageDraw.Draw(mask)
+    mask_draw.polygon(scaled_polygon, fill=255)
 
-    # Central acoustic aperture nodes
-    draw.ellipse([cx - 24 * scale, cy - 24 * scale, cx + 24 * scale, cy + 24 * scale], fill=(255, 168, 38, 255))
-    draw.ellipse([cx - 12 * scale, cy - 12 * scale, cx + 12 * scale, cy + 12 * scale], fill=(10, 11, 15, 255))
+    grad_img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    grad_draw = ImageDraw.Draw(grad_img)
+    for y in range(size):
+        factor = y / float(size)
+        r = int(255)
+        g = int(56 + factor * (168 - 56))
+        b = int(factor * 38)
+        grad_draw.line([(0, y), (size, y)], fill=(r, g, b, 255))
+    img.paste(grad_img, (0, 0), mask)
 
-    # Soundwave frequency horizontal slots (Negative Space)
+    # 5. Symmetrically Positioned Negative Space Slits
     slit_color = (10, 11, 15, 255)
     slits = [
-        (cx - 100 * scale, cy - 110 * scale, 200 * scale, 12 * scale),
-        (cx - 140 * scale, cy - 65 * scale, 280 * scale, 14 * scale),
-        (cx - 140 * scale, cy + 65 * scale, 280 * scale, 14 * scale),
-        (cx - 100 * scale, cy + 110 * scale, 200 * scale, 12 * scale),
+        (210 * scale, 146 * scale, 92 * scale, 8 * scale),
+        (176 * scale, 174 * scale, 160 * scale, 8 * scale),
+        (176 * scale, 330 * scale, 160 * scale, 8 * scale),
+        (210 * scale, 358 * scale, 92 * scale, 8 * scale),
     ]
     for sx, sy, sw, sh in slits:
         draw.rounded_rectangle([sx, sy, sx + sw, sy + sh], radius=sh / 2, fill=slit_color)
 
-    # Scale down with Lanczos to 512x512 master PNG
+    # 6. Central Symmetrical Resonant Pulse Nodes
+    cx, cy = 256 * scale, 256 * scale
+    # Main central pulse
+    r_core = 14 * scale
+    draw.ellipse([cx - r_core, cy - r_core, cx + r_core, cy + r_core], fill=(255, 168, 38, 255))
+    draw.ellipse([cx - r_core * 0.45, cy - r_core * 0.45, cx + r_core * 0.45, cy + r_core * 0.45], fill=(255, 94, 0, 255))
+
+    # Upper and lower harmonic satellite nodes
+    r_sat = 7 * scale
+    draw.ellipse([cx - r_sat, (216 * scale) - r_sat, cx + r_sat, (216 * scale) + r_sat], fill=(255, 168, 38, 255))
+    draw.ellipse([cx - r_sat, (296 * scale) - r_sat, cx + r_sat, (296 * scale) + r_sat], fill=(255, 168, 38, 255))
+
+    # 7. Scale down with Lanczos to 512x512 master PNG
     master_512 = img.resize((512, 512), Image.Resampling.LANCZOS)
     png_path = output_dir / "icon.png"
     master_512.save(png_path, "PNG", optimize=True)
@@ -180,9 +199,9 @@ def generate_png_and_ico(output_dir: Path):
     banner = Image.new("RGB", (banner_w, banner_h), (8, 9, 12))
     bdraw = ImageDraw.Draw(banner)
 
-    # Subtle radial illumination
+    # Subtle radial illumination centered
     for rad in range(350, 0, -5):
-        alpha = int((1.0 - (rad / 350.0)) * 28)
+        alpha = int((1.0 - (rad / 350.0)) * 26)
         bdraw.ellipse([600 - rad * 1.5, 250 - rad, 600 + rad * 1.5, 250 + rad], fill=(alpha + 8, alpha // 2 + 9, 12))
 
     # Paste emblem centered
@@ -197,14 +216,14 @@ def main():
     assets_dir = Path(__file__).resolve().parent.parent / "scriber" / "assets"
     assets_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Save SVG
+    # 1. Save Symmetrical SVG
     svg_path = assets_dir / "icon.svg"
-    svg_path.write_text(SVG_CONTENT.strip(), encoding="utf-8")
-    print(f"[OK] Generated: {svg_path}")
+    svg_path.write_text(SYMMETRIC_SVG_CONTENT.strip(), encoding="utf-8")
+    print(f"[OK] Generated Symmetrical SVG: {svg_path}")
 
     # 2. Generate PNG, ICO, Banner
     generate_png_and_ico(assets_dir)
-    print(f"[OK] Generated icon.png, icon.ico, hero_banner.jpg in {assets_dir}")
+    print(f"[OK] Generated Symmetrical icon.png, icon.ico, hero_banner.jpg in {assets_dir}")
 
 
 if __name__ == "__main__":

@@ -1781,14 +1781,15 @@ def get_embedded_html() -> str:
         <rect x="28" y="28" width="456" height="456" rx="96" fill="url(#scBgGrad)" stroke="rgba(255, 94, 0, 0.22)" stroke-width="2" />
         <rect x="30" y="30" width="452" height="452" rx="94" fill="none" stroke="rgba(255, 255, 255, 0.05)" stroke-width="1" />
         <g filter="url(#scSubtleBloom)">
-          <path d="M 364 192 C 364 136 320 100 256 100 C 188 100 148 142 148 196 C 148 248 194 278 262 298 C 322 316 348 336 348 376 C 348 424 308 456 250 456 C 190 456 148 420 144 368 L 196 368 C 200 396 220 416 252 416 C 282 416 304 398 304 372 C 304 338 274 322 216 302 C 160 282 106 254 106 194 C 106 122 166 64 256 64 C 344 64 406 116 406 192 Z"
+          <path d="M 364 196 C 364 126 316 76 256 76 C 196 76 148 126 148 184 C 148 268 364 244 364 328 C 364 386 316 436 256 436 C 196 436 148 386 148 316 L 204 316 C 204 362 228 380 256 380 C 284 380 308 362 308 328 C 308 276 204 236 204 184 C 204 150 228 132 256 132 C 284 132 308 150 308 196 Z"
                 fill="url(#scWaveGrad)" />
           <rect x="210" y="146" width="92" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
           <rect x="176" y="174" width="160" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
           <rect x="176" y="330" width="160" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
           <rect x="210" y="358" width="92" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
-          <circle cx="256" cy="236" r="14" fill="url(#scCoreGrad)" />
-          <circle cx="256" cy="276" r="10" fill="url(#scCoreGrad)" />
+          <circle cx="256" cy="256" r="14" fill="url(#scCoreGrad)" />
+          <circle cx="256" cy="216" r="7" fill="url(#scCoreGrad)" />
+          <circle cx="256" cy="296" r="7" fill="url(#scCoreGrad)" />
         </g>
       </svg>
       <div class="logo-title">
@@ -1941,10 +1942,10 @@ def get_embedded_html() -> str:
           SAMPLING: 16kHz / 48kHz PCM Stream
         </div>
       </div>
-
-      <!-- Native hidden file input -->
-      <input type="file" id="media-file-input" name="file" accept="audio/*,video/*,.mp4,.mp3,.wav,.m4a,.mov,.webm,.flac,.ogg,.aac" class="visually-hidden-input" onchange="handleFileSelected(event)" />
     </div>
+
+    <!-- Native hidden file input (outside dropzone to eliminate click event bubbling & COM dialog deadlock) -->
+    <input type="file" id="media-file-input" name="file" accept="audio/*,video/*,.mp4,.mp3,.wav,.m4a,.mov,.webm,.flac,.ogg,.aac" class="visually-hidden-input" onchange="handleFileSelected(event)" onclick="event.stopPropagation();" />
 
     <!-- State 2: Minimalist Claude Liquid Morphing Light Orb -->
     <div class="processing-card" id="processing-card">
@@ -2306,8 +2307,8 @@ def get_embedded_html() -> str:
       <label class="voice-ref-dropzone" id="voice-ref-dropzone" for="voice-ref-input">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--tangerine)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
         <span id="voice-ref-label-text">Drop a custom audio/video clip or <strong style="color:var(--tangerine); text-decoration:underline;">browse</strong> to extract speaker biometric timbre</span>
-        <input type="file" id="voice-ref-input" accept="audio/*,video/*,.mp4,.mp3,.wav,.m4a" style="display:none;" onchange="handleVoiceRefSelected(event)" />
       </label>
+      <input type="file" id="voice-ref-input" accept="audio/*,video/*,.mp4,.mp3,.wav,.m4a" style="display:none;" onchange="handleVoiceRefSelected(event)" onclick="event.stopPropagation();" />
 
       <!-- Active Reference Audio Status Badge (replaces raw profile box) -->
       <div id="voice-ref-badge" class="voice-ref-badge" style="display:none;">
@@ -2566,11 +2567,25 @@ def get_embedded_html() -> str:
     }
   }
 
-  /* Reliable File Dialog Opening */
+  /* Reliable, Thread-Safe File Dialog Opening (Guarded against double invocation & COM deadlocks) */
+  var isFileDialogOpening = false;
   function openFileDialog(evt) {
     if (evt) {
-      evt.stopPropagation();
+      if (typeof evt.preventDefault === 'function') evt.preventDefault();
+      if (typeof evt.stopPropagation === 'function') evt.stopPropagation();
     }
+    if (isFileDialogOpening) {
+      return;
+    }
+    isFileDialogOpening = true;
+
+    var releaseLock = function() {
+      setTimeout(function() { isFileDialogOpening = false; }, 300);
+      window.removeEventListener('focus', releaseLock);
+    };
+    window.addEventListener('focus', releaseLock);
+    setTimeout(releaseLock, 1500);
+
     const input = document.getElementById('media-file-input');
     if (input) {
       input.value = '';
