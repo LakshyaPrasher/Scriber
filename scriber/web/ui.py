@@ -1783,13 +1783,6 @@ def get_embedded_html() -> str:
         <g filter="url(#scSubtleBloom)">
           <path d="M 364 196 C 364 126 316 76 256 76 C 196 76 148 126 148 184 C 148 268 364 244 364 328 C 364 386 316 436 256 436 C 196 436 148 386 148 316 L 204 316 C 204 362 228 380 256 380 C 284 380 308 362 308 328 C 308 276 204 236 204 184 C 204 150 228 132 256 132 C 284 132 308 150 308 196 Z"
                 fill="url(#scWaveGrad)" />
-          <rect x="210" y="146" width="92" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
-          <rect x="176" y="174" width="160" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
-          <rect x="176" y="330" width="160" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
-          <rect x="210" y="358" width="92" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
-          <circle cx="256" cy="256" r="14" fill="url(#scCoreGrad)" />
-          <circle cx="256" cy="216" r="7" fill="url(#scCoreGrad)" />
-          <circle cx="256" cy="296" r="7" fill="url(#scCoreGrad)" />
         </g>
       </svg>
       <div class="logo-title">
@@ -2564,6 +2557,7 @@ def get_embedded_html() -> str:
         const fName = (currentResult && currentResult.video_source) || 'transcribed_media.mp3';
         initModeAudioEditor('m1', dur > 0 ? dur : 10, fName);
       }
+      setTimeout(drawWave, 50);
     }
   }
 
@@ -4545,7 +4539,15 @@ def get_embedded_html() -> str:
 
     window.addEventListener('mouseup', function() {
       isScrubbing = false;
+      drawWave();
     });
+
+    const player = document.getElementById('audio-player');
+    if (player) {
+      player.addEventListener('play', function() { requestAnimationFrame(drawWave); });
+      player.addEventListener('pause', function() { drawWave(); });
+      player.addEventListener('seeked', function() { drawWave(); });
+    }
 
     drawWave();
   }
@@ -4578,7 +4580,6 @@ def get_embedded_html() -> str:
   function drawWave() {
     if (!waveCtx || !waveCanvas) return;
     if (waveCanvas.offsetParent === null) {
-      requestAnimationFrame(drawWave);
       return;
     }
     var dpr = window.devicePixelRatio || 1;
@@ -4678,7 +4679,9 @@ def get_embedded_html() -> str:
     }
 
     waveCtx.restore();
-    requestAnimationFrame(drawWave);
+    if (isPlaying || isScrubbing) {
+      requestAnimationFrame(drawWave);
+    }
   }
 
   function revealExportFolder() {
@@ -4699,6 +4702,13 @@ def get_embedded_html() -> str:
   }
 
   function checkDesktopRuntime() {
+    if (window.pywebview) {
+      const badge = document.getElementById('desktop-badge');
+      if (badge) {
+        badge.style.display = 'inline-block';
+        badge.title = 'Scriber Native Desktop Studio (Edge WebView2)';
+      }
+    }
     fetch('/api/desktop/info')
       .then(r => r.ok ? r.json() : null)
       .then(info => {
@@ -4715,10 +4725,13 @@ def get_embedded_html() -> str:
 
   window.addEventListener('pywebviewready', function() {
     const badge = document.getElementById('desktop-badge');
-    if (badge) badge.style.display = 'inline-block';
+    if (badge) {
+      badge.style.display = 'inline-block';
+      badge.title = 'Scriber Native Desktop Studio (Edge WebView2)';
+    }
   });
   window.addEventListener('DOMContentLoaded', checkDesktopRuntime);
-  setTimeout(checkDesktopRuntime, 500);
+  setTimeout(checkDesktopRuntime, 300);
 
   initWaveform();
 

@@ -51,17 +51,6 @@ SYMMETRIC_SVG_CONTENT = '''<svg width="512" height="512" viewBox="0 0 512 512" f
     <!-- Continuous Symmetrical Sculpted Ribbon S -->
     <path d="M 364 196 C 364 126 316 76 256 76 C 196 76 148 126 148 184 C 148 268 364 244 364 328 C 364 386 316 436 256 436 C 196 436 148 386 148 316 L 204 316 C 204 362 228 380 256 380 C 284 380 308 362 308 328 C 308 276 204 236 204 184 C 204 150 228 132 256 132 C 284 132 308 150 308 196 Z"
           fill="url(#scWaveGrad)" />
-
-    <!-- Interior Soundwave Harmonics (Symmetrically Positioned Negative Space Slits) -->
-    <rect x="210" y="146" width="92" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
-    <rect x="176" y="174" width="160" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
-    <rect x="176" y="330" width="160" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
-    <rect x="210" y="358" width="92" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
-
-    <!-- Central Symmetrical Resonant Pulse Nodes -->
-    <circle cx="256" cy="256" r="14" fill="url(#scCoreGrad)" />
-    <circle cx="256" cy="216" r="7" fill="url(#scCoreGrad)" />
-    <circle cx="256" cy="296" r="7" fill="url(#scCoreGrad)" />
   </g>
 </svg>
 '''
@@ -158,30 +147,7 @@ def generate_png_and_ico(output_dir: Path):
         grad_draw.line([(0, y), (size, y)], fill=(r, g, b, 255))
     img.paste(grad_img, (0, 0), mask)
 
-    # 5. Symmetrically Positioned Negative Space Slits
-    slit_color = (10, 11, 15, 255)
-    slits = [
-        (210 * scale, 146 * scale, 92 * scale, 8 * scale),
-        (176 * scale, 174 * scale, 160 * scale, 8 * scale),
-        (176 * scale, 330 * scale, 160 * scale, 8 * scale),
-        (210 * scale, 358 * scale, 92 * scale, 8 * scale),
-    ]
-    for sx, sy, sw, sh in slits:
-        draw.rounded_rectangle([sx, sy, sx + sw, sy + sh], radius=sh / 2, fill=slit_color)
-
-    # 6. Central Symmetrical Resonant Pulse Nodes
-    cx, cy = 256 * scale, 256 * scale
-    # Main central pulse
-    r_core = 14 * scale
-    draw.ellipse([cx - r_core, cy - r_core, cx + r_core, cy + r_core], fill=(255, 168, 38, 255))
-    draw.ellipse([cx - r_core * 0.45, cy - r_core * 0.45, cx + r_core * 0.45, cy + r_core * 0.45], fill=(255, 94, 0, 255))
-
-    # Upper and lower harmonic satellite nodes
-    r_sat = 7 * scale
-    draw.ellipse([cx - r_sat, (216 * scale) - r_sat, cx + r_sat, (216 * scale) + r_sat], fill=(255, 168, 38, 255))
-    draw.ellipse([cx - r_sat, (296 * scale) - r_sat, cx + r_sat, (296 * scale) + r_sat], fill=(255, 168, 38, 255))
-
-    # 7. Scale down with Lanczos to 512x512 master PNG
+    # 5. Scale down with Lanczos to 512x512 master PNG
     master_512 = img.resize((512, 512), Image.Resampling.LANCZOS)
     png_path = output_dir / "icon.png"
     master_512.save(png_path, "PNG", optimize=True)

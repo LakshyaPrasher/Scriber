@@ -37,16 +37,5 @@
     <!-- Continuous Symmetrical Sculpted Ribbon S -->
     <path d="M 364 196 C 364 126 316 76 256 76 C 196 76 148 126 148 184 C 148 268 364 244 364 328 C 364 386 316 436 256 436 C 196 436 148 386 148 316 L 204 316 C 204 362 228 380 256 380 C 284 380 308 362 308 328 C 308 276 204 236 204 184 C 204 150 228 132 256 132 C 284 132 308 150 308 196 Z"
           fill="url(#scWaveGrad)" />
-
-    <!-- Interior Soundwave Harmonics (Symmetrically Positioned Negative Space Slits) -->
-    <rect x="210" y="146" width="92" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
-    <rect x="176" y="174" width="160" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
-    <rect x="176" y="330" width="160" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
-    <rect x="210" y="358" width="92" height="8" rx="4" fill="#0A0B0F" opacity="0.9" />
-
-    <!-- Central Symmetrical Resonant Pulse Nodes -->
-    <circle cx="256" cy="256" r="14" fill="url(#scCoreGrad)" />
-    <circle cx="256" cy="216" r="7" fill="url(#scCoreGrad)" />
-    <circle cx="256" cy="296" r="7" fill="url(#scCoreGrad)" />
   </g>
 </svg>

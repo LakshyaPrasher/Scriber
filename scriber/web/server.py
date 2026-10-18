@@ -29,6 +29,7 @@ from scriber.web.ui import get_embedded_html
 class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     """Custom HTTP handler for Scriber Web UI and REST API."""
 
+    protocol_version = "HTTP/1.0"
     pipeline = ScriberPipeline()
 
     def do_OPTIONS(self):
@@ -38,7 +39,9 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
         self.send_header("Content-Length", "0")
+        self.send_header("Connection", "close")
         self.end_headers()
+        self.close_connection = True
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -105,7 +108,10 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         except Exception:
             pass
         self.send_response(404)
+        self.send_header("Content-Length", "0")
+        self.send_header("Connection", "close")
         self.end_headers()
+        self.close_connection = True
 
     def _serve_static_file(self, filepath: str):
         """Serves static audio, video, image, or document files from the workspace."""
@@ -130,8 +136,14 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header("Content-Type", mime)
             self.send_header("Content-Length", str(len(content)))
             self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Connection", "close")
             self.end_headers()
-            self.wfile.write(content)
+            try:
+                self.wfile.write(content)
+                self.wfile.flush()
+            except Exception:
+                pass
+            self.close_connection = True
         except Exception as e:
             self._send_json_response(500, {"error": str(e)})
 
@@ -685,11 +697,12 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Connection", "close")
         self.end_headers()
-        self.wfile.write(body)
         try:
+            self.wfile.write(body)
             self.wfile.flush()
         except Exception:
             pass
+        self.close_connection = True
 
     def _serve_embedded_ui(self):
         """Serves the standalone responsive dashboard."""
@@ -705,14 +718,22 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Connection", "close")
         self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.wfile.write(body)
+            self.wfile.flush()
+        except Exception:
+            pass
+        self.close_connection = True
 
 
-class ScriberServer(socketserver.TCPServer):
-    """TCPServer with address reuse and daemon threading for desktop runtime."""
+class ScriberServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    """Multi-threaded TCPServer with address reuse and daemon worker threads for desktop runtime."""
     allow_reuse_address = True
     daemon_threads = True
+    block_on_close = False
+    request_queue_size = 64
 
 
 def find_available_port(host: str = "127.0.0.1", preferred_port: int = 8080) -> int:
@@ -766,7 +787,9 @@ class ScriberBackgroundServer:
         start_time = time.time()
         while time.time() - start_time < timeout:
             try:
-                with socket.create_connection((self.host, self.port), timeout=0.2):
+                with socket.create_connection((self.host, self.port), timeout=0.2) as sock:
+                    sock.sendall(b"GET /api/health HTTP/1.0\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n")
+                    sock.recv(64)
                     break
             except (OSError, ConnectionRefusedError):
                 time.sleep(0.05)

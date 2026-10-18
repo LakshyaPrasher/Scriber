@@ -38,25 +38,29 @@ logger = logging.getLogger("scriber.desktop")
 
 
 def apply_windows_dpi_and_app_id():
-    """Sets Windows AppUserModelID for taskbar grouping and activates Per-Monitor High-DPI awareness."""
+    """Sets Windows High-DPI awareness (Per-Monitor V2) before any COM/Shell initialization,
+    then assigns explicit AppUserModelID for taskbar branding."""
     if sys.platform != "win32":
         return
 
-    # 1. Set explicit AppUserModelID so taskbar groups properly with Scriber brand icon
+    # 1. Set Per-Monitor High-DPI Awareness (V2) FIRST, before COM or Shell32 initialization
+    try:
+        # DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4 (Win10 Creators Update 1703+)
+        if hasattr(ctypes.windll.user32, "SetProcessDpiAwarenessContext"):
+            ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
+        elif hasattr(ctypes.windll.shcore, "SetProcessDpiAwareness"):
+            # PROCESS_PER_MONITOR_DPI_AWARE = 2 (Win 8.1+)
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        else:
+            ctypes.windll.user32.SetProcessDPIAware()
+    except Exception as e:
+        logger.debug("DPI awareness initialization skipped: %s", e)
+
+    # 2. Set explicit AppUserModelID AFTER DPI awareness has been safely established
     try:
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Scriber.Studio.Desktop.1.0")
     except Exception as e:
         logger.debug("Failed setting AppUserModelID: %s", e)
-
-    # 2. Set Per-Monitor High-DPI Awareness (V2) or fallback to system DPI aware
-    try:
-        # PROCESS_PER_MONITOR_DPI_AWARE = 2
-        ctypes.windll.shcore.SetProcessDpiAwareness(2)
-    except Exception:
-        try:
-            ctypes.windll.user32.SetProcessDPIAware()
-        except Exception as e:
-            logger.debug("Failed setting DPI awareness: %s", e)
 
 
 def find_edge_binary() -> Optional[str]:
@@ -84,7 +88,11 @@ class ScriberDesktopBridge:
     """JavaScript API bridge exposed to the webview DOM window via window.pywebview.api."""
 
     def __init__(self, app: ScriberDesktopApp):
-        self.app = app
+        # NOTE: Attribute MUST start with an underscore so pywebview's recursive
+        # get_functions() reflection does NOT traverse into ScriberDesktopApp -> Window ->
+        # native WinForms BrowserForm / CLR controls, which causes an infinite reflection loop
+        # and COM apartment deadlocks that freeze the UI thread into 'Not Responding'.
+        self._app = app
 
     def get_desktop_info(self) -> Dict[str, Any]:
         """Returns desktop runtime metadata to the web interface."""
@@ -93,9 +101,9 @@ class ScriberDesktopBridge:
             "app_name": "Scriber Studio Desktop",
             "version": __version__,
             "platform": sys.platform,
-            "engine": self.app.active_engine,
-            "port": self.app.server.port if self.app.server else 8080,
-            "url": self.app.server.url if self.app.server else "",
+            "engine": self._app.active_engine,
+            "port": self._app.server.port if self._app.server else 8080,
+            "url": self._app.server.url if self._app.server else "",
             "is_desktop": True,
             "desktop_mode": True,
             "is_frozen": getattr(sys, "frozen", False),
@@ -103,32 +111,39 @@ class ScriberDesktopBridge:
 
     def open_file_dialog(self, file_types: Optional[List[str]] = None) -> Optional[str]:
         """Opens native file picker dialog and returns selected path."""
-        if not self.app.window:
+        if not self._app.window:
             return None
         import webview
         dialog_types = file_types or [
             "Media Files (*.mp4;*.mp3;*.wav;*.m4a;*.aac;*.ogg;*.flac;*.webm;*.mov;*.mkv)",
             "All Files (*.*)",
         ]
-        result = self.app.window.create_file_dialog(
-            webview.OPEN_DIALOG,
-            allow_multiple=False,
-            file_types=dialog_types,
-        )
-        if result and len(result) > 0:
-            return result[0]
+        try:
+            result = self._app.window.create_file_dialog(
+                webview.OPEN_DIALOG,
+                allow_multiple=False,
+                file_types=dialog_types,
+            )
+            if result and len(result) > 0:
+                return result[0]
+        except Exception as e:
+            logger.warning("Native open file dialog error: %s", e)
         return None
 
     def save_file_dialog(self, filename: str = "transcript.txt") -> Optional[str]:
         """Opens native save file dialog and returns target path."""
-        if not self.app.window:
+        if not self._app.window:
             return None
         import webview
-        result = self.app.window.create_file_dialog(
-            webview.SAVE_DIALOG,
-            save_filename=filename,
-        )
-        return result if isinstance(result, str) else (result[0] if result else None)
+        try:
+            result = self._app.window.create_file_dialog(
+                webview.SAVE_DIALOG,
+                save_filename=filename,
+            )
+            return result if isinstance(result, str) else (result[0] if result else None)
+        except Exception as e:
+            logger.warning("Native save file dialog error: %s", e)
+        return None
 
     def reveal_in_explorer(self, target_path: Optional[str] = None) -> bool:
         """Opens the specified file or folder in native Windows Explorer."""
@@ -154,18 +169,18 @@ class ScriberDesktopBridge:
 
     def minimize_window(self):
         """Minimizes the native desktop window."""
-        if self.app.window:
-            self.app.window.minimize()
+        if self._app.window:
+            self._app.window.minimize()
 
     def maximize_window(self):
         """Toggles maximize state for the native desktop window."""
-        if self.app.window:
-            self.app.window.toggle_fullscreen()
+        if self._app.window:
+            self._app.window.toggle_fullscreen()
 
     def close_window(self):
         """Closes the desktop application window."""
-        if self.app.window:
-            self.app.window.destroy()
+        if self._app.window:
+            self._app.window.destroy()
 
     def log(self, message: str):
         """Logs a message from the web UI to the desktop console."""
@@ -319,6 +334,16 @@ class ScriberDesktopApp:
         )
         try:
             os.makedirs(storage_path, exist_ok=True)
+            # Clean up stale locks left by unexpected crashes or force-kills
+            eb_dir = os.path.join(storage_path, "EBWebView")
+            if os.path.exists(eb_dir):
+                for root, _, files in os.walk(eb_dir):
+                    for f in files:
+                        if f.endswith(".lock") or f in ("SingletonLock", "lockfile"):
+                            try:
+                                os.remove(os.path.join(root, f))
+                            except Exception:
+                                pass
         except Exception:
             storage_path = None
 
@@ -329,6 +354,7 @@ class ScriberDesktopApp:
                 debug=self.debug,
                 icon=icon_path,
                 storage_path=storage_path,
+                private_mode=False,
             )
             return 0
         except Exception as e:
@@ -390,6 +416,22 @@ class ScriberDesktopApp:
             return 0
 
 
+def cleanup_orphaned_desktop_processes():
+    """Terminates any zombie pythonw.exe instances running run_desktop.py from prior runs."""
+    if sys.platform != "win32":
+        return
+    current_pid = os.getpid()
+    try:
+        ps_cmd = (
+            f"Get-CimInstance Win32_Process -Filter \"Name = 'pythonw.exe'\" | "
+            f"Where-Object {{ $_.ProcessId -ne {current_pid} -and $_.CommandLine -like '*run_desktop.py*' }} | "
+            f"ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }}"
+        )
+        subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], timeout=3, capture_output=True)
+    except Exception:
+        pass
+
+
 def launch_desktop(
     host: str = "127.0.0.1",
     port: Optional[int] = None,
@@ -398,6 +440,7 @@ def launch_desktop(
     debug: bool = False,
 ) -> int:
     """Convenience entry point for launching Scriber desktop window."""
+    cleanup_orphaned_desktop_processes()
     app = ScriberDesktopApp(
         host=host,
         port=port,

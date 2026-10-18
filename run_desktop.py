@@ -19,11 +19,26 @@ import multiprocessing
 import os
 import sys
 
-# Windows GUI guard: ensure stdout/stderr exist when running windowless under pythonw.exe
-if sys.stdout is None:
-    sys.stdout = open(os.devnull, "w", encoding="utf-8")
-if sys.stderr is None:
-    sys.stderr = open(os.devnull, "w", encoding="utf-8")
+# Windows GUI guard: ensure stdout/stderr exist and record errors when running under pythonw.exe
+if sys.stdout is None or sys.stderr is None:
+    try:
+        import tempfile
+        log_dir = os.path.join(
+            os.environ.get("LOCALAPPDATA", tempfile.gettempdir()),
+            "Scriber",
+            "Logs",
+        )
+        os.makedirs(log_dir, exist_ok=True)
+        log_file = open(os.path.join(log_dir, "desktop.log"), "a", encoding="utf-8", buffering=1)
+        if sys.stdout is None:
+            sys.stdout = log_file
+        if sys.stderr is None:
+            sys.stderr = log_file
+    except Exception:
+        if sys.stdout is None:
+            sys.stdout = open(os.devnull, "w", encoding="utf-8")
+        if sys.stderr is None:
+            sys.stderr = open(os.devnull, "w", encoding="utf-8")
 
 from scriber.desktop import launch_desktop
 
