@@ -1,0 +1,60 @@
+"""Scriber: High-Precision Video Intelligence, Whisper Flow Transcription, Acoustic Diarization, and Voice Synthesis Desktop Studio.
+"""
+
+__version__ = "1.0.0"
+
+from scriber.audio_extractor import AudioExtractor
+from scriber.audio_editor import AudioEditor
+from scriber.council import SupremeCouncil
+from scriber.exporters import ScriberExporter
+from scriber.transcription_engine import TOP_LEVERAGED_REPOS, GitHubEngine, TranscriptionEngine
+from scriber.models import (
+    ActionItem,
+    AudioMetadata,
+    AudioSegment,
+    CouncilAnalysis,
+    ScriberOutput,
+    DiscussionPoint,
+    ExecutiveSummary,
+    QualityReport,
+    TranscriptionResult,
+    ValidationReport,
+    VoiceCloneResult,
+    VoiceProfile,
+    WordTimestamp,
+)
+from scriber.pipeline import ScriberPipeline
+from scriber.quality import QualityChecker
+from scriber.validator import ResultValidator
+from scriber.voice_clone import VoiceCloner, VoiceProfiler
+from scriber.desktop import ScriberDesktopApp, launch_desktop
+
+__all__ = [
+    "AudioExtractor",
+    "AudioEditor",
+    "TranscriptionEngine",
+    "GitHubEngine",
+    "SupremeCouncil",
+    "QualityChecker",
+    "ResultValidator",
+    "VoiceCloner",
+    "VoiceProfiler",
+    "ScriberPipeline",
+    "ScriberExporter",
+    "ScriberOutput",
+    "AudioSegment",
+    "AudioMetadata",
+    "TranscriptionResult",
+    "ActionItem",
+    "DiscussionPoint",
+    "ExecutiveSummary",
+    "QualityReport",
+    "ValidationReport",
+    "VoiceProfile",
+    "VoiceCloneResult",
+    "CouncilAnalysis",
+    "WordTimestamp",
+    "TOP_LEVERAGED_REPOS",
+    "ScriberDesktopApp",
+    "launch_desktop",
+]
