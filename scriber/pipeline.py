@@ -42,7 +42,7 @@ class ScriberPipeline:
         backend_preference: str = "auto",
         energy_threshold: float = 0.015,
         use_llm_if_available: bool = True,
-        diarization_threshold: float = 0.65,
+        diarization_threshold: float = 0.48,
     ):
         self.audio_extractor = AudioExtractor()
         self.audio_editor = AudioEditor()

@@ -42,6 +42,10 @@ class TestUIContracts(unittest.TestCase):
             "Subagent Army & Intelligence",
             "Acoustic Ingestion & VAD Stream Banner",
             'id="task-select"',
+            'id="council-audit-seal-strip"',
+            "Copy Seal",
+            "Forensic Action Item Commitments",
+            "Council Swarm Intelligence",
         ]
         for element in cluttered_elements:
             self.assertNotIn(element, self.html, f"Cluttered element '{element}' must be removed from the UI")

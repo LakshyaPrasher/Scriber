@@ -111,60 +111,71 @@ class VoiceProfiler:
 
     @classmethod
     def _extract_pitch_contour(cls, samples: np.ndarray, sr: int) -> Tuple[float, float, float, float]:
-        """Calculates F0 pitch contour using windowed autocorrelation in speech range (60-400Hz)."""
+        """Calculates F0 pitch contour using normalized autocorrelation on voiced speech frames (60-380Hz)."""
         frame_len = int(0.04 * sr)  # 40ms window
         hop_len = int(0.02 * sr)    # 20ms step
-        min_lag = int(sr / 400.0)   # 400 Hz max pitch
-        max_lag = int(sr / 60.0)    # 60 Hz min pitch
+        min_lag = int(sr / 380.0)   # 380 Hz max pitch
+        max_lag = int(sr / 65.0)    # 65 Hz min pitch
 
-        f0_list = []
+        f0_list: List[float] = []
         for start in range(0, len(samples) - frame_len, hop_len):
             frame = samples[start : start + frame_len]
-            frame_rms = np.sqrt(np.mean(frame ** 2))
-            if frame_rms < 0.01:
-                continue  # Skip silent frames
+            energy = np.sum(frame ** 2)
+            if energy < 1e-4:
+                continue  # Skip silent or near-silent frames
 
-            # Autocorrelation of frame
+            # Autocorrelation of zero-mean frame
             frame_norm = frame - np.mean(frame)
             corr = np.correlate(frame_norm, frame_norm, mode="full")
             corr = corr[len(corr) // 2 :]
+            r0 = corr[0]
+            if r0 < 1e-5:
+                continue
 
             if max_lag < len(corr):
                 search_window = corr[min_lag:max_lag]
-                if len(search_window) > 0 and np.max(search_window) > 0:
-                    peak_lag = min_lag + int(np.argmax(search_window))
-                    f0 = float(sr) / float(peak_lag)
-                    if 60.0 <= f0 <= 400.0:
-                        f0_list.append(f0)
+                if len(search_window) > 0:
+                    peak_idx = int(np.argmax(search_window))
+                    peak_val = search_window[peak_idx]
+                    # Normalized correlation coefficient: require >= 0.32 periodicity to reject unvoiced fricatives/noise
+                    if (peak_val / r0) >= 0.32:
+                        peak_lag = min_lag + peak_idx
+                        f0 = float(sr) / float(peak_lag)
+                        if 65.0 <= f0 <= 380.0:
+                            f0_list.append(f0)
 
         if not f0_list:
-            return 140.0, 120.0, 160.0, 10.0
+            return 130.0, 110.0, 150.0, 10.0
 
-        return (
-            float(np.mean(f0_list)),
-            float(np.min(f0_list)),
-            float(np.max(f0_list)),
-            float(np.std(f0_list)),
-        )
+        # Use median for primary F0 representation to suppress octave jump outliers
+        f0_median = float(np.median(f0_list))
+        f0_min = float(np.percentile(f0_list, 5))
+        f0_max = float(np.percentile(f0_list, 95))
+        f0_std = float(np.std(f0_list))
+        return f0_median, f0_min, f0_max, f0_std
 
     @classmethod
     def _extract_spectral_centroid(cls, samples: np.ndarray, sr: int) -> float:
-        """Measures spectral centroid representing voice timbre brightness/warmth across voiced frames."""
+        """Measures spectral centroid across voiced speech frequencies (100 - 4500Hz) for timbre warmth/brightness."""
         if len(samples) < 512:
             return 1600.0
         frame_len = min(1024, len(samples))
         hop_len = frame_len // 2
         centroids = []
         freqs = np.fft.rfftfreq(frame_len, 1.0 / sr)
+        # Focus on speech vocal tract resonance band
+        speech_mask = (freqs >= 100.0) & (freqs <= 4500.0)
+        speech_freqs = freqs[speech_mask]
+
         window = np.hanning(frame_len)
         for start in range(0, len(samples) - frame_len + 1, hop_len):
             frame = samples[start : start + frame_len]
             if np.sqrt(np.mean(frame ** 2)) < 0.012:
                 continue
-            fft_vals = np.abs(np.fft.rfft(frame * window))
+            fft_vals = np.abs(np.fft.rfft(frame * window))[speech_mask]
             sum_fft = np.sum(fft_vals)
-            if sum_fft > 1e-5:
-                c = float(np.sum(freqs * fft_vals) / sum_fft)
+            if sum_fft > 1e-4:
+                c = float(np.sum(speech_freqs * fft_vals) / sum_fft)
                 centroids.append(c)
         if not centroids:
             return 1600.0
@@ -261,16 +272,20 @@ class VoiceProfiler:
         voiced_ratio: float,
         timbre_bands: Optional[List[float]] = None,
     ) -> List[float]:
-        """Constructs a normalized 16-dimensional biometric acoustic vector."""
+        """Constructs a normalized 16-dimensional biometric acoustic vector.
+        
+        Emphasizes vocal tract invariants (pitch, spectral centroid, resonance bands)
+        while suppressing transient utterance factors (momentary volume RMS, conversational rate WPM).
+        """
         # Normalize each characteristic to standard zero-centered or scaled feature
-        norm_f0 = float(np.clip((f0_mean - 60.0) / 340.0, 0.0, 1.0)) - 0.5
-        norm_f0_std = float(np.clip(f0_std / 50.0, 0.0, 1.0)) - 0.5
-        norm_centroid = float(np.clip((centroid - 500.0) / 3500.0, 0.0, 1.0)) - 0.5
-        norm_zcr = float(np.clip(zcr / 0.3, 0.0, 1.0)) - 0.5
-        norm_rms = float(np.clip(rms / 0.5, 0.0, 1.0)) - 0.5
-        norm_wpm = float(np.clip((wpm - 80.0) / 200.0, 0.0, 1.0)) - 0.5
-        norm_voiced = float(np.clip(voiced_ratio, 0.0, 1.0)) - 0.5
-        f0_timbre_cross = norm_f0 * norm_centroid
+        norm_f0 = (float(np.clip((f0_mean - 60.0) / 340.0, 0.0, 1.0)) - 0.5) * 1.2
+        norm_f0_std = (float(np.clip(f0_std / 50.0, 0.0, 1.0)) - 0.5) * 0.2
+        norm_centroid = (float(np.clip((centroid - 500.0) / 3500.0, 0.0, 1.0)) - 0.5) * 1.0
+        norm_zcr = (float(np.clip(zcr / 0.3, 0.0, 1.0)) - 0.5) * 0.8
+        norm_rms = (float(np.clip(rms / 0.5, 0.0, 1.0)) - 0.5) * 0.1
+        norm_wpm = (float(np.clip((wpm - 80.0) / 200.0, 0.0, 1.0)) - 0.5) * 0.1
+        norm_voiced = (float(np.clip(voiced_ratio, 0.0, 1.0)) - 0.5) * 0.3
+        f0_timbre_cross = (norm_f0 * norm_centroid) * 0.6
 
         # 8 sub-band vocal tract spectral distribution features
         tb = timbre_bands if (timbre_bands and len(timbre_bands) == 8) else [0.0] * 8

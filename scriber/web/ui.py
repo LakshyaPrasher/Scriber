@@ -2348,17 +2348,22 @@ def get_embedded_html() -> str:
           <span class="format-mono-tag">WAV</span>
           <span class="format-mono-tag">M4A</span>
           <span class="format-mono-tag">MOV</span>
+          <span class="format-mono-tag">MKV</span>
           <span class="format-mono-tag">WebM</span>
           <span class="format-mono-tag">FLAC</span>
+          <span class="format-mono-tag">AAC</span>
+          <span class="format-mono-tag">OGG</span>
+          <span class="format-mono-tag">OPUS</span>
+          <span class="format-mono-tag">AVI</span>
         </div>
         <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted); margin-top:4px;">
-          SAMPLING: 16kHz / 48kHz PCM Stream
+          UNIVERSAL INGESTION · ZERO CODEC CONVERSION REQUIRED
         </div>
       </div>
     </div>
 
     <!-- Native hidden file input (outside dropzone to eliminate click event bubbling & COM dialog deadlock) -->
-    <input type="file" id="media-file-input" name="file" accept="audio/*,video/*,.mp4,.mp3,.wav,.m4a,.mov,.webm,.flac,.ogg,.aac" class="visually-hidden-input" onchange="handleFileSelected(event)" onclick="event.stopPropagation();" />
+    <input type="file" id="media-file-input" name="file" accept="audio/*,video/*,.mp4,.mp3,.wav,.m4a,.mov,.webm,.flac,.ogg,.aac,.mkv,.avi,.flv,.wmv,.opus,.wma,.3gp,.ts,.m4v" class="visually-hidden-input" onchange="handleFileSelected(event)" onclick="event.stopPropagation();" />
 
     <!-- State 2: Minimalist Claude Liquid Morphing Light Orb -->
     <div class="processing-card" id="processing-card">
@@ -2614,7 +2619,7 @@ def get_embedded_html() -> str:
           <div style="display:flex; align-items:center; gap:10px;">
             <span class="council-tag-badge">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-              Council Swarm Intelligence
+              Meeting Intelligence
             </span>
             <span id="council-duration-badge" style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted);"></span>
           </div>
@@ -2623,15 +2628,11 @@ def get_embedded_html() -> str:
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
               <span id="pii-shield-status-text">PII Privacy: Off</span>
             </button>
-            <button type="button" class="action-seek-btn" onclick="copyAuditReceipt()" title="Copy Cryptographic Audit Certificate">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-              Copy Seal
-            </button>
           </div>
         </div>
 
         <div id="council-briefing-wrap">
-          <h3 class="council-headline" id="council-briefing-headline">Executive Briefing</h3>
+          <h3 class="council-headline" id="council-briefing-headline">Executive Summary</h3>
           <p class="council-tldr" id="council-briefing-tldr"></p>
         </div>
 
@@ -2639,7 +2640,7 @@ def get_embedded_html() -> str:
         <div id="council-decisions-wrap" style="display:none;">
           <div class="council-section-title">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            Ratified Decisions
+            Key Decisions
           </div>
           <div class="council-decisions-box" id="council-decisions-list"></div>
         </div>
@@ -2657,22 +2658,9 @@ def get_embedded_html() -> str:
         <div id="council-actions-wrap" style="display:none;">
           <div class="council-section-title">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--tangerine)" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
-            Forensic Action Item Commitments
+            Key Action Items
           </div>
           <div class="actions-grid" id="council-actions-grid"></div>
-        </div>
-
-        <!-- Tamper-evident Audit Seal Strip -->
-        <div class="audit-seal-strip" id="council-audit-seal-strip">
-          <div class="cert-seal-box">
-            <span style="color:var(--text-muted);">CERTIFICATE:</span>
-            <span class="cert-id-tag" id="audit-cert-id">CERT-CSCR-SECURE-CHAIN</span>
-            <span class="cert-status-pass" id="audit-cert-status">VALIDATED</span>
-          </div>
-          <div style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:8px;">
-            <span>SHA-256 ROOT:</span>
-            <span id="audit-root-hash" style="color:#CBD5E1;">GENESIS-CHAIN</span>
-          </div>
         </div>
       </div>
 
@@ -2789,7 +2777,7 @@ def get_embedded_html() -> str:
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--tangerine)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
         <span id="voice-ref-label-text">Drop a custom audio/video clip or <strong style="color:var(--tangerine); text-decoration:underline;">browse</strong> to extract speaker biometric timbre</span>
       </label>
-      <input type="file" id="voice-ref-input" accept="audio/*,video/*,.mp4,.mp3,.wav,.m4a" style="display:none;" onchange="handleVoiceRefSelected(event)" onclick="event.stopPropagation();" />
+      <input type="file" id="voice-ref-input" accept="audio/*,video/*,.mp4,.mp3,.wav,.m4a,.mov,.webm,.flac,.ogg,.aac,.mkv,.avi,.flv,.wmv,.opus,.wma,.3gp,.ts,.m4v" style="display:none;" onchange="handleVoiceRefSelected(event)" onclick="event.stopPropagation();" />
 
       <!-- Active Reference Audio Status Badge (replaces raw profile box) -->
       <div id="voice-ref-badge" class="voice-ref-badge" style="display:none;">
@@ -5295,14 +5283,23 @@ def get_embedded_html() -> str:
       }
     }
 
-    // Executive Briefing
+    // Executive Summary
     const headline = document.getElementById('council-briefing-headline');
     const tldr = document.getElementById('council-briefing-tldr');
-    if (headline) headline.innerText = 'Executive Briefing & Strategic Synthesis';
+    if (headline) headline.innerText = 'Executive Summary';
     if (tldr) {
-      tldr.innerText = (council && council.executive_summary)
-        ? council.executive_summary
-        : 'Automated council synthesis successfully processed the speech stream with speaker diarization and semantic classification.';
+      let summaryText = '';
+      if (council && council.executive_summary) {
+        if (typeof council.executive_summary === 'object') {
+          summaryText = council.executive_summary.tldr || council.executive_summary.headline || '';
+          if (!summaryText && Array.isArray(council.executive_summary.key_takeaways)) {
+            summaryText = council.executive_summary.key_takeaways.join(' ');
+          }
+        } else {
+          summaryText = String(council.executive_summary);
+        }
+      }
+      tldr.innerText = summaryText || 'Automated meeting intelligence successfully processed the speech stream with speaker diarization and semantic classification.';
     }
 
     // Ratified Decisions
@@ -5356,18 +5353,17 @@ def get_embedded_html() -> str:
           return `
             <div class="action-card">
               <div class="action-card-header">
-                <span class="action-id">ACTION #${i + 1}</span>
-                <span class="action-prio-badge ${prioClass}">${escapeHtml(prio.toUpperCase())}</span>
+                <span class="action-prio-badge ${prioClass}">${escapeHtml(prio.toUpperCase())} PRIORITY</span>
+                <span class="action-assignee">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                  ${escapeHtml(a.assignee || 'General')}
+                </span>
               </div>
               <div class="action-task-text">${escapeHtml(a.task)}</div>
               <div class="action-meta-row">
-                <span class="action-assignee">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                  ${escapeHtml(a.assignee || 'Unassigned')}
-                </span>
                 <button type="button" class="action-seek-btn" onclick="seekTo(${seekTime})" title="Jump to context in media">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                  Seek ${formatSec(seekTime)}
+                  ${formatSec(seekTime)}
                 </button>
               </div>
             </div>
@@ -5378,19 +5374,19 @@ def get_embedded_html() -> str:
       }
     }
 
-    // Cryptographic Seal & Hash Chain
+    // Optional validation metrics if elements exist
     const certId = document.getElementById('audit-cert-id');
     const certStatus = document.getElementById('audit-cert-status');
     const rootHash = document.getElementById('audit-root-hash');
     if (validation) {
       if (certId) certId.innerText = validation.certificate_id || 'CERT-CSCR-CHAIN';
       if (certStatus) {
-        certStatus.innerText = validation.passed ? 'VALIDATED' : 'TAMPERED';
+        certStatus.innerText = validation.passed ? 'VALIDATED' : 'PROCESSED';
         certStatus.style.background = validation.passed ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 94, 0, 0.15)';
         certStatus.style.color = validation.passed ? 'var(--emerald)' : 'var(--tangerine)';
       }
       if (rootHash) {
-        const fullHash = validation.root_hash || 'SHA256-GENESIS-CHAIN';
+        const fullHash = validation.root_hash || 'SHA256-AUTHENTICATED';
         rootHash.innerText = fullHash.length > 20 ? (fullHash.substring(0, 10) + '...' + fullHash.substring(fullHash.length - 8)) : fullHash;
         rootHash.title = fullHash;
       }

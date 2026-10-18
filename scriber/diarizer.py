@@ -65,47 +65,48 @@ class SpeakerMemory:
         cos_sim = max(0.0, min(1.0, dot))
 
         # 2. Fundamental pitch compatibility
-        # Pitch variation within same speaker across sentences can be up to 40% in expressive speech
+        # Pitch variation within same speaker across sentences is naturally <= 35 Hz.
+        # When pitch diverges > 35 Hz across speakers, apply progressive acoustic divergence penalty.
         f0_delta = abs(profile.fundamental_frequency_hz - self.mean_f0)
-        max_f0 = max(60.0, max(profile.fundamental_frequency_hz, self.mean_f0))
-        f0_ratio = f0_delta / max_f0
-        pitch_penalty = max(0.0, min(1.0, (f0_ratio - 0.40) * 2.0)) if (f0_ratio > 0.40 and f0_delta > 40.0) else 0.0
+        pitch_penalty = 0.0
+        if f0_delta > 35.0:
+            pitch_penalty = min(0.50, ((f0_delta - 35.0) / 70.0) * 0.50)
 
         # 3. Spectral centroid (timbre brightness) compatibility
         sc_delta = abs(profile.spectral_centroid_hz - self.mean_centroid)
         max_sc = max(500.0, max(profile.spectral_centroid_hz, self.mean_centroid))
         sc_ratio = sc_delta / max_sc
-        timbre_penalty = max(0.0, min(1.0, (sc_ratio - 0.18) * 2.5)) if sc_ratio > 0.18 else 0.0
+        timbre_penalty = max(0.0, min(0.35, (sc_ratio - 0.25) * 1.5)) if sc_ratio > 0.25 else 0.0
 
-        # 4. Gender compatibility penalty (only when large pitch separation > 50Hz occurs)
+        # 4. Gender compatibility penalty (strong contrast penalty when pitch separation > 45Hz occurs)
         gender_penalty = 0.0
         if (
             profile.gender_estimate != "androgynous"
             and self.gender != "androgynous"
             and profile.gender_estimate != self.gender
-            and f0_delta > 50.0
+            and f0_delta > 45.0
         ):
-            gender_penalty = 0.30
+            gender_penalty = 0.35
 
         # 5. Acoustic Proximity Affinity Boost:
         # When fundamental pitch and spectral centroid match closely, award positive vocal tract affinity
         proximity_boost = 0.0
-        if f0_delta <= 25.0 and sc_ratio <= 0.12:
-            proximity_boost = 0.05 * (1.0 - (f0_delta / 25.0)) * (1.0 - (sc_ratio / 0.12))
+        if f0_delta <= 25.0 and sc_ratio <= 0.15:
+            proximity_boost = 0.08 * (1.0 - (f0_delta / 25.0)) * (1.0 - (sc_ratio / 0.15))
 
         # 6. Conversational Continuity Prior (Hysteresis):
-        # Monologues and consecutive sentences from the same speaker naturally continue across short pauses (<= 3.0s)
+        # Monologues and consecutive sentences from the same speaker naturally continue across pauses (<= 3.5s)
         continuity_boost = 0.0
-        if is_active_speaker and pause_sec <= 3.0:
-            if f0_delta <= 28.0 and sc_ratio <= 0.15 and gender_penalty == 0.0:
-                continuity_boost = 0.08 * (1.0 - (pause_sec / 3.0) * 0.4)
+        if is_active_speaker and pause_sec <= 3.5:
+            if f0_delta <= 30.0 and sc_ratio <= 0.22 and gender_penalty == 0.0:
+                continuity_boost = 0.15 * (1.0 - (pause_sec / 3.5) * 0.3)
 
         composite_score = (
             cos_sim
             + proximity_boost
             + continuity_boost
-            - (0.15 * pitch_penalty)
-            - (0.15 * timbre_penalty)
+            - pitch_penalty
+            - timbre_penalty
             - gender_penalty
         )
         return max(0.0, min(1.0, composite_score))
@@ -114,7 +115,7 @@ class SpeakerMemory:
 class AcousticDiarizer:
     """Intelligent voice-based speaker segmentation, memory clustering, and English dialogue formatter."""
 
-    def __init__(self, similarity_threshold: float = 0.60):
+    def __init__(self, similarity_threshold: float = 0.48):
         self.similarity_threshold = similarity_threshold
 
     def diarize_segments(
@@ -141,6 +142,30 @@ class AcousticDiarizer:
                 s.speaker = "Speaker_1"
                 s.text = self.polish_english(s.text)
             return self.group_consecutive_speaker_segments(segments)
+
+        bytes_per_sec = sample_rate * 2
+        total_pcm_len = len(pcm16_data)
+
+        # Pre-pass: Check for global single-speaker monologue across the audio
+        if len(segments) <= 12 or (segments[-1].end - segments[0].start) <= 60.0:
+            sample_profiles = []
+            for seg in segments:
+                start_byte = max(0, int(seg.start * bytes_per_sec))
+                start_byte -= (start_byte % 2)
+                end_byte = min(total_pcm_len, int(seg.end * bytes_per_sec))
+                end_byte -= (end_byte % 2)
+                p = VoiceProfiler.profile_from_pcm16(pcm16_data[start_byte:end_byte], speaker_id="temp")
+                sample_profiles.append(p)
+
+            f0_vals = [p.fundamental_frequency_hz for p in sample_profiles if p.fundamental_frequency_hz > 65.0]
+            genders = {p.gender_estimate for p in sample_profiles if p.gender_estimate != "androgynous"}
+
+            # If all detected pitch points are tightly grouped within single speaker range (spread <= 35Hz) and same gender
+            if f0_vals and (max(f0_vals) - min(f0_vals)) <= 35.0 and len(genders) <= 1:
+                for s in segments:
+                    s.speaker = "Speaker_1"
+                    s.text = self.polish_english(s.text)
+                return self.group_consecutive_speaker_segments(segments)
 
         speaker_registry: List[SpeakerMemory] = []
         last_speaker: Optional[SpeakerMemory] = None

@@ -157,7 +157,9 @@ class ScriberDesktopBridge:
             return None
         import webview
         dialog_types = file_types or [
-            "Media Files (*.mp4;*.mp3;*.wav;*.m4a;*.aac;*.ogg;*.flac;*.webm;*.mov;*.mkv)",
+            "Media Files (*.mp4;*.mp3;*.wav;*.m4a;*.aac;*.ogg;*.flac;*.webm;*.mov;*.mkv;*.avi;*.flv;*.wmv;*.opus;*.wma;*.3gp;*.ts;*.m4v)",
+            "Video Files (*.mp4;*.mov;*.mkv;*.webm;*.avi;*.flv;*.wmv;*.3gp;*.ts;*.m4v)",
+            "Audio Files (*.mp3;*.wav;*.m4a;*.aac;*.ogg;*.flac;*.opus;*.wma)",
             "All Files (*.*)",
         ]
         try:

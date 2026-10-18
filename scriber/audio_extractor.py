@@ -56,6 +56,37 @@ class AudioExtractor:
         file_size = os.path.getsize(file_path)
         ext = os.path.splitext(file_path)[1].lower().lstrip(".")
 
+        # Try PyAV for universal container inspection (handles MP4, MKV, MOV, WebM, AVI, FLV, WMV, MP3, M4A, etc.)
+        try:
+            import av
+            container = av.open(file_path)
+            try:
+                if container.streams.audio:
+                    audio_st = container.streams.audio[0]
+                    duration = 0.0
+                    if container.duration:
+                        duration = float(container.duration / av.time_base)
+                    elif audio_st.duration and audio_st.time_base:
+                        duration = float(audio_st.duration * audio_st.time_base)
+
+                    sr = audio_st.rate or self.SAMPLE_RATE
+                    channels = audio_st.channels or self.CHANNELS
+                    bitrate = int(audio_st.bit_rate / 1000) if getattr(audio_st, "bit_rate", None) else None
+                    if duration > 0.0:
+                        return AudioMetadata(
+                            filename=os.path.basename(file_path),
+                            duration=duration,
+                            sample_rate=sr,
+                            channels=channels,
+                            file_size_bytes=file_size,
+                            file_format=ext or "media",
+                            bitrate_kbps=bitrate,
+                        )
+            finally:
+                container.close()
+        except Exception:
+            pass
+
         # Try to read wave metadata directly if WAV
         if ext == "wav":
             try:
