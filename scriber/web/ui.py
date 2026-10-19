@@ -1988,89 +1988,237 @@ def get_embedded_html() -> str:
     font-weight: 600;
   }
 
-  /* Mode 3: Agent Swarm Console styles */
-  .swarm-header-card {
-    background: #0B0E14;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-    padding: 24px;
-    margin-bottom: 24px;
+  /* Mode 3: About Creator & Anti-Slop Bento Grid styles */
+  .about-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    animation: fadeInView 0.28s ease;
   }
-  .swarm-agents-grid {
+  .about-bento-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 18px;
-    margin-bottom: 24px;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 16px;
   }
-  .swarm-agent-card {
-    background: rgba(18, 22, 32, 0.88);
+  .about-card {
+    background: linear-gradient(180deg, rgba(20, 23, 30, 0.75) 0%, rgba(14, 16, 21, 0.85) 100%);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-    padding: 20px;
+    border-radius: 14px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 12px 32px -8px rgba(0, 0, 0, 0.6);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+  }
+  .about-card:hover {
+    border-color: rgba(255, 94, 0, 0.35);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 16px 40px -8px rgba(255, 94, 0, 0.12);
+    transform: translateY(-2px);
+  }
+  .about-hero-card {
+    grid-column: span 8;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 20px;
+    background: linear-gradient(135deg, rgba(26, 30, 40, 0.82) 0%, rgba(14, 16, 21, 0.92) 100%);
+  }
+  .about-social-cluster {
+    grid-column: span 4;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    transition: all 0.2s ease;
   }
-  .swarm-agent-card:hover {
-    border-color: rgba(255, 94, 0, 0.4);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  .about-ethos-card {
+    grid-column: span 6;
   }
-  .agent-card-top {
+  .about-craft-card {
+    grid-column: span 6;
+  }
+  @media (max-width: 900px) {
+    .about-hero-card, .about-social-cluster, .about-ethos-card, .about-craft-card {
+      grid-column: span 12;
+    }
+  }
+  .creator-header-row {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
+    gap: 18px;
   }
-  .agent-title-group h4 {
+  .creator-avatar-wrap {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    background: #0B0E14;
+    border: 1px solid rgba(255, 94, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 20px rgba(255, 94, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .creator-avatar-monogram {
     font-family: var(--font-display);
-    font-size: 16px;
-    color: var(--text-primary);
-  }
-  .agent-role-tag {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin-top: 2px;
-  }
-  .tier-pill {
-    font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: 24px;
     font-weight: 700;
-    text-transform: uppercase;
-    padding: 3px 8px;
-    border-radius: 4px;
+    color: var(--tangerine);
+    letter-spacing: -0.04em;
+    text-shadow: 0 0 12px rgba(255, 94, 0, 0.5);
+  }
+  .status-beacon-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
     letter-spacing: 0.06em;
+    color: var(--tangerine);
+    background: rgba(255, 94, 0, 0.1);
+    border: 1px solid rgba(255, 94, 0, 0.25);
+    padding: 4px 10px;
+    border-radius: 999px;
   }
-  .tier-pro { background: rgba(229, 169, 60, 0.15); color: var(--gold); border: 1px solid rgba(229, 169, 60, 0.3); }
-  .tier-flash { background: rgba(16, 185, 129, 0.15); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.3); }
-  .agent-desc {
-    font-size: 13px;
+  .status-diode-pulse {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--tangerine);
+    box-shadow: 0 0 8px var(--tangerine);
+    animation: beaconPulse 2s infinite ease-in-out;
+  }
+  @keyframes beaconPulse {
+    0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 8px var(--tangerine); }
+    50% { transform: scale(1.35); opacity: 0.65; box-shadow: 0 0 16px var(--tangerine); }
+  }
+  .creator-name {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.03em;
+    margin: 4px 0 2px 0;
+  }
+  .creator-role {
+    font-size: 13.5px;
+    color: var(--gold);
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+  }
+  .creator-bio {
+    font-size: 14px;
     color: var(--text-secondary);
-    line-height: 1.5;
+    line-height: 1.65;
   }
-  .agent-caps-list {
+  .telemetry-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-  }
-  .agent-cap-tag {
-    font-size: 11px;
-    background: rgba(255, 255, 255, 0.04);
-    color: #CBD5E1;
-    padding: 3px 8px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-  }
-  .agent-telemetry-bar {
-    margin-top: auto;
-    padding-top: 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
     font-family: var(--font-mono);
     font-size: 11px;
     color: var(--text-muted);
+  }
+  .social-node-card {
+    background: linear-gradient(180deg, rgba(20, 24, 32, 0.7) 0%, rgba(14, 16, 21, 0.8) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    text-decoration: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .social-node-card:hover {
+    transform: translateY(-2px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+  .social-node-card.instagram:hover {
+    border-color: rgba(255, 94, 0, 0.45);
+    background: linear-gradient(180deg, rgba(32, 22, 24, 0.8) 0%, rgba(18, 16, 22, 0.9) 100%);
+  }
+  .social-node-card.linkedin:hover {
+    border-color: rgba(229, 169, 60, 0.45);
+    background: linear-gradient(180deg, rgba(28, 26, 20, 0.8) 0%, rgba(16, 17, 22, 0.9) 100%);
+  }
+  .social-node-card.github:hover {
+    border-color: rgba(255, 255, 255, 0.35);
+    background: linear-gradient(180deg, rgba(24, 28, 38, 0.8) 0%, rgba(14, 16, 22, 0.9) 100%);
+  }
+  .social-icon-box {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .social-node-card.instagram .social-icon-box { background: rgba(255, 94, 0, 0.12); color: var(--tangerine); }
+  .social-node-card.linkedin .social-icon-box { background: rgba(229, 169, 60, 0.12); color: var(--gold); }
+  .social-node-card.github .social-icon-box { background: rgba(255, 255, 255, 0.08); color: #F1F5F9; }
+  .social-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .social-label {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+  }
+  .social-handle {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .social-arrow {
+    color: var(--text-muted);
+    font-size: 15px;
+    transition: transform 0.2s ease, color 0.2s ease;
+  }
+  .social-node-card:hover .social-arrow {
+    transform: translate(3px, -3px);
+    color: var(--text-primary);
+  }
+  .craft-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .craft-pill {
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .craft-title {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.02em;
+  }
+  .craft-detail {
+    font-size: 12px;
+    color: var(--text-secondary);
   }
 
   /* Ecosystem modal styles */
@@ -2216,9 +2364,9 @@ def get_embedded_html() -> str:
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H2v-8z"></path><path d="M22 12h-2a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2v-8z"></path><path d="M4 12a8 8 0 0 1 16 0"></path><line x1="12" y1="8" x2="12" y2="16"></line></svg>
         Voice Clone
       </button>
-      <button class="nav-pill" id="btn-mode-swarm" onclick="switchMode('swarm')">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-        Agent Swarm
+      <button class="nav-pill" id="btn-mode-about" onclick="switchMode('about')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        About
       </button>
       <button class="nav-pill" id="btn-ecosystem-modal" onclick="openEcosystemModal()" title="Architectural Lineage & Repositories">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
@@ -2983,30 +3131,155 @@ def get_embedded_html() -> str:
   </section>
 
   <!-- ========================================================= -->
-  <!-- MODE 3: AGENT SWARM CONSOLE & ANTIGRAVITY PLUGIN          -->
+  <!-- MODE 3: ABOUT CREATOR — LAKSHYA PRASHER                   -->
   <!-- ========================================================= -->
-  <section id="swarm-view" class="view-panel">
-    <div class="swarm-header-card">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
-        <div>
-          <div style="display:flex; align-items:center; gap:10px;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-            <h2 style="font-family:var(--font-display); font-size:20px; color:var(--text-primary); margin:0;">Autonomous Council Swarm</h2>
-          </div>
-          <p class="subtitle" style="margin-top:6px;">Multi-Agent Swarm architecture inspired by wshobson/agents with dynamic tier routing across Gemini 2.5 Pro and Flash.</p>
-        </div>
-        <div style="display:flex; gap:10px; align-items:center;">
-          <button type="button" class="btn-primary" id="btn-install-plugin" onclick="installAntigravityPlugin()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            Install Antigravity Plugin
-          </button>
-        </div>
-      </div>
-    </div>
+  <section id="about-view" class="view-panel">
+    <div class="about-container">
+      <div class="about-bento-grid">
+        
+        <!-- Hero Dossier Card (Span 8) -->
+        <div class="about-card about-hero-card">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:14px; margin-bottom:16px;">
+              <div class="creator-header-row">
+                <div class="creator-avatar-wrap">
+                  <span class="creator-avatar-monogram">LP</span>
+                </div>
+                <div>
+                  <div class="status-beacon-pill">
+                    <span class="status-diode-pulse"></span>
+                    <span>LIVE // FOUNDING ARCHITECT</span>
+                  </div>
+                  <h2 class="creator-name">Lakshya Prasher</h2>
+                  <div class="creator-role">AI Systems Architect & Founder · Speech & Intelligence</div>
+                </div>
+              </div>
+            </div>
 
-    <!-- 5 Specialist Agent Cards Grid -->
-    <div class="swarm-agents-grid" id="swarm-agents-grid">
-      <!-- Populated dynamically via /api/council/swarm -->
+            <p class="creator-bio">
+              Architecting high-frequency deterministic speech intelligence systems, edge neural quantization, and zero-slop human-machine interfaces. Creator of Scriber — engineered for mathematical accuracy, zero phantom speaker segregation, and high-fidelity vocal synthesis without compromise.
+            </p>
+          </div>
+
+          <div class="telemetry-row">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--tangerine); font-weight:700;">●</span>
+              <span>28.6139° N, 77.2090° E</span>
+              <span>·</span>
+              <span id="creator-live-clock">UTC+05:30</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span style="color:var(--emerald);">● &lt; 12ms TO EDGE</span>
+              <span style="color:rgba(255,255,255,0.25);">|</span>
+              <span style="color:var(--gold);">99%+ WER ACCURACY</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Social Cluster (Span 4) -->
+        <div class="about-social-cluster">
+          <!-- Instagram Card -->
+          <a href="https://www.instagram.com/laksh._.ya/" target="_blank" rel="noopener noreferrer" class="social-node-card instagram" title="Follow Lakshya on Instagram">
+            <div class="social-icon-box">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+              </svg>
+            </div>
+            <div class="social-info">
+              <div class="social-label">Instagram</div>
+              <div class="social-handle">@laksh._.ya</div>
+            </div>
+            <span class="social-arrow">↗</span>
+          </a>
+
+          <!-- LinkedIn Card -->
+          <a href="https://www.linkedin.com/in/lakshyaprasher/" target="_blank" rel="noopener noreferrer" class="social-node-card linkedin" title="Connect on LinkedIn">
+            <div class="social-icon-box">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+                <rect x="2" y="9" width="4" height="12"></rect>
+                <circle cx="4" cy="4" r="2"></circle>
+              </svg>
+            </div>
+            <div class="social-info">
+              <div class="social-label">LinkedIn</div>
+              <div class="social-handle">in/lakshyaprasher</div>
+            </div>
+            <span class="social-arrow">↗</span>
+          </a>
+
+          <!-- GitHub Card -->
+          <a href="https://github.com/LakshyaPrasher" target="_blank" rel="noopener noreferrer" class="social-node-card github" title="Explore Repositories on GitHub">
+            <div class="social-icon-box">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+              </svg>
+            </div>
+            <div class="social-info">
+              <div class="social-label">GitHub</div>
+              <div class="social-handle">@LakshyaPrasher</div>
+            </div>
+            <span class="social-arrow">↗</span>
+          </a>
+        </div>
+
+        <!-- Craft & Systems Card (Span 6) -->
+        <div class="about-card about-craft-card">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+            <h3 style="font-family:var(--font-display); font-size:17px; color:var(--text-primary); margin:0;">Core Craft & Audio Intelligence</h3>
+          </div>
+          <p style="font-size:13px; color:var(--text-secondary); line-height:1.55; margin:0;">
+            Specialized engineering capabilities engineered into the Scriber multimedia processing engine:
+          </p>
+          <div class="craft-grid">
+            <div class="craft-pill">
+              <span class="craft-title">CTranslate2 INT8</span>
+              <span class="craft-detail">Quantized transformer inference with 4.2x real-time speed</span>
+            </div>
+            <div class="craft-pill">
+              <span class="craft-title">Acoustic Diarization</span>
+              <span class="craft-detail">F0 pitch &amp; spectral centroids with zero phantom splits</span>
+            </div>
+            <div class="craft-pill">
+              <span class="craft-title">Silero VAD 16kHz</span>
+              <span class="craft-detail">Millisecond speech endpointing &amp; hallucination suppression</span>
+            </div>
+            <div class="craft-pill">
+              <span class="craft-title">Harmonic Voice Cloning</span>
+              <span class="craft-detail">Biometric voice profiling &amp; zero-shot audio synthesis</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Anti-Slop Manifesto Card (Span 6) -->
+        <div class="about-card about-ethos-card">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--tangerine)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <h3 style="font-family:var(--font-display); font-size:17px; color:var(--text-primary); margin:0;">The Anti-Slop Philosophy</h3>
+          </div>
+          <p style="font-size:13px; color:var(--text-secondary); line-height:1.6; margin:0 0 12px 0;">
+            We reject the modern homogeny of generic templates, blurry drop shadows, and purple-indigo radial blobs. Every pixel is purposeful:
+          </p>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--tangerine); font-weight:700;">01 //</span>
+              <span>Obsidian Carbon `#08090C` with specular sub-pixel hairline relief</span>
+            </div>
+            <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--gold); font-weight:700;">02 //</span>
+              <span>Vibrant Tangerine &amp; Antique Gold tactile avionics instrumentation</span>
+            </div>
+            <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--emerald); font-weight:700;">03 //</span>
+              <span>Deterministic local execution — zero bloated runtime dependencies</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
   </section>
 </div>
@@ -3040,17 +3313,31 @@ def get_embedded_html() -> str:
     }, 3000);
   }
 
+  /* Live Clock Updater for Creator Bento Grid */
+  function updateLiveClock() {
+    const el = document.getElementById('creator-live-clock');
+    if (!el) return;
+    try {
+      const now = new Date();
+      el.textContent = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour12: false }) + ' IST';
+    } catch (e) {
+      el.textContent = 'UTC+05:30';
+    }
+  }
+  setInterval(updateLiveClock, 1000);
+
   /* Mode Switching */
   function switchMode(mode) {
+    if (mode === 'swarm') mode = 'about';
     document.querySelectorAll('.nav-pill').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
 
-    const btn = document.getElementById('btn-mode-' + mode);
+    const btn = document.getElementById('btn-mode-' + mode) || document.getElementById('btn-mode-about');
     if (btn) btn.classList.add('active');
 
     let viewId = 'transcribe-view';
     if (mode === 'voice') viewId = 'voice-view';
-    else if (mode === 'swarm') viewId = 'swarm-view';
+    else if (mode === 'about' || mode === 'swarm') viewId = 'about-view';
 
     const view = document.getElementById(viewId);
     if (view) view.classList.add('active');
@@ -3066,8 +3353,8 @@ def get_embedded_html() -> str:
         initModeAudioEditor('m1', dur > 0 ? dur : 10, fName);
       }
       setTimeout(drawWave, 50);
-    } else if (mode === 'swarm') {
-      loadSwarmAgents();
+    } else if (mode === 'about') {
+      updateLiveClock();
     }
   }
 
@@ -5561,42 +5848,10 @@ def get_embedded_html() -> str:
     }
   }
 
-  /* Swarm Roster Loader */
+  /* Swarm Roster Loader (Safe no-op for backward compatibility) */
   async function loadSwarmAgents() {
     const grid = document.getElementById('swarm-agents-grid');
     if (!grid) return;
-    try {
-      const res = await fetch('/api/council/swarm');
-      const data = await res.json();
-      const agents = data.agents || [];
-      if (agents.length === 0) {
-        grid.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">No agents found in swarm.</div>';
-        return;
-      }
-      grid.innerHTML = agents.map(ag => {
-        const tierClass = ag.tier === 'pro' ? 'tier-pro' : 'tier-flash';
-        const caps = (ag.capabilities || []).map(c => `<span class="agent-cap-tag">${escapeHtml(c)}</span>`).join('');
-        return `
-          <div class="swarm-agent-card">
-            <div class="agent-card-top">
-              <div class="agent-title-group">
-                <h4>${escapeHtml(ag.name)}</h4>
-                <div class="agent-role-tag">${escapeHtml(ag.role)}</div>
-              </div>
-              <span class="tier-pill ${tierClass}">${escapeHtml((ag.tier || 'inherit').toUpperCase())} TIER</span>
-            </div>
-            <p class="agent-desc">${escapeHtml(ag.description)}</p>
-            <div class="agent-caps-list">${caps}</div>
-            <div class="agent-telemetry-bar">
-              <span>MODEL: ${escapeHtml(ag.model || 'gemini-2.5-pro')}</span>
-              <span style="color:var(--emerald);">READY</span>
-            </div>
-          </div>
-        `;
-      }).join('');
-    } catch (e) {
-      grid.innerHTML = `<div style="color:#FF8A7A; font-size:12px;">Failed to load swarm agents: ${escapeHtml(e.message)}</div>`;
-    }
   }
 
   // Export functions to window
