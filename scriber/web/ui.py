@@ -2012,6 +2012,23 @@ def get_embedded_html() -> str:
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 12px 32px -8px rgba(0, 0, 0, 0.6);
     transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
   }
+  .about-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(420px circle at var(--mouse-x, -500px) var(--mouse-y, -500px), rgba(255, 94, 0, 0.08), transparent 75%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    z-index: 1;
+  }
+  .about-card:hover::before {
+    opacity: 1;
+  }
+  .about-card > * {
+    position: relative;
+    z-index: 2;
+  }
   .about-card:hover {
     border-color: rgba(255, 94, 0, 0.35);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 16px 40px -8px rgba(255, 94, 0, 0.12);
@@ -2135,8 +2152,28 @@ def get_embedded_html() -> str:
     justify-content: space-between;
     gap: 14px;
     text-decoration: none;
+    position: relative;
+    overflow: hidden;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
     transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .social-node-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(220px circle at var(--mouse-x, -500px) var(--mouse-y, -500px), rgba(255, 168, 38, 0.12), transparent 75%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+    border-radius: 12px;
+  }
+  .social-node-card:hover::before {
+    opacity: 1;
+  }
+  .social-node-card > * {
+    position: relative;
+    z-index: 2;
   }
   .social-node-card:hover {
     transform: translateY(-2px);
@@ -3355,7 +3392,44 @@ def get_embedded_html() -> str:
       setTimeout(drawWave, 50);
     } else if (mode === 'about') {
       updateLiveClock();
+      initBentoSpotlight();
     }
+  }
+
+  /* Dynamic Bento Card Cursor Spotlight Physics */
+  function initBentoSpotlight() {
+    var cards = document.querySelectorAll('.about-card, .social-node-card');
+    cards.forEach(function(card) {
+      if (card.__hasSpotlight) return;
+      card.__hasSpotlight = true;
+      card.addEventListener('mousemove', function(e) {
+        var rect = card.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var y = e.clientY - rect.top;
+        card.style.setProperty('--mouse-x', x + 'px');
+        card.style.setProperty('--mouse-y', y + 'px');
+      });
+      card.addEventListener('mouseleave', function() {
+        card.style.setProperty('--mouse-x', '-500px');
+        card.style.setProperty('--mouse-y', '-500px');
+      });
+    });
+  }
+  function checkUrlMode() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      var mode = params.get('mode') || (window.location.hash ? window.location.hash.replace('#', '') : null);
+      if (mode) switchMode(mode);
+    } catch (e) {}
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      initBentoSpotlight();
+      checkUrlMode();
+    });
+  } else {
+    initBentoSpotlight();
+    checkUrlMode();
   }
 
   /* Reliable, Thread-Safe File Dialog Opening (Guarded against double invocation & COM deadlocks) */

@@ -62,6 +62,10 @@ class TestUIContracts(unittest.TestCase):
         self.assertIn('id="about-view"', self.html)
         self.assertIn('id="btn-mode-about"', self.html)
         self.assertIn("The Anti-Slop Philosophy", self.html)
+        self.assertIn("initBentoSpotlight", self.html)
+        self.assertIn("updateLiveClock", self.html)
+        self.assertIn(".about-bento-grid", self.html)
+        self.assertIn(".social-node-card", self.html)
 
     def test_liquid_morphing_animation(self):
         """Verifies Claude liquid gooey morphing animation filter and DOM nodes."""
