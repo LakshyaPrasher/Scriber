@@ -281,6 +281,13 @@ def build_executable(onefile: bool = False, console: bool = False, clean: bool =
         except Exception as e:
             print(f"[-] Note: Smoke-test skipped ({e})")
 
+        # Clean up temporary build staging folder to prevent accidental clicks on non-bundled intermediate binary
+        try:
+            shutil.rmtree(root_dir / "build", ignore_errors=True)
+            print("[+] Cleaned up temporary build/ staging directory.")
+        except Exception:
+            pass
+
         return 0
     else:
         print(f"[-] Error: Expected executable not found at {dist_exe}", file=sys.stderr)
