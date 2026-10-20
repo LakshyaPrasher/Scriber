@@ -2130,18 +2130,6 @@ def get_embedded_html() -> str:
     color: var(--text-secondary);
     line-height: 1.65;
   }
-  .telemetry-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding-top: 14px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-muted);
-  }
   .social-node-card {
     background: linear-gradient(180deg, rgba(20, 24, 32, 0.7) 0%, rgba(14, 16, 21, 0.8) 100%);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -3185,7 +3173,7 @@ def get_embedded_html() -> str:
                 <div>
                   <div class="status-beacon-pill">
                     <span class="status-diode-pulse"></span>
-                    <span>LIVE // FOUNDING ARCHITECT</span>
+                    <span>FOUNDING ARCHITECT</span>
                   </div>
                   <h2 class="creator-name">Lakshya Prasher</h2>
                   <div class="creator-role">AI Systems Architect & Founder · Speech & Intelligence</div>
@@ -3197,19 +3185,6 @@ def get_embedded_html() -> str:
               Architecting high-frequency deterministic speech intelligence systems, edge neural quantization, and zero-slop human-machine interfaces. Creator of Scriber — engineered for mathematical accuracy, zero phantom speaker segregation, and high-fidelity vocal synthesis without compromise.
             </p>
           </div>
-
-          <div class="telemetry-row">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span style="color:var(--tangerine); font-weight:700;">●</span>
-              <span>28.6139° N, 77.2090° E</span>
-              <span>·</span>
-              <span id="creator-live-clock">UTC+05:30</span>
-            </div>
-            <div style="display:flex; align-items:center; gap:12px;">
-              <span style="color:var(--emerald);">● &lt; 12ms TO EDGE</span>
-              <span style="color:rgba(255,255,255,0.25);">|</span>
-              <span style="color:var(--gold);">99%+ WER ACCURACY</span>
-            </div>
           </div>
         </div>
 
@@ -3349,20 +3324,6 @@ def get_embedded_html() -> str:
       setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 300);
     }, 3000);
   }
-
-  /* Live Clock Updater for Creator Bento Grid */
-  function updateLiveClock() {
-    const el = document.getElementById('creator-live-clock');
-    if (!el) return;
-    try {
-      const now = new Date();
-      el.textContent = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour12: false }) + ' IST';
-    } catch (e) {
-      el.textContent = 'UTC+05:30';
-    }
-  }
-  setInterval(updateLiveClock, 1000);
-
   /* Mode Switching */
   function switchMode(mode) {
     if (mode === 'swarm') mode = 'about';
@@ -3391,7 +3352,6 @@ def get_embedded_html() -> str:
       }
       setTimeout(drawWave, 50);
     } else if (mode === 'about') {
-      updateLiveClock();
       initBentoSpotlight();
     }
   }
