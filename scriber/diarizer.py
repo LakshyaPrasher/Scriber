@@ -60,29 +60,34 @@ class SpeakerMemory:
         pause_sec: float = 0.0,
     ) -> float:
         """Computes continuous probabilistic biometric match score between new audio chunk and this speaker."""
-        # 1. Cosine similarity of 16-d acoustic embedding
-        dot = float(np.dot(vector, self.centroid_vector))
-        cos_sim = max(0.0, min(1.0, dot))
-
-        # 2. Pitch semitone distance
+        # 1. Pitch semitone distance (soft tolerance up to 3.5 semitones for conversational inflection)
         f0_curr = max(60.0, profile.fundamental_frequency_hz)
         f0_base = max(60.0, self.mean_f0)
         f0_delta = abs(f0_curr - f0_base)
         semitone_diff = abs(12.0 * math.log2(f0_curr / f0_base))
 
-        if semitone_diff <= 1.2:
-            pitch_dist = (semitone_diff / 1.2) * 0.25
+        if semitone_diff <= 3.5:
+            pitch_dist = (semitone_diff / 3.5) * 0.35
         else:
-            pitch_dist = 0.25 + ((semitone_diff - 1.2) / 2.0) ** 1.3
+            pitch_dist = 0.35 + ((semitone_diff - 3.5) / 3.0) ** 1.2
 
-        # 3. Spectral centroid relative distance
+        # 2. Spectral centroid relative distance
         sc_curr = max(100.0, profile.spectral_centroid_hz)
         sc_base = max(100.0, self.mean_centroid)
         sc_rel_diff = abs(sc_curr - sc_base) / max(sc_curr, sc_base, 100.0)
-        sc_dist = sc_rel_diff / 0.16
+        sc_dist = sc_rel_diff / 0.14
 
-        # 4. Cosine distance
-        cos_dist = max(0.0, 1.0 - cos_sim) / 0.08
+        # 3. 16-d acoustic embedding vector cosine distance
+        dot = float(np.dot(vector, self.centroid_vector))
+        cos_sim = max(0.0, min(1.0, dot))
+        cos_dist = max(0.0, 1.0 - cos_sim) / 0.10
+
+        # 4. Formant resonant distance (F2 proxy for vocal tract length)
+        f2_curr = profile.formants[1] if (len(profile.formants) > 1 and profile.formants[1] > 0) else 1500.0
+        f2_base_list = [p.formants[1] for p in self.profiles if len(p.formants) > 1 and p.formants[1] > 0]
+        f2_base = float(np.mean(f2_base_list)) if f2_base_list else 1500.0
+        f2_rel = abs(f2_curr - f2_base) / max(f2_curr, f2_base, 500.0)
+        formant_dist = f2_rel / 0.12
 
         # 5. Gender contrast penalty
         gender_penalty = 0.0
@@ -91,14 +96,18 @@ class SpeakerMemory:
             and self.gender != "androgynous"
             and profile.gender_estimate != self.gender
         ):
-            gender_penalty = 0.80
+            gender_penalty = 0.85
 
-        dist = (0.45 * pitch_dist) + (0.35 * sc_dist) + (0.20 * cos_dist) + gender_penalty
+        dist = (0.25 * pitch_dist) + (0.30 * sc_dist) + (0.35 * cos_dist) + (0.10 * formant_dist) + gender_penalty
 
         # 6. Conversational continuity prior for active speaker across brief pauses
-        if is_active_speaker and pause_sec <= 2.0 and gender_penalty == 0.0:
-            if (f0_delta <= 12.0 and sc_rel_diff <= 0.24) or (f0_delta <= 25.0 and sc_rel_diff <= 0.12):
-                dist *= 0.65
+        if is_active_speaker and pause_sec <= 2.5 and gender_penalty == 0.0:
+            if (
+                (f0_delta <= 12.0 and sc_rel_diff <= 0.12)
+                or (f0_delta <= 25.0 and sc_rel_diff <= 0.08)
+                or (cos_sim >= 0.92 and sc_rel_diff <= 0.16)
+            ):
+                dist *= 0.60
 
         # Map distance to similarity score in [0.0, 1.0] (boundary 0.78 -> ~0.486)
         score = math.exp(-0.5 * (dist / 0.65) ** 2)
@@ -217,18 +226,38 @@ class AcousticDiarizer:
                 for b in range(a + 1, len(clusters)):
                     p_a = [extracted_info[idx][1] for idx in clusters[a]]
                     p_b = [extracted_info[idx][1] for idx in clusters[b]]
+                    vecs_a = [extracted_info[idx][2] for idx in clusters[a]]
+                    vecs_b = [extracted_info[idx][2] for idx in clusters[b]]
+                    mean_vec_a = np.mean(vecs_a, axis=0)
+                    mean_vec_b = np.mean(vecs_b, axis=0)
+                    norm_a, norm_b = np.linalg.norm(mean_vec_a), np.linalg.norm(mean_vec_b)
+                    if norm_a > 1e-6 and norm_b > 1e-6:
+                        inter_cos = float(np.dot(mean_vec_a, mean_vec_b) / (norm_a * norm_b))
+                    else:
+                        inter_cos = 0.5
                     avg_f0_a = float(np.mean([p.fundamental_frequency_hz for p in p_a]))
                     avg_f0_b = float(np.mean([p.fundamental_frequency_hz for p in p_b]))
                     avg_sc_a = float(np.mean([p.spectral_centroid_hz for p in p_a]))
                     avg_sc_b = float(np.mean([p.spectral_centroid_hz for p in p_b]))
-                    gender_a = p_a[0].gender_estimate
-                    gender_b = p_b[0].gender_estimate
-                    if gender_a != "androgynous" and gender_b != "androgynous" and gender_a != gender_b:
+
+                    genders_a = [p.gender_estimate for p in p_a if p.gender_estimate != "androgynous"]
+                    genders_b = [p.gender_estimate for p in p_b if p.gender_estimate != "androgynous"]
+                    gen_a = max(set(genders_a), key=genders_a.count) if genders_a else "androgynous"
+                    gen_b = max(set(genders_b), key=genders_b.count) if genders_b else "androgynous"
+                    if gen_a != "androgynous" and gen_b != "androgynous" and gen_a != gen_b:
                         continue
+
                     semitone_diff = abs(12.0 * math.log2(max(60.0, avg_f0_a) / max(60.0, avg_f0_b)))
                     sc_rel = abs(avg_sc_a - avg_sc_b) / max(avg_sc_a, avg_sc_b, 100.0)
-                    if semitone_diff <= 1.0 and sc_rel <= 0.15:
-                        inter_d = (semitone_diff / 1.0) * 0.3 + (sc_rel / 0.15) * 0.3
+
+                    should_merge = False
+                    if inter_cos >= 0.90 and sc_rel <= 0.18 and semitone_diff <= 3.5:
+                        should_merge = True
+                    elif semitone_diff <= 1.5 and sc_rel <= 0.12 and inter_cos >= 0.85:
+                        should_merge = True
+
+                    if should_merge:
+                        inter_d = (1.0 - inter_cos) * 0.4 + (sc_rel / 0.18) * 0.3 + (semitone_diff / 3.5) * 0.3
                         if inter_d < best_inter_d:
                             best_inter_d = inter_d
                             merge_pair = (a, b)
@@ -270,49 +299,60 @@ class AcousticDiarizer:
         pause_sec: float = 1.0,
         is_adjacent: bool = False,
     ) -> float:
-        """Calibrated acoustic distance metric between two voice profiles."""
+        """Calibrated multi-dimensional acoustic distance metric between two voice profiles."""
         f1 = max(60.0, p1.fundamental_frequency_hz)
         f2 = max(60.0, p2.fundamental_frequency_hz)
         f0_delta = abs(f1 - f2)
         semitone_diff = abs(12.0 * math.log2(f1 / f2))
 
-        # 1. Pitch distance: non-linear scaling. Intra-speaker inflection <= 1.2 semitones is low cost.
-        if semitone_diff <= 1.2:
-            pitch_dist = (semitone_diff / 1.2) * 0.25
+        # 1. Pitch distance: tolerant up to 3.5 semitones for natural intra-speaker inflection
+        if semitone_diff <= 3.5:
+            pitch_dist = (semitone_diff / 3.5) * 0.35
         else:
-            pitch_dist = 0.25 + ((semitone_diff - 1.2) / 2.0) ** 1.3
+            pitch_dist = 0.35 + ((semitone_diff - 3.5) / 3.0) ** 1.2
 
         # 2. Spectral centroid relative difference
         sc1 = max(100.0, p1.spectral_centroid_hz)
         sc2 = max(100.0, p2.spectral_centroid_hz)
         sc_rel_diff = abs(sc1 - sc2) / max(sc1, sc2, 100.0)
-        sc_dist = sc_rel_diff / 0.16
+        sc_dist = sc_rel_diff / 0.14
 
-        # 3. Acoustic embedding vector cosine distance
+        # 3. Acoustic embedding vector cosine distance (captures timbre & energy envelope)
         v1 = np.array(p1.voice_vector, dtype=np.float32)
         v2 = np.array(p2.voice_vector, dtype=np.float32)
         norm1, norm2 = np.linalg.norm(v1), np.linalg.norm(v2)
         if norm1 > 1e-6 and norm2 > 1e-6:
             cos_sim = float(np.dot(v1, v2) / (norm1 * norm2))
-            cos_dist = max(0.0, 1.0 - cos_sim) / 0.08
+            cos_dist = max(0.0, 1.0 - cos_sim) / 0.10
         else:
+            cos_sim = 0.5
             cos_dist = 0.5
 
-        # 4. Gender contrast penalty
+        # 4. Formant resonance distance (F2 proxy for vocal tract length)
+        f2_1 = p1.formants[1] if (len(p1.formants) > 1 and p1.formants[1] > 0) else 1500.0
+        f2_2 = p2.formants[1] if (len(p2.formants) > 1 and p2.formants[1] > 0) else 1500.0
+        f2_rel = abs(f2_1 - f2_2) / max(f2_1, f2_2, 500.0)
+        formant_dist = f2_rel / 0.12
+
+        # 5. Gender contrast penalty
         gender_penalty = 0.0
         if (
             p1.gender_estimate != "androgynous"
             and p2.gender_estimate != "androgynous"
             and p1.gender_estimate != p2.gender_estimate
         ):
-            gender_penalty = 0.80
+            gender_penalty = 0.85
 
-        composite = (0.45 * pitch_dist) + (0.35 * sc_dist) + (0.20 * cos_dist) + gender_penalty
+        composite = (0.25 * pitch_dist) + (0.30 * sc_dist) + (0.35 * cos_dist) + (0.10 * formant_dist) + gender_penalty
 
-        # 5. Conversational continuity prior for adjacent turns
-        if is_adjacent and pause_sec <= 2.0 and gender_penalty == 0.0:
-            if (f0_delta <= 12.0 and sc_rel_diff <= 0.24) or (f0_delta <= 25.0 and sc_rel_diff <= 0.12):
-                composite *= 0.65
+        # 6. Conversational continuity prior for adjacent turns
+        if is_adjacent and pause_sec <= 2.5 and gender_penalty == 0.0:
+            if (
+                (f0_delta <= 12.0 and sc_rel_diff <= 0.12)
+                or (f0_delta <= 25.0 and sc_rel_diff <= 0.08)
+                or (cos_sim >= 0.92 and sc_rel_diff <= 0.16)
+            ):
+                composite *= 0.60
 
         return composite
 

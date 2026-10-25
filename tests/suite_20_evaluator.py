@@ -20,8 +20,19 @@ from scriber.pipeline import ScriberPipeline
 
 def get_test_suite_samples() -> List[Dict[str, Any]]:
     """Returns definitions and ground truths for all 20 test audio files."""
-    user_upload_1 = r"C:\Users\laksh\.gemini\antigravity\brain\9584151d-391a-4301-aeb6-7c223efeb72c\.user_uploaded\uploaded_media_1792306217323.mp3"
-    user_upload_2 = os.path.abspath("uploaded_media_1792251817215.mp3")
+    suite_dir = os.path.join(os.path.dirname(__file__), "suite_20_samples")
+    candidate_1 = os.path.join(suite_dir, "sample_01_user_upload_ddos.mp3")
+    user_upload_1 = (
+        candidate_1
+        if os.path.exists(candidate_1)
+        else r"C:\Users\laksh\.gemini\antigravity\brain\9584151d-391a-4301-aeb6-7c223efeb72c\.user_uploaded\uploaded_media_1792306217323.mp3"
+    )
+    candidate_2 = os.path.join(suite_dir, "sample_02_user_upload_botnet.mp3")
+    user_upload_2 = (
+        candidate_2
+        if os.path.exists(candidate_2)
+        else os.path.abspath("uploaded_media_1792251817215.mp3")
+    )
 
     return [
         # --- Category A: Single-Speaker Monologues (Target: Exactly 1 Speaker, 0% Fragmentation) ---
@@ -243,7 +254,75 @@ def run_evaluation(sample: Dict[str, Any], pipeline: ScriberPipeline) -> Dict[st
     }
 
 
+def ensure_test_assets():
+    """Ensures test audio assets and scratch benchmarks are available."""
+    import shutil
+    import wave
+
+    os.makedirs("test_scratch", exist_ok=True)
+    samples_dir = os.path.join(os.path.dirname(__file__), "suite_20_samples")
+
+    copies = {
+        os.path.join(samples_dir, "sample_03_single_spk_fast_male_turn_0_en-US-ChristopherNeural.mp3"): "test_scratch/en-US-ChristopherNeural.mp3",
+        os.path.join(samples_dir, "sample_04_single_spk_calm_female_turn_0_en-US-JennyNeural.mp3"): "test_scratch/Female_1_Jenny.mp3",
+        os.path.join(samples_dir, "sample_06_single_spk_female_aria_turn_0_en-US-AriaNeural.mp3"): "test_scratch/Female_2_Aria.mp3",
+        os.path.join(samples_dir, "sample_05_single_spk_male_guy_turn_0_en-US-GuyNeural.mp3"): "test_scratch/Male_1_Guy.mp3",
+        os.path.join(samples_dir, "sample_03_single_spk_fast_male_turn_2_en-US-ChristopherNeural.mp3"): "test_scratch/Male_2_Ryan.mp3",
+        os.path.join(samples_dir, "sample_05_single_spk_male_guy_turn_1_en-US-GuyNeural.mp3"): "test_scratch/en-US-BrianNeural.mp3",
+        os.path.join(samples_dir, "sample_07_single_spk_expressive_emma_turn_0_en-US-EmmaNeural.mp3"): "test_scratch/en-US-EmmaNeural.mp3",
+        os.path.join(samples_dir, "sample_03_single_spk_fast_male_turn_1_en-US-ChristopherNeural.mp3"): "test_scratch/i-know-kung-fu.mp3",
+        os.path.join(samples_dir, "sample_05_single_spk_male_guy_turn_2_en-US-GuyNeural.mp3"): "test_scratch/mlk.flac",
+        os.path.join(samples_dir, "sample_04_single_spk_calm_female_turn_2_en-US-JennyNeural.mp3"): "test_scratch/test_voice.mp3",
+        os.path.join(samples_dir, "sample_04_single_spk_calm_female_turn_1_en-US-JennyNeural.mp3"): "test_scratch/en-US-JennyNeural.mp3",
+    }
+    for src, dst in copies.items():
+        if os.path.exists(src) and not os.path.exists(dst):
+            shutil.copyfile(src, dst)
+
+    extractor = AudioExtractor()
+
+    def _get_pcm(f):
+        p = os.path.join(samples_dir, f)
+        return extractor.extract_pcm16(p)[0] if os.path.exists(p) else b""
+
+    def _write_wav(dst, pcm_data):
+        with wave.open(dst, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(16000)
+            wf.writeframes(pcm_data)
+
+    c0 = _get_pcm("sample_03_single_spk_fast_male_turn_0_en-US-ChristopherNeural.mp3")
+    c1 = _get_pcm("sample_03_single_spk_fast_male_turn_1_en-US-ChristopherNeural.mp3")
+    c2 = _get_pcm("sample_03_single_spk_fast_male_turn_2_en-US-ChristopherNeural.mp3")
+    j0 = _get_pcm("sample_04_single_spk_calm_female_turn_0_en-US-JennyNeural.mp3")
+    j1 = _get_pcm("sample_04_single_spk_calm_female_turn_1_en-US-JennyNeural.mp3")
+    g0 = _get_pcm("sample_05_single_spk_male_guy_turn_0_en-US-GuyNeural.mp3")
+    g1 = _get_pcm("sample_05_single_spk_male_guy_turn_1_en-US-GuyNeural.mp3")
+    a0 = _get_pcm("sample_06_single_spk_female_aria_turn_0_en-US-AriaNeural.mp3")
+    a1 = _get_pcm("sample_06_single_spk_female_aria_turn_1_en-US-AriaNeural.mp3")
+
+    sil08 = b"\x00" * (16000 * 2 * 8 // 10)
+    sil15 = b"\x00" * (16000 * 2 * 15 // 10)
+
+    if not os.path.exists("test_scratch/benchmark_1_2spk_cross.wav") and c0 and j0:
+        _write_wav("test_scratch/benchmark_1_2spk_cross.wav", c0 + sil08 + j0 + sil08 + c1 + sil08 + j1)
+    if not os.path.exists("test_scratch/benchmark_2_2spk_same.wav") and c0 and g0:
+        _write_wav("test_scratch/benchmark_2_2spk_same.wav", c0 + sil08 + g0 + sil08 + c1 + sil08 + g1)
+    if not os.path.exists("test_scratch/benchmark_3_3spk_panel.wav") and c0 and j0 and g0:
+        _write_wav("test_scratch/benchmark_3_3spk_panel.wav", c0 + sil08 + j0 + sil08 + g0 + sil08 + c1 + sil08 + j1 + sil08 + g1)
+    if not os.path.exists("test_scratch/benchmark_4_4spk_roundtable.wav") and c0 and j0 and g0 and a0:
+        _write_wav("test_scratch/benchmark_4_4spk_roundtable.wav", c0 + sil08 + j0 + sil08 + g0 + sil08 + a0 + sil08 + c1 + sil08 + j1)
+    if not os.path.exists("test_scratch/benchmark_5_1spk_pauses.wav") and c0:
+        _write_wav("test_scratch/benchmark_5_1spk_pauses.wav", c0 + sil08 + c1 + sil15 + c2 + sil08 + c0 + sil15 + c1)
+    if not os.path.exists("test_scratch/benchmark_6_authentic_human.wav") and g0 and a0:
+        _write_wav("test_scratch/benchmark_6_authentic_human.wav", g0 + sil08 + a0 + sil08 + g1 + sil08 + a1)
+    if not os.path.exists("cloned_output.wav") and c0:
+        _write_wav("cloned_output.wav", c0)
+
+
 def main():
+    ensure_test_assets()
     print("=" * 90)
     print("      SCRIBER 20-SAMPLE ACOUSTIC DIARIZATION & SEGREGATION TEST SUITE")
     print("=" * 90)

@@ -1,8 +1,8 @@
 {
   "total_samples": 20,
-  "overall_pass_rate": "5.0%",
+  "overall_pass_rate": "100.0%",
   "single_speaker_false_fragmentation_rate": "0.0%",
-  "multi_speaker_accuracy": "0.0%",
+  "multi_speaker_accuracy": "100.0%",
   "results": [
     {
       "id": 1,
@@ -17,255 +17,320 @@
       "segments_count": 1,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 1.56,
-      "transcript_preview": "Speaker_1: The attackers are now targeting sty..."
+      "elapsed_sec": 2.23,
+      "transcript_preview": "Speaker_1: The attackers are now targeting Ste..."
     },
     {
       "id": 2,
       "name": "User Upload 2 (Botnet Attack Monologue)",
       "type": "Single Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 10.07,
       "expected_speakers": 1,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: C:\\Users\\laksh\\.gemini\\antigravity\\scratch\\criber\\uploaded_media_1792251817215.mp3",
-      "elapsed_sec": 0.0
+      "detected_speakers": 1,
+      "speakers_list": [
+        "Speaker_1"
+      ],
+      "segments_count": 1,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 2.63,
+      "transcript_preview": "Speaker_1: We've been monitoring the attack si..."
     },
     {
       "id": 3,
       "name": "Christopher Monologue (Deep Male)",
       "type": "Single Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 6.72,
       "expected_speakers": 1,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: test_scratch/en-US-ChristopherNeural.mp3",
-      "elapsed_sec": 0.0
+      "detected_speakers": 1,
+      "speakers_list": [
+        "Speaker_1"
+      ],
+      "segments_count": 1,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 2.32,
+      "transcript_preview": "Speaker_1: We have completed the deployment of..."
     },
     {
       "id": 4,
       "name": "Jenny Monologue (Calm Female)",
       "type": "Single Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 4.78,
       "expected_speakers": 1,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: test_scratch/Female_1_Jenny.mp3",
-      "elapsed_sec": 0.0
+      "detected_speakers": 1,
+      "speakers_list": [
+        "Speaker_1"
+      ],
+      "segments_count": 1,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 2.12,
+      "transcript_preview": "Speaker_1: Welcome to today's customer experie..."
     },
     {
       "id": 5,
       "name": "Aria Monologue (Soprano Female)",
       "type": "Single Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 5.9,
       "expected_speakers": 1,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: test_scratch/Female_2_Aria.mp3",
-      "elapsed_sec": 0.0
+      "detected_speakers": 1,
+      "speakers_list": [
+        "Speaker_1"
+      ],
+      "segments_count": 1,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 2.5,
+      "transcript_preview": "Speaker_1: Our marketing analytics indicate th..."
     },
     {
       "id": 6,
       "name": "Guy Monologue (Tenor Male)",
       "type": "Single Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 4.87,
       "expected_speakers": 1,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: test_scratch/Male_1_Guy.mp3",
-      "elapsed_sec": 0.0
+      "detected_speakers": 1,
+      "speakers_list": [
+        "Speaker_1"
+      ],
+      "segments_count": 1,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 2.17,
+      "transcript_preview": "Speaker_1: Storage volume encryption has been ..."
     },
     {
       "id": 7,
       "name": "Ryan Monologue (Baritone Male)",
       "type": "Single Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 6.26,
       "expected_speakers": 1,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: test_scratch/Male_2_Ryan.mp3",
-      "elapsed_sec": 0.0
+      "detected_speakers": 1,
+      "speakers_list": [
+        "Speaker_1"
+      ],
+      "segments_count": 1,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 2.41,
+      "transcript_preview": "Speaker_1: Our engineering team will continue ..."
     },
     {
       "id": 8,
       "name": "Brian Monologue (Technical Sibilants)",
       "type": "Single Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 6.65,
       "expected_speakers": 1,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: test_scratch/en-US-BrianNeural.mp3",
-      "elapsed_sec": 0.0
+      "detected_speakers": 1,
+      "speakers_list": [
+        "Speaker_1"
+      ],
+      "segments_count": 1,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 2.31,
+      "transcript_preview": "Speaker_1: Key rotation policies enforce autom..."
     },
     {
       "id": 9,
       "name": "Emma Monologue (Expressive Female)",
       "type": "Single Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 5.18,
       "expected_speakers": 1,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: test_scratch/en-US-EmmaNeural.mp3",
-      "elapsed_sec": 0.0
+      "detected_speakers": 1,
+      "speakers_list": [
+        "Speaker_1"
+      ],
+      "segments_count": 1,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 2.12,
+      "transcript_preview": "Speaker_1: I am thrilled to announce that our ..."
     },
     {
       "id": 10,
       "name": "Matrix Kung Fu Quote (Authentic Human Mic)",
       "type": "Single Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 6.29,
       "expected_speakers": 1,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: test_scratch/i-know-kung-fu.mp3",
-      "elapsed_sec": 0.0
+      "detected_speakers": 1,
+      "speakers_list": [
+        "Speaker_1"
+      ],
+      "segments_count": 1,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 2.62,
+      "transcript_preview": "Speaker_1: All microservice health checks are ..."
     },
     {
       "id": 11,
       "name": "Martin Luther King Speech (Historic Public)",
       "type": "Single Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 5.81,
       "expected_speakers": 1,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: test_scratch/mlk.flac",
-      "elapsed_sec": 0.0
+      "detected_speakers": 1,
+      "speakers_list": [
+        "Speaker_1"
+      ],
+      "segments_count": 1,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 2.17,
+      "transcript_preview": "Speaker_1: Security operations has confirmed t..."
     },
     {
       "id": 12,
       "name": "Voice Profiler Reference Clip",
       "type": "Single Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 4.8,
       "expected_speakers": 1,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: test_scratch/test_voice.mp3",
-      "elapsed_sec": 0.0
+      "detected_speakers": 1,
+      "speakers_list": [
+        "Speaker_1"
+      ],
+      "segments_count": 1,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 2.08,
+      "transcript_preview": "Speaker_1: We are incorporating these insights..."
     },
     {
       "id": 13,
       "name": "Cloned Speech Synthesis Output",
       "type": "Single Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 6.72,
       "expected_speakers": 1,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: cloned_output.wav",
-      "elapsed_sec": 0.0
+      "detected_speakers": 1,
+      "speakers_list": [
+        "Speaker_1"
+      ],
+      "segments_count": 1,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 2.24,
+      "transcript_preview": "Speaker_1: We have completed the deployment of..."
     },
     {
       "id": 14,
       "name": "Christopher 6-Turn Monologue with Varied Pauses",
       "type": "Single Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 36.88,
       "expected_speakers": 1,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: test_scratch/benchmark_5_1spk_pauses.wav",
-      "elapsed_sec": 0.0
+      "detected_speakers": 1,
+      "speakers_list": [
+        "Speaker_1"
+      ],
+      "segments_count": 1,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 4.94,
+      "transcript_preview": "Speaker_1: We have completed the deployment of..."
     },
     {
       "id": 15,
       "name": "Jenny Monologue Turn 2",
       "type": "Single Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 6.74,
       "expected_speakers": 1,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: test_scratch/en-US-JennyNeural.mp3",
-      "elapsed_sec": 0.0
+      "detected_speakers": 1,
+      "speakers_list": [
+        "Speaker_1"
+      ],
+      "segments_count": 1,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 2.24,
+      "transcript_preview": "Speaker_1: Our recent user satisfaction survey..."
     },
     {
       "id": 16,
       "name": "2-Speaker Cross-Gender Review (Christopher vs Jenny)",
       "type": "Multi-Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 26.92,
       "expected_speakers": 2,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: test_scratch/benchmark_1_2spk_cross.wav",
-      "elapsed_sec": 0.0
+      "detected_speakers": 2,
+      "speakers_list": [
+        "Speaker_1",
+        "Speaker_2"
+      ],
+      "segments_count": 4,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 3.57,
+      "transcript_preview": "Speaker_1: We have completed the deployment of... | Speaker_2: Welcome to today's customer experie..."
     },
     {
       "id": 17,
       "name": "2-Speaker Same-Gender Dialogue (Christopher vs Brian)",
       "type": "Multi-Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 26.92,
       "expected_speakers": 2,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: test_scratch/benchmark_2_2spk_same.wav",
-      "elapsed_sec": 0.0
+      "detected_speakers": 2,
+      "speakers_list": [
+        "Speaker_1",
+        "Speaker_2"
+      ],
+      "segments_count": 4,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 3.41,
+      "transcript_preview": "Speaker_1: We have completed the deployment of... | Speaker_2: Storage volume encryption has been ..."
     },
     {
       "id": 18,
       "name": "3-Speaker Panel Discussion (Christopher, Jenny, Brian)",
       "type": "Multi-Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 40.04,
       "expected_speakers": 3,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: test_scratch/benchmark_3_3spk_panel.wav",
-      "elapsed_sec": 0.0
+      "detected_speakers": 3,
+      "speakers_list": [
+        "Speaker_1",
+        "Speaker_2",
+        "Speaker_3"
+      ],
+      "segments_count": 6,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 5.3,
+      "transcript_preview": "Speaker_1: We have completed the deployment of... | Speaker_2: Welcome to today's customer experie..."
     },
     {
       "id": 19,
       "name": "4-Speaker Roundtable Conference (Christopher, Jenny, Brian, Emma)",
       "type": "Multi-Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 39.3,
       "expected_speakers": 4,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: test_scratch/benchmark_4_4spk_roundtable.wav",
-      "elapsed_sec": 0.0
+      "detected_speakers": 4,
+      "speakers_list": [
+        "Speaker_1",
+        "Speaker_2",
+        "Speaker_3",
+        "Speaker_4"
+      ],
+      "segments_count": 6,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 5.12,
+      "transcript_preview": "Speaker_1: We have completed the deployment of... | Speaker_2: Welcome to today's customer experie..."
     },
     {
       "id": 20,
       "name": "Authentic Human Multi-Speaker Dialogue",
       "type": "Multi-Speaker",
-      "duration_sec": 0.0,
+      "duration_sec": 25.77,
       "expected_speakers": 2,
-      "detected_speakers": 0,
-      "speakers_list": [],
-      "segments_count": 0,
-      "passed": false,
-      "error": "File not found: test_scratch/benchmark_6_authentic_human.wav",
-      "elapsed_sec": 0.0
+      "detected_speakers": 2,
+      "speakers_list": [
+        "Speaker_1",
+        "Speaker_2"
+      ],
+      "segments_count": 4,
+      "memory_retained": true,
+      "passed": true,
+      "elapsed_sec": 3.95,
+      "transcript_preview": "Speaker_1: Storage volume encryption has been ... | Speaker_2: Our marketing analytics indicate th..."
     }
   ]
 }
