@@ -157,6 +157,13 @@ def build_executable(onefile: bool = False, console: bool = False, clean: bool =
 
     icon_ico = ensure_brand_assets(root_dir)
 
+    if sys.platform == "win32":
+        try:
+            subprocess.run(["taskkill", "/F", "/IM", "Scriber.exe", "/T"], capture_output=True, check=False)
+            time.sleep(0.5)
+        except Exception:
+            pass
+
     if clean:
         clean_build_artifacts(root_dir)
 
