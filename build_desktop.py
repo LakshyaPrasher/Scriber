@@ -276,6 +276,12 @@ def build_executable(onefile: bool = False, console: bool = False, clean: bool =
 
         # Note: Smoke-test via subprocess is omitted to prevent triggering Windows Smart App Control
         print("[+] Binary bundle verified ready for deployment.")
+        try:
+            from make_shortcut import create_desktop_shortcut
+            create_desktop_shortcut()
+            print("[+] Automatically refreshed Scriber.lnk shortcut on Desktop.")
+        except Exception as e:
+            print(f"[-] Warning: Failed to refresh Desktop shortcut ({e})")
 
         # Clean up temporary build staging folder to prevent accidental clicks on non-bundled intermediate binary
         try:
