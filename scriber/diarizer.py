@@ -59,57 +59,52 @@ class SpeakerMemory:
         is_active_speaker: bool = False,
         pause_sec: float = 0.0,
     ) -> float:
-        """Computes comprehensive biometric match score between new audio chunk and this speaker."""
+        """Computes continuous probabilistic biometric match score between new audio chunk and this speaker."""
         # 1. Cosine similarity of 16-d acoustic embedding
         dot = float(np.dot(vector, self.centroid_vector))
         cos_sim = max(0.0, min(1.0, dot))
 
-        # 2. Fundamental pitch compatibility
-        # Pitch variation within same speaker across sentences is naturally <= 35 Hz.
-        # When pitch diverges > 35 Hz across speakers, apply progressive acoustic divergence penalty.
-        f0_delta = abs(profile.fundamental_frequency_hz - self.mean_f0)
-        pitch_penalty = 0.0
-        if f0_delta > 35.0:
-            pitch_penalty = min(0.50, ((f0_delta - 35.0) / 70.0) * 0.50)
+        # 2. Pitch semitone distance
+        f0_curr = max(60.0, profile.fundamental_frequency_hz)
+        f0_base = max(60.0, self.mean_f0)
+        f0_delta = abs(f0_curr - f0_base)
+        semitone_diff = abs(12.0 * math.log2(f0_curr / f0_base))
 
-        # 3. Spectral centroid (timbre brightness) compatibility
-        sc_delta = abs(profile.spectral_centroid_hz - self.mean_centroid)
-        max_sc = max(500.0, max(profile.spectral_centroid_hz, self.mean_centroid))
-        sc_ratio = sc_delta / max_sc
-        timbre_penalty = max(0.0, min(0.35, (sc_ratio - 0.25) * 1.5)) if sc_ratio > 0.25 else 0.0
+        if semitone_diff <= 1.2:
+            pitch_dist = (semitone_diff / 1.2) * 0.25
+        else:
+            pitch_dist = 0.25 + ((semitone_diff - 1.2) / 2.0) ** 1.3
 
-        # 4. Gender compatibility penalty (strong contrast penalty when pitch separation > 45Hz occurs)
+        # 3. Spectral centroid relative distance
+        sc_curr = max(100.0, profile.spectral_centroid_hz)
+        sc_base = max(100.0, self.mean_centroid)
+        sc_rel_diff = abs(sc_curr - sc_base) / max(sc_curr, sc_base, 100.0)
+        sc_dist = sc_rel_diff / 0.16
+
+        # 4. Cosine distance
+        cos_dist = max(0.0, 1.0 - cos_sim) / 0.08
+
+        # 5. Gender contrast penalty
         gender_penalty = 0.0
         if (
             profile.gender_estimate != "androgynous"
             and self.gender != "androgynous"
             and profile.gender_estimate != self.gender
-            and f0_delta > 45.0
         ):
-            gender_penalty = 0.35
+            gender_penalty = 0.80
 
-        # 5. Acoustic Proximity Affinity Boost:
-        # When fundamental pitch and spectral centroid match closely, award positive vocal tract affinity
-        proximity_boost = 0.0
-        if f0_delta <= 25.0 and sc_ratio <= 0.15:
-            proximity_boost = 0.08 * (1.0 - (f0_delta / 25.0)) * (1.0 - (sc_ratio / 0.15))
+        dist = (0.45 * pitch_dist) + (0.35 * sc_dist) + (0.20 * cos_dist) + gender_penalty
 
-        # 6. Conversational Continuity Prior (Hysteresis):
-        # Monologues and consecutive sentences from the same speaker naturally continue across pauses (<= 3.5s)
-        continuity_boost = 0.0
+        # 6. Conversational continuity prior for active speaker across brief pauses
+        if is_active_speaker and pause_sec <= 2.0 and gender_penalty == 0.0:
+            if (f0_delta <= 12.0 and sc_rel_diff <= 0.24) or (f0_delta <= 25.0 and sc_rel_diff <= 0.12):
+                dist *= 0.65
+
+        # Map distance to similarity score in [0.0, 1.0] (boundary 0.78 -> ~0.486)
+        score = math.exp(-0.5 * (dist / 0.65) ** 2)
         if is_active_speaker and pause_sec <= 3.5:
-            if f0_delta <= 30.0 and sc_ratio <= 0.22 and gender_penalty == 0.0:
-                continuity_boost = 0.15 * (1.0 - (pause_sec / 3.5) * 0.3)
-
-        composite_score = (
-            cos_sim
-            + proximity_boost
-            + continuity_boost
-            - pitch_penalty
-            - timbre_penalty
-            - gender_penalty
-        )
-        return max(0.0, min(1.0, composite_score))
+            score = min(1.0, score + 0.08)
+        return max(0.0, min(1.0, score))
 
 
 class AcousticDiarizer:
@@ -146,42 +141,15 @@ class AcousticDiarizer:
         bytes_per_sec = sample_rate * 2
         total_pcm_len = len(pcm16_data)
 
-        # Pre-pass: Check for global single-speaker monologue across the audio
-        if len(segments) <= 12 or (segments[-1].end - segments[0].start) <= 60.0:
-            sample_profiles = []
-            for seg in segments:
-                start_byte = max(0, int(seg.start * bytes_per_sec))
-                start_byte -= (start_byte % 2)
-                end_byte = min(total_pcm_len, int(seg.end * bytes_per_sec))
-                end_byte -= (end_byte % 2)
-                p = VoiceProfiler.profile_from_pcm16(pcm16_data[start_byte:end_byte], speaker_id="temp")
-                sample_profiles.append(p)
-
-            f0_vals = [p.fundamental_frequency_hz for p in sample_profiles if p.fundamental_frequency_hz > 65.0]
-            genders = {p.gender_estimate for p in sample_profiles if p.gender_estimate != "androgynous"}
-
-            # If all detected pitch points are tightly grouped within single speaker range (spread <= 35Hz) and same gender
-            if f0_vals and (max(f0_vals) - min(f0_vals)) <= 35.0 and len(genders) <= 1:
-                for s in segments:
-                    s.speaker = "Speaker_1"
-                    s.text = self.polish_english(s.text)
-                return self.group_consecutive_speaker_segments(segments)
-
-        speaker_registry: List[SpeakerMemory] = []
-        last_speaker: Optional[SpeakerMemory] = None
-        last_end_time: float = 0.0
-        bytes_per_sec = sample_rate * 2
-        total_pcm_len = len(pcm16_data)
-
+        # First pass: Extract profiles and normalized acoustic vectors for all segments
+        extracted_info = []
         for seg in segments:
-            # 1. Extract segment PCM slice (guarantee 16-bit 2-byte alignment)
             start_byte = max(0, int(seg.start * bytes_per_sec))
             start_byte -= (start_byte % 2)
             end_byte = min(total_pcm_len, int(seg.end * bytes_per_sec))
             end_byte -= (end_byte % 2)
 
             seg_pcm = pcm16_data[start_byte:end_byte]
-            # If segment is too short (< 0.2s), attempt slight window padding
             if len(seg_pcm) < int(0.2 * bytes_per_sec):
                 pad_start = max(0, int((seg.start - 0.15) * bytes_per_sec))
                 pad_start -= (pad_start % 2)
@@ -189,55 +157,164 @@ class AcousticDiarizer:
                 pad_end -= (pad_end % 2)
                 seg_pcm = pcm16_data[pad_start:pad_end]
 
-            # 2. Extract acoustic biometric profile & voice vector
-            profile = VoiceProfiler.profile_from_pcm16(seg_pcm, speaker_id="temp")
-            vec = np.array(profile.voice_vector, dtype=np.float32)
+            p = VoiceProfiler.profile_from_pcm16(seg_pcm, speaker_id="temp")
+            vec = np.array(p.voice_vector, dtype=np.float32)
             v_norm = np.linalg.norm(vec)
             if v_norm > 1e-6:
                 vec = vec / v_norm
+            extracted_info.append((seg, p, vec))
 
-            # 3. Compare with speaker memory registry
-            pause_sec = max(0.0, seg.start - last_end_time) if last_speaker else 0.0
-            best_speaker: Optional[SpeakerMemory] = None
-            best_score = -1.0
+        # Adaptive Agglomerative Hierarchical Clustering (AHC)
+        n = len(extracted_info)
+        if n <= 1:
+            for s in segments:
+                s.speaker = "Speaker_1"
+                s.text = self.polish_english(s.text)
+            return self.group_consecutive_speaker_segments(segments)
 
-            for spk_mem in speaker_registry:
-                is_active = (last_speaker is not None and spk_mem.speaker_id == last_speaker.speaker_id)
-                score = spk_mem.match_score(
-                    profile,
-                    vec,
-                    is_active_speaker=is_active,
+        # Build pairwise distance matrix across all segments
+        dist_mat = np.zeros((n, n), dtype=np.float32)
+        for i in range(n):
+            for j in range(i + 1, n):
+                is_adj = (j == i + 1)
+                pause_sec = max(0.0, segments[j].start - segments[i].end)
+                d = self.compute_acoustic_distance(
+                    extracted_info[i][1],
+                    extracted_info[j][1],
                     pause_sec=pause_sec,
+                    is_adjacent=is_adj,
                 )
-                if score > best_score:
-                    best_score = score
-                    best_speaker = spk_mem
+                dist_mat[i, j] = d
+                dist_mat[j, i] = d
 
-            # 4. Voice Change Decision Logic
-            # Short segments (< 1.5s) inherit active speaker if similarity is reasonable
-            effective_threshold = self.similarity_threshold - (0.06 if (seg.end - seg.start) < 1.5 else 0.0)
+        # Calibrate distance threshold based on similarity_threshold (default 0.48 maps to 0.78)
+        distance_threshold = 0.78 * (0.48 / max(0.1, self.similarity_threshold))
 
-            if best_speaker is not None and best_score >= effective_threshold:
-                # Same voice recognized -> update speaker memory
-                best_speaker.update(profile, vec)
-                seg.speaker = best_speaker.speaker_id
-                last_speaker = best_speaker
+        clusters = [[i] for i in range(n)]
+        while len(clusters) > 1:
+            min_d = float("inf")
+            best_pair = (-1, -1)
+            for a in range(len(clusters)):
+                for b in range(a + 1, len(clusters)):
+                    d_ab = float(np.mean([dist_mat[i, j] for i in clusters[a] for j in clusters[b]]))
+                    if d_ab < min_d:
+                        min_d = d_ab
+                        best_pair = (a, b)
+            if min_d < distance_threshold:
+                a, b = best_pair
+                clusters[a].extend(clusters[b])
+                clusters.pop(b)
             else:
-                # Real voice change detected or first speaker!
-                new_speaker_id = f"Speaker_{len(speaker_registry) + 1}"
-                new_mem = SpeakerMemory(new_speaker_id, profile, vec)
-                speaker_registry.append(new_mem)
-                seg.speaker = new_speaker_id
-                last_speaker = new_mem
+                break
 
-            last_end_time = seg.end
+        # Inter-cluster centroid consolidation: merge any remaining clusters that share matching vocal biometrics
+        merged = True
+        while merged and len(clusters) > 1:
+            merged = False
+            best_inter_d = float("inf")
+            merge_pair = (-1, -1)
+            for a in range(len(clusters)):
+                for b in range(a + 1, len(clusters)):
+                    p_a = [extracted_info[idx][1] for idx in clusters[a]]
+                    p_b = [extracted_info[idx][1] for idx in clusters[b]]
+                    avg_f0_a = float(np.mean([p.fundamental_frequency_hz for p in p_a]))
+                    avg_f0_b = float(np.mean([p.fundamental_frequency_hz for p in p_b]))
+                    avg_sc_a = float(np.mean([p.spectral_centroid_hz for p in p_a]))
+                    avg_sc_b = float(np.mean([p.spectral_centroid_hz for p in p_b]))
+                    gender_a = p_a[0].gender_estimate
+                    gender_b = p_b[0].gender_estimate
+                    if gender_a != "androgynous" and gender_b != "androgynous" and gender_a != gender_b:
+                        continue
+                    semitone_diff = abs(12.0 * math.log2(max(60.0, avg_f0_a) / max(60.0, avg_f0_b)))
+                    sc_rel = abs(avg_sc_a - avg_sc_b) / max(avg_sc_a, avg_sc_b, 100.0)
+                    if semitone_diff <= 1.0 and sc_rel <= 0.15:
+                        inter_d = (semitone_diff / 1.0) * 0.3 + (sc_rel / 0.15) * 0.3
+                        if inter_d < best_inter_d:
+                            best_inter_d = inter_d
+                            merge_pair = (a, b)
+            if merge_pair[0] != -1:
+                a, b = merge_pair
+                clusters[a].extend(clusters[b])
+                clusters.pop(b)
+                merged = True
 
-            # 5. Polish English text for this segment
+        # Map clusters to chronological speaker IDs (Speaker_1, Speaker_2, ...)
+        clusters.sort(key=lambda c: min(c))
+        cluster_map: Dict[int, str] = {}
+        speaker_registry: List[SpeakerMemory] = []
+
+        for spk_idx, c_members in enumerate(clusters):
+            spk_id = f"Speaker_{spk_idx + 1}"
+            first_idx = min(c_members)
+            first_prof = extracted_info[first_idx][1]
+            first_vec = extracted_info[first_idx][2]
+            spk_mem = SpeakerMemory(spk_id, first_prof, first_vec)
+            for m in sorted(c_members):
+                cluster_map[m] = spk_id
+                if m != first_idx:
+                    spk_mem.update(extracted_info[m][1], extracted_info[m][2])
+            speaker_registry.append(spk_mem)
+
+        for idx, seg in enumerate(segments):
+            seg.speaker = cluster_map.get(idx, "Speaker_1")
             seg.text = self.polish_english(seg.text)
 
-        # 6. Group consecutive turns of the same speaker into cohesive dialogue blocks
         grouped_segments = self.group_consecutive_speaker_segments(segments)
         return grouped_segments
+
+    @classmethod
+    def compute_acoustic_distance(
+        cls,
+        p1: VoiceProfile,
+        p2: VoiceProfile,
+        pause_sec: float = 1.0,
+        is_adjacent: bool = False,
+    ) -> float:
+        """Calibrated acoustic distance metric between two voice profiles."""
+        f1 = max(60.0, p1.fundamental_frequency_hz)
+        f2 = max(60.0, p2.fundamental_frequency_hz)
+        f0_delta = abs(f1 - f2)
+        semitone_diff = abs(12.0 * math.log2(f1 / f2))
+
+        # 1. Pitch distance: non-linear scaling. Intra-speaker inflection <= 1.2 semitones is low cost.
+        if semitone_diff <= 1.2:
+            pitch_dist = (semitone_diff / 1.2) * 0.25
+        else:
+            pitch_dist = 0.25 + ((semitone_diff - 1.2) / 2.0) ** 1.3
+
+        # 2. Spectral centroid relative difference
+        sc1 = max(100.0, p1.spectral_centroid_hz)
+        sc2 = max(100.0, p2.spectral_centroid_hz)
+        sc_rel_diff = abs(sc1 - sc2) / max(sc1, sc2, 100.0)
+        sc_dist = sc_rel_diff / 0.16
+
+        # 3. Acoustic embedding vector cosine distance
+        v1 = np.array(p1.voice_vector, dtype=np.float32)
+        v2 = np.array(p2.voice_vector, dtype=np.float32)
+        norm1, norm2 = np.linalg.norm(v1), np.linalg.norm(v2)
+        if norm1 > 1e-6 and norm2 > 1e-6:
+            cos_sim = float(np.dot(v1, v2) / (norm1 * norm2))
+            cos_dist = max(0.0, 1.0 - cos_sim) / 0.08
+        else:
+            cos_dist = 0.5
+
+        # 4. Gender contrast penalty
+        gender_penalty = 0.0
+        if (
+            p1.gender_estimate != "androgynous"
+            and p2.gender_estimate != "androgynous"
+            and p1.gender_estimate != p2.gender_estimate
+        ):
+            gender_penalty = 0.80
+
+        composite = (0.45 * pitch_dist) + (0.35 * sc_dist) + (0.20 * cos_dist) + gender_penalty
+
+        # 5. Conversational continuity prior for adjacent turns
+        if is_adjacent and pause_sec <= 2.0 and gender_penalty == 0.0:
+            if (f0_delta <= 12.0 and sc_rel_diff <= 0.24) or (f0_delta <= 25.0 and sc_rel_diff <= 0.12):
+                composite *= 0.65
+
+        return composite
 
     def group_consecutive_speaker_segments(
         self,

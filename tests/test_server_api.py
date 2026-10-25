@@ -357,18 +357,19 @@ class TestServerAPI(unittest.TestCase):
         self.assertAlmostEqual(written["duration"], 2.0, delta=0.2)
 
     def test_do_get_models(self):
-        """Verifies GET /api/models returns top 3 models for both transcription and cloning."""
+        """Verifies GET /api/models returns models for both transcription and cloning."""
         self.handler.path = "/api/models"
         self.handler.do_GET()
         self.handler.send_response.assert_called_with(200)
         written = json.loads(self.handler.wfile.getvalue().decode("utf-8"))
         self.assertIn("transcribe_models", written)
         self.assertIn("voice_models", written)
-        self.assertEqual(len(written["transcribe_models"]), 3)
+        self.assertEqual(len(written["transcribe_models"]), 4)
         self.assertEqual(len(written["voice_models"]), 3)
 
         transcribe_ids = [m["id"] for m in written["transcribe_models"]]
         self.assertIn("turbo", transcribe_ids)
+        self.assertIn("distil-large-v3", transcribe_ids)
         self.assertIn("base", transcribe_ids)
         self.assertIn("whisperx", transcribe_ids)
 

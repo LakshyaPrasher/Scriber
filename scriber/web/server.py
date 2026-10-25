@@ -51,7 +51,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._serve_embedded_ui()
         elif path in ("/favicon.ico", "/icon.ico"):
             self._serve_icon()
-        elif path.startswith("/assets/"):
+        elif path.startswith("/assets/") or path.startswith("/api/assets/"):
             asset_filename = os.path.basename(path)
             from scriber.assets import get_asset_path
             asset_file = get_asset_path(asset_filename)
@@ -474,21 +474,8 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             rate_shift = float(req_data.get("rate_shift", 0.0))
             profile_dict = req_data.get("profile")
 
-            if profile_dict:
-                profile = VoiceProfile(
-                    speaker_id=profile_dict.get("speaker_id", "Speaker_1"),
-                    fundamental_frequency_hz=float(profile_dict.get("fundamental_frequency_hz", 140.0)),
-                    pitch_min_hz=float(profile_dict.get("pitch_min_hz", 110.0)),
-                    pitch_max_hz=float(profile_dict.get("pitch_max_hz", 170.0)),
-                    pitch_std_hz=float(profile_dict.get("pitch_std_hz", 12.0)),
-                    spectral_centroid_hz=float(profile_dict.get("spectral_centroid_hz", 1600.0)),
-                    zero_crossing_rate=float(profile_dict.get("zero_crossing_rate", 0.06)),
-                    estimated_wpm=float(profile_dict.get("estimated_wpm", 150.0)),
-                    energy_rms=float(profile_dict.get("energy_rms", 0.1)),
-                    gender_estimate=profile_dict.get("gender_estimate", "masculine"),
-                    sample_duration=float(profile_dict.get("sample_duration", 1.0)),
-                    voice_vector=profile_dict.get("voice_vector", [0.25] * 16),
-                )
+            if profile_dict and isinstance(profile_dict, dict):
+                profile = VoiceProfile.from_dict(profile_dict)
             else:
                 profile = VoiceProfiler._empty_profile("Speaker_1")
 
@@ -501,7 +488,8 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     if "," in ref_b64:
                         ref_b64 = ref_b64.split(",", 1)[1]
                     raw_ref_bytes = base64.b64decode(ref_b64)
-                    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_ref:
+                    suffix = ".wav" if raw_ref_bytes.startswith(b"RIFF") else ".mp3"
+                    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp_ref:
                         tmp_ref.write(raw_ref_bytes)
                         tmp_ref_path = tmp_ref.name
                     try:

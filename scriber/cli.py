@@ -294,6 +294,7 @@ def run_clone_voice(args):
         text_prompt=args.text,
         pitch_shift_hz=args.pitch,
         rate_shift_pct=args.rate,
+        reference_pcm=pcm16_data,
     )
 
     # Save output WAV file

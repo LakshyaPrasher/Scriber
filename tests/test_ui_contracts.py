@@ -49,22 +49,41 @@ class TestUIContracts(unittest.TestCase):
             "Autonomous Council Swarm",
             'id="swarm-view"',
             'id="swarm-agents-grid"',
+            'id="btn-ecosystem-modal"',
+            'id="ecosystem-modal"',
+            "Architectural Ecosystem",
+            "FOUNDING ARCHITECT",
+            "The Anti-Slop Philosophy",
+            "Core Craft & Audio Intelligence",
         ]
         for element in cluttered_elements:
             self.assertNotIn(element, self.html, f"Cluttered element '{element}' must be removed from the UI")
 
     def test_about_creator_portfolio(self):
-        """Verifies presence of aesthetic About Me Bento Grid for Lakshya Prasher."""
+        """Verifies presence of clean, animated, fluid name card for Lakshya Prasher."""
         self.assertIn("Lakshya Prasher", self.html)
         self.assertIn("https://www.instagram.com/laksh._.ya/", self.html)
         self.assertIn("https://www.linkedin.com/in/lakshyaprasher/", self.html)
         self.assertIn("https://github.com/LakshyaPrasher", self.html)
         self.assertIn('id="about-view"', self.html)
         self.assertIn('id="btn-mode-about"', self.html)
-        self.assertIn("The Anti-Slop Philosophy", self.html)
         self.assertIn("initBentoSpotlight", self.html)
         self.assertIn(".about-bento-grid", self.html)
         self.assertIn(".social-node-card", self.html)
+        self.assertIn("/assets/creator_profile.png", self.html)
+        self.assertIn("/assets/avatar.png", self.html)
+        self.assertIn("creator-avatar-img", self.html)
+        self.assertIn("about-name-card", self.html)
+        self.assertNotIn("The Anti-Slop Philosophy", self.html)
+        self.assertNotIn("FOUNDING ARCHITECT", self.html)
+        self.assertNotIn("Core Craft", self.html)
+
+    def test_ecosystem_bar_eliminated(self):
+        """Verifies that the ecosystem bar, button, and modal are completely eliminated."""
+        self.assertNotIn("btn-ecosystem-modal", self.html)
+        self.assertNotIn("ecosystem-modal", self.html)
+        self.assertNotIn("openEcosystemModal", self.html)
+        self.assertNotIn("Architectural Ecosystem", self.html)
 
     def test_liquid_morphing_animation(self):
         """Verifies Claude liquid gooey morphing animation filter and DOM nodes."""
@@ -126,6 +145,7 @@ class TestUIContracts(unittest.TestCase):
         self.assertIn("selectTranscribeModel", self.html)
         self.assertIn("selectVoiceModel", self.html)
         self.assertIn("Whisper Turbo", self.html)
+        self.assertIn("Distil-Whisper Large-v3", self.html)
         self.assertIn("Whisper Base", self.html)
         self.assertIn("WhisperX", self.html)
         self.assertIn("Edge-Neural Studio", self.html)

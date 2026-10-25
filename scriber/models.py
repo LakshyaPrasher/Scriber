@@ -361,9 +361,42 @@ class VoiceProfile:
     gender_estimate: str  # 'masculine', 'feminine', 'androgynous'
     sample_duration: float
     voice_vector: List[float] = field(default_factory=list)
+    f0_median_hz: float = 140.0
+    formants: List[float] = field(default_factory=lambda: [700.0, 1500.0, 2500.0])
+    hnr_db: float = 18.0
+    spectral_tilt: float = -6.0
+    pitch_stability: float = 0.95
+    voice_timbre_label: str = "Warm Resonant"
+    recommended_voice: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         return dataclasses.asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> VoiceProfile:
+        """Constructs a VoiceProfile from a dictionary with robust defaults."""
+        f0 = float(d.get("fundamental_frequency_hz", 140.0))
+        return cls(
+            speaker_id=str(d.get("speaker_id", "Speaker_1")),
+            fundamental_frequency_hz=f0,
+            pitch_min_hz=float(d.get("pitch_min_hz", max(60.0, f0 - 30.0))),
+            pitch_max_hz=float(d.get("pitch_max_hz", f0 + 30.0)),
+            pitch_std_hz=float(d.get("pitch_std_hz", 12.0)),
+            spectral_centroid_hz=float(d.get("spectral_centroid_hz", 1500.0)),
+            zero_crossing_rate=float(d.get("zero_crossing_rate", 0.06)),
+            estimated_wpm=float(d.get("estimated_wpm", 150.0)),
+            energy_rms=float(d.get("energy_rms", 0.10)),
+            gender_estimate=str(d.get("gender_estimate", "masculine")),
+            sample_duration=float(d.get("sample_duration", 1.0)),
+            voice_vector=list(d.get("voice_vector", [0.25] * 16)),
+            f0_median_hz=float(d.get("f0_median_hz", f0)),
+            formants=list(d.get("formants", [600.0, 1600.0, 2600.0])),
+            hnr_db=float(d.get("hnr_db", 18.0)),
+            spectral_tilt=float(d.get("spectral_tilt", -6.0)),
+            pitch_stability=float(d.get("pitch_stability", 0.95)),
+            voice_timbre_label=str(d.get("voice_timbre_label", "Clear Baritone / Low Tenor")),
+            recommended_voice=str(d.get("recommended_voice", "")),
+        )
 
 
 @dataclass

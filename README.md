@@ -183,10 +183,10 @@ python -m scriber.cli serve --port 8080
 
 ## 🧪 Comprehensive Automated Test Suite
 
-Scriber is guarded by **115 automated unit tests** covering speech recognition, agent swarms, PII security, cryptographic validation, and UI contracts:
+Scriber is guarded by **120 automated unit tests** covering speech recognition, agent swarms, PII security, cryptographic validation, and UI contracts:
 
 ```bash
-# Run all 115 automated unit tests
+# Run all 120 automated unit tests
 .venv\Scripts\python.exe -m unittest discover tests
 
 # Run dedicated agent swarm tests

@@ -55,6 +55,33 @@ class TestDiarizerAccuracy(unittest.TestCase):
         speakers = {s.speaker for s in diarized}
         self.assertGreaterEqual(len(speakers), 2, "Expected 2 distinct speakers for separate acoustic pitch profiles")
 
+    def test_alternating_dialogue_reidentification(self):
+        """Verifies multi-turn conversation (A -> B -> A -> B) re-identifies speakers instead of creating new ones."""
+        sr = 16000
+        t_turn = np.linspace(0, 2.0, int(2.0 * sr), endpoint=False)
+        # Speaker A: 125 Hz
+        pcm_a1 = ((0.5 * np.sin(2 * np.pi * 125 * t_turn) + 0.2 * np.sin(2 * np.pi * 250 * t_turn)) * 32767).astype(np.int16).tobytes()
+        # Speaker B: 220 Hz
+        pcm_b1 = ((0.5 * np.sin(2 * np.pi * 220 * t_turn) + 0.2 * np.sin(2 * np.pi * 440 * t_turn)) * 32767).astype(np.int16).tobytes()
+        # Speaker A turn 2: 128 Hz (slight natural variation)
+        pcm_a2 = ((0.5 * np.sin(2 * np.pi * 128 * t_turn) + 0.2 * np.sin(2 * np.pi * 256 * t_turn)) * 32767).astype(np.int16).tobytes()
+        # Speaker B turn 2: 218 Hz
+        pcm_b2 = ((0.5 * np.sin(2 * np.pi * 218 * t_turn) + 0.2 * np.sin(2 * np.pi * 436 * t_turn)) * 32767).astype(np.int16).tobytes()
+
+        full_pcm = pcm_a1 + pcm_b1 + pcm_a2 + pcm_b2
+        segs = [
+            AudioSegment(id=0, seek=0, start=0.0, end=2.0, text="Good morning, let's review the updates."),
+            AudioSegment(id=1, seek=2, start=2.0, end=4.0, text="Yes, all backend metrics look stable."),
+            AudioSegment(id=2, seek=4, start=4.0, end=6.0, text="Excellent, and what about voice cloning?"),
+            AudioSegment(id=3, seek=6, start=6.0, end=8.0, text="Deep analysis is completely integrated."),
+        ]
+        diarizer = AcousticDiarizer(similarity_threshold=0.48)
+        diarized = diarizer.diarize_segments(segs, full_pcm, sample_rate=sr)
+        distinct_speakers = {s.speaker for s in diarized}
+        self.assertEqual(len(distinct_speakers), 2, f"Expected exactly 2 speakers across 4 alternating turns, got {distinct_speakers}")
+        self.assertEqual(diarized[0].speaker, diarized[2].speaker, "Turn 1 and Turn 3 should be recognized as the same speaker (Speaker A)")
+        self.assertEqual(diarized[1].speaker, diarized[3].speaker, "Turn 2 and Turn 4 should be recognized as the same speaker (Speaker B)")
+
     def test_universal_media_ingestion(self):
         """Verifies that AudioExtractor handles multiple media container formats."""
         downloads = os.path.expanduser(r"~\Downloads")

@@ -21,7 +21,7 @@ def get_embedded_html() -> str:
 <meta name="msapplication-TileColor" content="#08090C">
 <meta name="msapplication-TileImage" content="/assets/icon.png">
 <meta name="theme-color" content="#08090C">
-<!-- Google Fonts: Syne, Plus Jakarta Sans & JetBrains Mono (Anti-Slop Editorial Pairing) -->
+<!-- Google Fonts: Syne, Plus Jakarta Sans & JetBrains Mono (Editorial Pairing) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
@@ -108,6 +108,7 @@ def get_embedded_html() -> str:
 
   .app-container {
     max-width: 1140px;
+    width: 100%;
     margin: 0 auto;
     position: relative;
     z-index: 1;
@@ -136,10 +137,16 @@ def get_embedded_html() -> str:
     gap: 16px;
     text-decoration: none;
     cursor: default;
+    min-width: 0;
+    max-width: 100%;
   }
   .brand-svg-mark {
     flex-shrink: 0;
     display: block;
+  }
+  .logo-title {
+    min-width: 0;
+    flex: 1;
   }
   .logo-title h1 {
     font-size: 26px;
@@ -149,6 +156,7 @@ def get_embedded_html() -> str:
     align-items: center;
     gap: 12px;
     margin: 0;
+    flex-wrap: wrap;
   }
   .subtitle {
     font-family: var(--font-body);
@@ -156,6 +164,8 @@ def get_embedded_html() -> str:
     color: var(--text-secondary);
     font-weight: 400;
     margin-top: 2px;
+    white-space: normal;
+    overflow-wrap: break-word;
   }
 
   /* 2-Mode Architectural Segmented Navigation */
@@ -199,7 +209,7 @@ def get_embedded_html() -> str:
   @keyframes fadeInView { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
   /* ========================================================= */
-  /* ASYMMETRIC STUDIO MODEL CONSOLE (ANTI-SLOP ARCHITECTURE)  */
+  /* ASYMMETRIC STUDIO MODEL CONSOLE                            */
   /* ========================================================= */
   .studio-model-console, .model-switcher-card {
     background: #0B0E14;
@@ -453,7 +463,7 @@ def get_embedded_html() -> str:
   }
 
   /* ========================================================= */
-  /* ASYMMETRIC INGESTION BAY (ANTI-SLOP EDITORIAL DROPZONE)    */
+  /* ASYMMETRIC INGESTION BAY (EDITORIAL DROPZONE)             */
   /* ========================================================= */
   .upload-bay-asymmetric, .upload-card {
     background: #0B0E14;
@@ -1988,173 +1998,212 @@ def get_embedded_html() -> str:
     font-weight: 600;
   }
 
-  /* Mode 3: About Creator & Anti-Slop Bento Grid styles */
+  /* Mode 3: About Creator — Clean Animated Fluid Name Card */
   .about-container {
     display: flex;
-    flex-direction: column;
-    gap: 20px;
-    animation: fadeInView 0.28s ease;
+    justify-content: center;
+    align-items: center;
+    min-height: 520px;
+    padding: 24px 16px;
+    animation: fadeInView 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .about-bento-grid {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: 16px;
+    width: 100%;
+    max-width: 710px;
+    display: flex;
+    justify-content: center;
+    perspective: 1000px;
   }
   .about-card {
-    background: linear-gradient(180deg, rgba(20, 23, 30, 0.75) 0%, rgba(14, 16, 21, 0.85) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
-    padding: 24px;
+    background: linear-gradient(145deg, rgba(16, 20, 28, 0.92) 0%, rgba(10, 12, 17, 0.96) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 28px;
     position: relative;
     overflow: hidden;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 12px 32px -8px rgba(0, 0, 0, 0.6);
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    box-shadow: 
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      0 24px 60px -12px rgba(0, 0, 0, 0.75),
+      0 0 45px -10px rgba(255, 94, 0, 0.12);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
   }
   .about-card::before {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: radial-gradient(420px circle at var(--mouse-x, -500px) var(--mouse-y, -500px), rgba(255, 94, 0, 0.08), transparent 75%);
+    background: radial-gradient(420px circle at var(--mouse-x, -500px) var(--mouse-y, -500px), rgba(255, 94, 0, 0.12), transparent 70%);
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.35s ease;
     z-index: 1;
+    border-radius: 28px;
   }
   .about-card:hover::before {
     opacity: 1;
+  }
+  .about-card:hover {
+    border-color: rgba(255, 94, 0, 0.45);
+    box-shadow: 
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      0 28px 70px -10px rgba(255, 94, 0, 0.2),
+      0 0 60px -5px rgba(229, 169, 60, 0.16);
   }
   .about-card > * {
     position: relative;
     z-index: 2;
   }
-  .about-card:hover {
-    border-color: rgba(255, 94, 0, 0.35);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 16px 40px -8px rgba(255, 94, 0, 0.12);
-    transform: translateY(-2px);
-  }
-  .about-hero-card {
-    grid-column: span 8;
+  .about-name-card {
+    width: 100%;
+    padding: 44px 28px 28px 28px;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    gap: 20px;
-    background: linear-gradient(135deg, rgba(26, 30, 40, 0.82) 0%, rgba(14, 16, 21, 0.92) 100%);
-  }
-  .about-social-cluster {
-    grid-column: span 4;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .about-ethos-card {
-    grid-column: span 6;
-  }
-  .about-craft-card {
-    grid-column: span 6;
-  }
-  @media (max-width: 900px) {
-    .about-hero-card, .about-social-cluster, .about-ethos-card, .about-craft-card {
-      grid-column: span 12;
-    }
-  }
-  .creator-header-row {
-    display: flex;
     align-items: center;
-    gap: 18px;
+    text-align: center;
+    transform-style: preserve-3d;
+    will-change: transform;
+    cursor: default;
+  }
+  .card-ambient-glow {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 50% 30%, rgba(255, 94, 0, 0.08) 0%, rgba(229, 169, 60, 0.04) 35%, transparent 65%);
+    pointer-events: none;
+    z-index: 0;
+    animation: ambientFloat 8s ease-in-out infinite alternate;
+  }
+  @keyframes ambientFloat {
+    0% { transform: translateY(0) scale(1); opacity: 0.7; }
+    100% { transform: translateY(-20px) scale(1.05); opacity: 1; }
   }
   .creator-avatar-wrap {
-    width: 64px;
-    height: 64px;
-    border-radius: 14px;
-    background: #0B0E14;
-    border: 1px solid rgba(255, 94, 0, 0.45);
+    width: 124px;
+    height: 124px;
+    border-radius: 50%;
+    padding: 3.5px;
+    background: linear-gradient(135deg, rgba(255, 94, 0, 0.95) 0%, rgba(229, 169, 60, 0.8) 50%, rgba(255, 138, 122, 0.9) 100%);
+    box-shadow: 
+      0 0 35px rgba(255, 94, 0, 0.4),
+      0 12px 28px rgba(0, 0, 0, 0.6);
+    margin-bottom: 22px;
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 20px rgba(255, 94, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    position: relative;
-    flex-shrink: 0;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
   }
-  .creator-avatar-monogram {
-    font-family: var(--font-display);
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--tangerine);
-    letter-spacing: -0.04em;
-    text-shadow: 0 0 12px rgba(255, 94, 0, 0.5);
+  .about-name-card:hover .creator-avatar-wrap {
+    transform: scale(1.04);
+    box-shadow: 
+      0 0 45px rgba(255, 94, 0, 0.55),
+      0 14px 34px rgba(0, 0, 0, 0.65);
   }
-  .status-beacon-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    color: var(--tangerine);
-    background: rgba(255, 94, 0, 0.1);
-    border: 1px solid rgba(255, 94, 0, 0.25);
-    padding: 4px 10px;
-    border-radius: 999px;
-  }
-  .status-diode-pulse {
-    width: 7px;
-    height: 7px;
+  .creator-avatar-img {
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
-    background: var(--tangerine);
-    box-shadow: 0 0 8px var(--tangerine);
-    animation: beaconPulse 2s infinite ease-in-out;
-  }
-  @keyframes beaconPulse {
-    0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 8px var(--tangerine); }
-    50% { transform: scale(1.35); opacity: 0.65; box-shadow: 0 0 16px var(--tangerine); }
+    object-fit: cover;
+    display: block;
+    background: #0B0E14;
   }
   .creator-name {
     font-family: var(--font-display);
-    font-size: 26px;
+    font-size: 32px;
     font-weight: 700;
-    color: var(--text-primary);
-    letter-spacing: -0.03em;
-    margin: 4px 0 2px 0;
+    letter-spacing: -0.02em;
+    color: #FFFFFF;
+    margin: 0 0 28px 0;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.7);
   }
-  .creator-role {
-    font-size: 13.5px;
-    color: var(--gold);
-    font-family: var(--font-mono);
-    letter-spacing: 0.02em;
+  .about-social-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
   }
-  .creator-bio {
-    font-size: 14px;
-    color: var(--text-secondary);
-    line-height: 1.65;
+  @media (max-width: 680px) {
+    body {
+      padding: 16px 16px 48px 16px;
+    }
+    header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 16px;
+    }
+    .logo-block {
+      width: 100%;
+      min-width: 0;
+    }
+    .logo-title {
+      min-width: 0;
+      flex: 1;
+    }
+    .subtitle {
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .nav-pills {
+      width: 100%;
+      display: flex;
+    }
+    .nav-pill {
+      flex: 1;
+      justify-content: center;
+      padding: 8px 8px;
+      font-size: 12px;
+      gap: 6px;
+    }
+    .about-container {
+      padding: 16px 0;
+      width: 100%;
+    }
+    .about-bento-grid {
+      width: 100%;
+      max-width: 100%;
+    }
+    .about-social-row {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .creator-name {
+      font-size: 26px;
+    }
+    .about-name-card {
+      padding: 32px 16px 20px 16px;
+      width: 100%;
+    }
+    .creator-avatar-wrap {
+      width: 104px;
+      height: 104px;
+    }
   }
   .social-node-card {
-    background: linear-gradient(180deg, rgba(20, 24, 32, 0.7) 0%, rgba(14, 16, 21, 0.8) 100%);
+    background: rgba(22, 26, 36, 0.65);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 16px;
+    border-radius: 14px;
+    padding: 11px 12px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 14px;
+    gap: 9px;
     text-decoration: none;
     position: relative;
     overflow: hidden;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.22s ease, background 0.22s ease, box-shadow 0.22s ease;
   }
   .social-node-card::before {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: radial-gradient(220px circle at var(--mouse-x, -500px) var(--mouse-y, -500px), rgba(255, 168, 38, 0.12), transparent 75%);
+    background: radial-gradient(160px circle at var(--mouse-x, -500px) var(--mouse-y, -500px), rgba(255, 168, 38, 0.15), transparent 75%);
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.3s ease;
     z-index: 1;
-    border-radius: 12px;
+    border-radius: 14px;
   }
   .social-node-card:hover::before {
     opacity: 1;
@@ -2164,46 +2213,48 @@ def get_embedded_html() -> str:
     z-index: 2;
   }
   .social-node-card:hover {
-    transform: translateY(-2px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 8px 24px rgba(0, 0, 0, 0.4);
+    transform: translateY(-3px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 10px 24px rgba(0, 0, 0, 0.4);
   }
   .social-node-card.instagram:hover {
-    border-color: rgba(255, 94, 0, 0.45);
-    background: linear-gradient(180deg, rgba(32, 22, 24, 0.8) 0%, rgba(18, 16, 22, 0.9) 100%);
+    border-color: rgba(255, 94, 0, 0.5);
+    background: rgba(35, 24, 28, 0.85);
   }
   .social-node-card.linkedin:hover {
-    border-color: rgba(229, 169, 60, 0.45);
-    background: linear-gradient(180deg, rgba(28, 26, 20, 0.8) 0%, rgba(16, 17, 22, 0.9) 100%);
+    border-color: rgba(229, 169, 60, 0.5);
+    background: rgba(30, 28, 22, 0.85);
   }
   .social-node-card.github:hover {
-    border-color: rgba(255, 255, 255, 0.35);
-    background: linear-gradient(180deg, rgba(24, 28, 38, 0.8) 0%, rgba(14, 16, 22, 0.9) 100%);
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(28, 32, 44, 0.85);
   }
   .social-icon-box {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
   }
-  .social-node-card.instagram .social-icon-box { background: rgba(255, 94, 0, 0.12); color: var(--tangerine); }
-  .social-node-card.linkedin .social-icon-box { background: rgba(229, 169, 60, 0.12); color: var(--gold); }
-  .social-node-card.github .social-icon-box { background: rgba(255, 255, 255, 0.08); color: #F1F5F9; }
+  .social-node-card.instagram .social-icon-box { background: rgba(255, 94, 0, 0.14); color: var(--tangerine); }
+  .social-node-card.linkedin .social-icon-box { background: rgba(229, 169, 60, 0.14); color: var(--gold); }
+  .social-node-card.github .social-icon-box { background: rgba(255, 255, 255, 0.1); color: #F1F5F9; }
   .social-info {
     flex: 1;
     min-width: 0;
+    text-align: left;
   }
   .social-label {
-    font-size: 11px;
+    font-size: 9.5px;
     font-family: var(--font-mono);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--text-muted);
+    margin-bottom: 2px;
   }
   .social-handle {
-    font-size: 14px;
+    font-size: 11.5px;
     font-weight: 600;
     color: var(--text-primary);
     white-space: nowrap;
@@ -2212,114 +2263,13 @@ def get_embedded_html() -> str:
   }
   .social-arrow {
     color: var(--text-muted);
-    font-size: 15px;
+    font-size: 12px;
     transition: transform 0.2s ease, color 0.2s ease;
+    flex-shrink: 0;
   }
   .social-node-card:hover .social-arrow {
     transform: translate(3px, -3px);
     color: var(--text-primary);
-  }
-  .craft-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    margin-top: 14px;
-  }
-  .craft-pill {
-    background: rgba(255, 255, 255, 0.035);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 8px;
-    padding: 10px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .craft-title {
-    font-family: var(--font-mono);
-    font-size: 11.5px;
-    font-weight: 700;
-    color: var(--gold);
-    letter-spacing: 0.02em;
-  }
-  .craft-detail {
-    font-size: 12px;
-    color: var(--text-secondary);
-  }
-
-  /* Ecosystem modal styles */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(8, 9, 12, 0.85);
-    backdrop-filter: blur(14px);
-    z-index: 10000;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-  }
-  .modal-overlay.active {
-    display: flex;
-    animation: fadeInView 0.2s ease;
-  }
-  .ecosystem-card {
-    background: #0E121B;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 12px;
-    max-width: 860px;
-    width: 100%;
-    max-height: 85vh;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-  }
-  .ecosystem-header {
-    padding: 20px 24px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .ecosystem-body {
-    padding: 24px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-  .repo-item-card {
-    background: rgba(18, 22, 32, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 8px;
-    padding: 14px 18px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 16px;
-    transition: all 0.2s;
-  }
-  .repo-item-card.highlight {
-    background: rgba(229, 169, 60, 0.07);
-    border-color: rgba(229, 169, 60, 0.35);
-  }
-  .repo-name-link {
-    font-family: var(--font-mono);
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--gold);
-    text-decoration: none;
-  }
-  .repo-name-link:hover {
-    text-decoration: underline;
-  }
-  .repo-desc {
-    font-size: 12.5px;
-    color: var(--text-secondary);
-    margin: 4px 0;
-  }
-  .repo-contrib {
-    font-size: 12px;
-    color: #94A3B8;
   }
 </style>
 </head>
@@ -2393,10 +2343,6 @@ def get_embedded_html() -> str:
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
         About
       </button>
-      <button class="nav-pill" id="btn-ecosystem-modal" onclick="openEcosystemModal()" title="Architectural Lineage & Repositories">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-        Ecosystem
-      </button>
     </nav>
   </header>
 
@@ -2468,8 +2414,20 @@ def get_embedded_html() -> str:
             <span class="channel-strip-state-pill">ULTRA-FAST</span>
           </div>
 
-          <div class="channel-strip-btn" id="model-opt-base" onclick="selectTranscribeModel('base')">
+          <div class="channel-strip-btn" id="model-opt-distil-large-v3" onclick="selectTranscribeModel('distil-large-v3')">
             <div class="channel-strip-index">02</div>
+            <div class="channel-strip-body">
+              <div class="channel-strip-title-row">
+                <span class="channel-strip-name">Distil-Whisper Large-v3</span>
+                <span class="channel-strip-meta">distil-large-v3 · 756M</span>
+              </div>
+              <p class="channel-strip-desc">Hugging Face distilled Whisper architecture matching Large-v3 benchmark accuracy with 6x real-time speed.</p>
+            </div>
+            <span class="channel-strip-state-pill">6X-SPEED</span>
+          </div>
+
+          <div class="channel-strip-btn" id="model-opt-base" onclick="selectTranscribeModel('base')">
+            <div class="channel-strip-index">03</div>
             <div class="channel-strip-body">
               <div class="channel-strip-title-row">
                 <span class="channel-strip-name">Whisper Base</span>
@@ -2481,7 +2439,7 @@ def get_embedded_html() -> str:
           </div>
 
           <div class="channel-strip-btn" id="model-opt-whisperx" onclick="selectTranscribeModel('whisperx')">
-            <div class="channel-strip-index">03</div>
+            <div class="channel-strip-index">04</div>
             <div class="channel-strip-body">
               <div class="channel-strip-title-row">
                 <span class="channel-strip-name">WhisperX</span>
@@ -3161,136 +3119,67 @@ def get_embedded_html() -> str:
   <section id="about-view" class="view-panel">
     <div class="about-container">
       <div class="about-bento-grid">
-        
-        <!-- Hero Dossier Card (Span 8) -->
-        <div class="about-card about-hero-card">
-          <div>
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:14px; margin-bottom:16px;">
-              <div class="creator-header-row">
-                <div class="creator-avatar-wrap">
-                  <span class="creator-avatar-monogram">LP</span>
-                </div>
-                <div>
-                  <div class="status-beacon-pill">
-                    <span class="status-diode-pulse"></span>
-                    <span>FOUNDING ARCHITECT</span>
-                  </div>
-                  <h2 class="creator-name">Lakshya Prasher</h2>
-                  <div class="creator-role">AI Systems Architect & Founder · Speech & Intelligence</div>
-                </div>
+        <div class="about-card about-name-card" id="about-name-card">
+          <!-- Ambient Fluid Glow Background Layer -->
+          <div class="card-ambient-glow"></div>
+          
+          <!-- Avatar with Specular Aura Ring -->
+          <div class="creator-avatar-wrap">
+            <img src="/assets/avatar.png" alt="Lakshya Prasher" class="creator-avatar-img" onerror="if(!this.dataset.step){this.dataset.step='1';this.src='/assets/creator_profile.png';}else if(this.dataset.step==='1'){this.dataset.step='2';this.src='/api/assets/avatar.png';}else{this.onerror=null;}" />
+          </div>
+
+          <!-- User Name -->
+          <h2 class="creator-name">Lakshya Prasher</h2>
+
+          <!-- Social Links Row -->
+          <div class="about-social-row">
+            <!-- Instagram -->
+            <a href="https://www.instagram.com/laksh._.ya/" target="_blank" rel="noopener noreferrer" class="social-node-card instagram" title="Follow Lakshya on Instagram">
+              <div class="social-icon-box">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                </svg>
               </div>
-            </div>
+              <div class="social-info">
+                <div class="social-label">Instagram</div>
+                <div class="social-handle">@laksh._.ya</div>
+              </div>
+              <span class="social-arrow">↗</span>
+            </a>
 
-            <p class="creator-bio">
-              Architecting high-frequency deterministic speech intelligence systems, edge neural quantization, and zero-slop human-machine interfaces. Creator of Scriber — engineered for mathematical accuracy, zero phantom speaker segregation, and high-fidelity vocal synthesis without compromise.
-            </p>
-          </div>
-          </div>
-        </div>
+            <!-- LinkedIn -->
+            <a href="https://www.linkedin.com/in/lakshyaprasher/" target="_blank" rel="noopener noreferrer" class="social-node-card linkedin" title="Connect on LinkedIn">
+              <div class="social-icon-box">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+                  <rect x="2" y="9" width="4" height="12"></rect>
+                  <circle cx="4" cy="4" r="2"></circle>
+                </svg>
+              </div>
+              <div class="social-info">
+                <div class="social-label">LinkedIn</div>
+                <div class="social-handle">in/lakshyaprasher</div>
+              </div>
+              <span class="social-arrow">↗</span>
+            </a>
 
-        <!-- Social Cluster (Span 4) -->
-        <div class="about-social-cluster">
-          <!-- Instagram Card -->
-          <a href="https://www.instagram.com/laksh._.ya/" target="_blank" rel="noopener noreferrer" class="social-node-card instagram" title="Follow Lakshya on Instagram">
-            <div class="social-icon-box">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-              </svg>
-            </div>
-            <div class="social-info">
-              <div class="social-label">Instagram</div>
-              <div class="social-handle">@laksh._.ya</div>
-            </div>
-            <span class="social-arrow">↗</span>
-          </a>
-
-          <!-- LinkedIn Card -->
-          <a href="https://www.linkedin.com/in/lakshyaprasher/" target="_blank" rel="noopener noreferrer" class="social-node-card linkedin" title="Connect on LinkedIn">
-            <div class="social-icon-box">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
-                <rect x="2" y="9" width="4" height="12"></rect>
-                <circle cx="4" cy="4" r="2"></circle>
-              </svg>
-            </div>
-            <div class="social-info">
-              <div class="social-label">LinkedIn</div>
-              <div class="social-handle">in/lakshyaprasher</div>
-            </div>
-            <span class="social-arrow">↗</span>
-          </a>
-
-          <!-- GitHub Card -->
-          <a href="https://github.com/LakshyaPrasher" target="_blank" rel="noopener noreferrer" class="social-node-card github" title="Explore Repositories on GitHub">
-            <div class="social-icon-box">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
-              </svg>
-            </div>
-            <div class="social-info">
-              <div class="social-label">GitHub</div>
-              <div class="social-handle">@LakshyaPrasher</div>
-            </div>
-            <span class="social-arrow">↗</span>
-          </a>
-        </div>
-
-        <!-- Craft & Systems Card (Span 6) -->
-        <div class="about-card about-craft-card">
-          <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
-            <h3 style="font-family:var(--font-display); font-size:17px; color:var(--text-primary); margin:0;">Core Craft & Audio Intelligence</h3>
-          </div>
-          <p style="font-size:13px; color:var(--text-secondary); line-height:1.55; margin:0;">
-            Specialized engineering capabilities engineered into the Scriber multimedia processing engine:
-          </p>
-          <div class="craft-grid">
-            <div class="craft-pill">
-              <span class="craft-title">CTranslate2 INT8</span>
-              <span class="craft-detail">Quantized transformer inference with 4.2x real-time speed</span>
-            </div>
-            <div class="craft-pill">
-              <span class="craft-title">Acoustic Diarization</span>
-              <span class="craft-detail">F0 pitch &amp; spectral centroids with zero phantom splits</span>
-            </div>
-            <div class="craft-pill">
-              <span class="craft-title">Silero VAD 16kHz</span>
-              <span class="craft-detail">Millisecond speech endpointing &amp; hallucination suppression</span>
-            </div>
-            <div class="craft-pill">
-              <span class="craft-title">Harmonic Voice Cloning</span>
-              <span class="craft-detail">Biometric voice profiling &amp; zero-shot audio synthesis</span>
-            </div>
+            <!-- GitHub -->
+            <a href="https://github.com/LakshyaPrasher" target="_blank" rel="noopener noreferrer" class="social-node-card github" title="Explore Repositories on GitHub">
+              <div class="social-icon-box">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+                </svg>
+              </div>
+              <div class="social-info">
+                <div class="social-label">GitHub</div>
+                <div class="social-handle">@LakshyaPrasher</div>
+              </div>
+              <span class="social-arrow">↗</span>
+            </a>
           </div>
         </div>
-
-        <!-- Anti-Slop Manifesto Card (Span 6) -->
-        <div class="about-card about-ethos-card">
-          <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--tangerine)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-            <h3 style="font-family:var(--font-display); font-size:17px; color:var(--text-primary); margin:0;">The Anti-Slop Philosophy</h3>
-          </div>
-          <p style="font-size:13px; color:var(--text-secondary); line-height:1.6; margin:0 0 12px 0;">
-            We reject the modern homogeny of generic templates, blurry drop shadows, and purple-indigo radial blobs. Every pixel is purposeful:
-          </p>
-          <div style="display:flex; flex-direction:column; gap:8px;">
-            <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
-              <span style="color:var(--tangerine); font-weight:700;">01 //</span>
-              <span>Obsidian Carbon `#08090C` with specular sub-pixel hairline relief</span>
-            </div>
-            <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
-              <span style="color:var(--gold); font-weight:700;">02 //</span>
-              <span>Vibrant Tangerine &amp; Antique Gold tactile avionics instrumentation</span>
-            </div>
-            <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
-              <span style="color:var(--emerald); font-weight:700;">03 //</span>
-              <span>Deterministic local execution — zero bloated runtime dependencies</span>
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
   </section>
@@ -3330,7 +3219,7 @@ def get_embedded_html() -> str:
     document.querySelectorAll('.nav-pill').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
 
-    const btn = document.getElementById('btn-mode-' + mode) || document.getElementById('btn-mode-about');
+    const btn = document.getElementById('btn-mode-' + mode);
     if (btn) btn.classList.add('active');
 
     let viewId = 'transcribe-view';
@@ -3356,22 +3245,70 @@ def get_embedded_html() -> str:
     }
   }
 
-  /* Dynamic Bento Card Cursor Spotlight Physics */
+  /* Dynamic Name Card Cursor Spotlight & Butter-Smooth 3D Tilt Physics */
   function initBentoSpotlight() {
     var cards = document.querySelectorAll('.about-card, .social-node-card');
     cards.forEach(function(card) {
       if (card.__hasSpotlight) return;
       card.__hasSpotlight = true;
+
+      var cachedRect = null;
+      var rafId = null;
+
+      function updateRect() {
+        cachedRect = card.getBoundingClientRect();
+      }
+
+      card.addEventListener('mouseenter', function() {
+        if (card.__resetTimer) {
+          clearTimeout(card.__resetTimer);
+          card.__resetTimer = null;
+        }
+        updateRect();
+        if (card.classList.contains('about-name-card')) {
+          card.style.transition = 'transform 0.12s cubic-bezier(0.2, 0.8, 0.2, 1)';
+        }
+      });
+
       card.addEventListener('mousemove', function(e) {
-        var rect = card.getBoundingClientRect();
-        var x = e.clientX - rect.left;
-        var y = e.clientY - rect.top;
+        if (!cachedRect) updateRect();
+        var x = e.clientX - cachedRect.left;
+        var y = e.clientY - cachedRect.top;
+
         card.style.setProperty('--mouse-x', x + 'px');
         card.style.setProperty('--mouse-y', y + 'px');
+
+        if (card.classList.contains('about-name-card')) {
+          if (rafId) cancelAnimationFrame(rafId);
+          rafId = requestAnimationFrame(function() {
+            var halfW = (cachedRect ? cachedRect.width : card.offsetWidth) / 2;
+            var halfH = (cachedRect ? cachedRect.height : card.offsetHeight) / 2;
+            var rotY = ((x - halfW) / halfW) * 7;
+            var rotX = -((y - halfH) / halfH) * 7;
+            rotY = Math.max(-7, Math.min(7, rotY));
+            rotX = Math.max(-7, Math.min(7, rotX));
+            card.style.transition = '';
+            card.style.transform = 'perspective(900px) rotateX(' + rotX.toFixed(2) + 'deg) rotateY(' + rotY.toFixed(2) + 'deg) translateY(-2px)';
+          });
+        }
       });
+
       card.addEventListener('mouseleave', function() {
         card.style.setProperty('--mouse-x', '-500px');
         card.style.setProperty('--mouse-y', '-500px');
+        cachedRect = null;
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        if (card.classList.contains('about-name-card')) {
+          card.style.transition = 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)';
+          card.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg) translateY(0)';
+          card.__resetTimer = setTimeout(function() {
+            card.style.transition = '';
+            card.__resetTimer = null;
+          }, 450);
+        }
       });
     });
   }
@@ -4202,8 +4139,17 @@ def get_embedded_html() -> str:
       mem: 'Dynamic On-Demand Stream',
       guard: 'SOTA Large-v3 Parity'
     },
+    'distil-large-v3': {
+      id: '02_DISTIL',
+      name: 'Distil-Whisper Large-v3',
+      arch: 'Distilled Transformer INT8',
+      params: '756M Parameters',
+      rtf: '~0.06x Real-Time Factor',
+      mem: 'Fast 6x Real-Time Engine',
+      guard: 'SOTA Large-v3 Parity (50% Dec)'
+    },
     'base': {
-      id: '02_BASE',
+      id: '03_BASE',
       name: 'Whisper Base',
       arch: 'Standard Transformer INT8',
       params: '74M Parameters',
@@ -4212,7 +4158,7 @@ def get_embedded_html() -> str:
       guard: 'Standard Acoustic VAD'
     },
     'whisperx': {
-      id: '03_WHISPERX',
+      id: '04_WHISPERX',
       name: 'WhisperX',
       arch: 'Silero VAD + Wav2Vec2 Phoneme',
       params: 'Acoustic Alignment Pipeline',
@@ -4257,6 +4203,7 @@ def get_embedded_html() -> str:
     window.selectedTranscribeModel = modelId;
     const names = {
       'turbo': 'Whisper Turbo',
+      'distil-large-v3': 'Distil-Whisper Large-v3',
       'base': 'Whisper Base',
       'whisperx': 'WhisperX'
     };
@@ -4281,7 +4228,7 @@ def get_embedded_html() -> str:
       if (elGuard) elGuard.innerText = spec.guard;
     }
 
-    ['turbo', 'base', 'whisperx'].forEach(m => {
+    ['turbo', 'distil-large-v3', 'base', 'whisperx'].forEach(m => {
       const el = document.getElementById('model-opt-' + m);
       if (el) el.classList.toggle('active', m === modelId);
     });
@@ -4799,6 +4746,7 @@ def get_embedded_html() -> str:
   function clearVoiceRef() {
     selectedVoiceProfile = null;
     window.selectedVoiceProfile = null;
+    audioEditorState.m2.originalVoiceRefBase64 = null;
     audioEditorState.m2.referenceAudioBase64 = null;
     audioEditorState.m2.customFileName = null;
     const refBadge = document.getElementById('voice-ref-badge');
@@ -4852,6 +4800,7 @@ def get_embedded_html() -> str:
         }
 
         const dur = data.duration || 10;
+        audioEditorState.m2.originalVoiceRefBase64 = data.audio_base64;
         audioEditorState.m2.referenceAudioBase64 = data.audio_base64;
         audioEditorState.m2.customFileName = file.name;
         initModeAudioEditor('m2', dur, file.name);
@@ -4921,7 +4870,7 @@ def get_embedded_html() -> str:
           rate_shift: rateShift,
           profile: selectedVoiceProfile,
           output_format: 'mp3',
-          reference_audio: (audioEditorState.m2 && audioEditorState.m2.referenceAudioBase64) || null,
+          reference_audio: (audioEditorState.m2 && audioEditorState.m2.originalVoiceRefBase64) || (audioEditorState.m2 && audioEditorState.m2.referenceAudioBase64) || null,
           backend: selectedVoiceModel || 'edge-neural',
         }),
       });
@@ -5802,57 +5751,6 @@ def get_embedded_html() -> str:
     }
   }
 
-  /* Ecosystem Modal Controls */
-  function openEcosystemModal() {
-    const modal = document.getElementById('ecosystem-modal');
-    if (!modal) return;
-    modal.classList.add('active');
-    loadEcosystemRepos();
-  }
-
-  function closeEcosystemModal() {
-    const modal = document.getElementById('ecosystem-modal');
-    if (modal) modal.classList.remove('active');
-  }
-
-  async function loadEcosystemRepos() {
-    const container = document.getElementById('ecosystem-repos-list');
-    if (!container) return;
-    container.innerHTML = '<div style="color:var(--text-muted); font-size:13px; text-align:center; padding:20px;">Loading architectural ecosystem...</div>';
-
-    try {
-      const res = await fetch('/api/info');
-      const data = await res.json();
-      const repos = data.leveraged_ecosystem || [];
-      if (repos.length === 0) {
-        container.innerHTML = '<div style="color:var(--text-muted);">No repository information found.</div>';
-        return;
-      }
-
-      container.innerHTML = repos.map(r => {
-        const isSwarm = r.name.includes('wshobson/agents');
-        const highlightClass = isSwarm ? 'highlight' : '';
-        return `
-          <div class="repo-item-card ${highlightClass}">
-            <div style="flex:1;">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <a href="${r.url}" target="_blank" rel="noopener" class="repo-name-link">${escapeHtml(r.name)}</a>
-                ${isSwarm ? '<span class="channel-strip-state-pill" style="font-size:9px; background:rgba(229,169,60,0.2); color:var(--gold); border:1px solid rgba(229,169,60,0.4);">AGENT SWARM</span>' : ''}
-              </div>
-              <p class="repo-desc">${escapeHtml(r.role)}</p>
-              <div class="repo-contrib">${escapeHtml(r.contribution)}</div>
-            </div>
-            <a href="${r.url}" target="_blank" rel="noopener" class="action-seek-btn" style="text-decoration:none; padding:6px 10px;">
-              View Repo ↗
-            </a>
-          </div>
-        `;
-      }).join('');
-    } catch (e) {
-      container.innerHTML = `<div style="color:#FF8A7A; font-size:12px;">Failed to load ecosystem: ${escapeHtml(e.message)}</div>`;
-    }
-  }
-
   /* Antigravity Plugin Installation */
   async function installAntigravityPlugin() {
     const btn = document.getElementById('btn-install-plugin');
@@ -5905,27 +5803,9 @@ def get_embedded_html() -> str:
   window.renderSupremeCouncil = renderSupremeCouncil;
   window.togglePIIShield = togglePIIShield;
   window.copyAuditReceipt = copyAuditReceipt;
-  window.openEcosystemModal = openEcosystemModal;
-  window.closeEcosystemModal = closeEcosystemModal;
   window.installAntigravityPlugin = installAntigravityPlugin;
   window.loadSwarmAgents = loadSwarmAgents;
 </script>
-
-<!-- Ecosystem Modal: 11 Repositories Featuring wshobson/agents -->
-<div class="modal-overlay" id="ecosystem-modal" onclick="if(event.target === this) closeEcosystemModal();">
-  <div class="ecosystem-card">
-    <div class="ecosystem-header">
-      <div style="display:flex; align-items:center; gap:10px;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-        <h3 style="font-family:var(--font-display); font-size:18px; color:var(--text-primary); margin:0;">Architectural Ecosystem & Repositories</h3>
-      </div>
-      <button type="button" class="btn-clear-ref" onclick="closeEcosystemModal()" style="font-size:16px;">✕</button>
-    </div>
-    <div class="ecosystem-body" id="ecosystem-repos-list">
-      <!-- Populated via /api/info -->
-    </div>
-  </div>
-</div>
 </body>
 </html>
 '''
