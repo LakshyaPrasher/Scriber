@@ -19,6 +19,9 @@ import multiprocessing
 import os
 import sys
 
+# Prevent Windows Smart App Control blocks
+os.environ["AIOHTTP_NO_EXTENSIONS"] = "1"
+
 # Call freeze_support() at the very top of the script for frozen Windows executables
 multiprocessing.freeze_support()
 
