@@ -64,6 +64,51 @@ class TestTranscriptionEngine(unittest.TestCase):
         self.assertEqual(result.task, "translate")
         self.assertIn("hello world", result.text.lower())
 
+    def test_model_evaluation_matrix(self):
+        """Verifies architectural and empirical evaluation comparing Whisper Base, WhisperX, Distil-Whisper, and Turbo."""
+        from scriber.transcription_engine import get_model_evaluation_matrix, MODEL_EVALUATION_MATRIX
+        matrix = get_model_evaluation_matrix()
+        self.assertIn("turbo", matrix)
+        self.assertIn("distil-large-v3", matrix)
+        self.assertIn("base", matrix)
+        self.assertIn("whisperx", matrix)
+
+        # Distil-Whisper comparison properties (competitor to Turbo)
+        distil = matrix["distil-large-v3"]
+        self.assertEqual(distil["decoder_layers"], 2, "Distil-Whisper has 2 decoder layers vs 4 for Turbo")
+        self.assertIn("speedup_cpu", distil)
+        self.assertLessEqual(distil["wer_librispeech"], 8.0, "Distil-Whisper achieves competitive WER")
+        self.assertIn("evaluation_verdict", distil)
+
+        # Base model properties (lightweight CPU fallback)
+        base = matrix["base"]
+        self.assertLessEqual(base["ram_mb"], 250, "Base model has minimal RAM footprint")
+        self.assertEqual(base["params"], "74M INT8")
+
+        # WhisperX model properties (millisecond word alignment & VAD silence immunity)
+        wx = matrix["whisperx"]
+        self.assertIn("<10ms", wx["timestamp_accuracy"])
+        self.assertIn("Silero VAD", wx["silence_robustness"])
+
+    def test_model_selection_and_fallback(self):
+        """Verifies model selection for base, whisperx, turbo, and distil-large-v3 with transparent fallback."""
+        pcm_data = b"\x00" * (16000 * 2 * 2)
+
+        # Test Base model selection
+        res_base = self.engine.transcribe(pcm_data, duration=2.0, model="base")
+        self.assertIsNotNone(res_base)
+        self.assertIn("base", res_base.model_name.lower())
+
+        # Test WhisperX selection
+        res_wx = self.engine.transcribe(pcm_data, duration=2.0, model="whisperx")
+        self.assertIsNotNone(res_wx)
+        self.assertEqual(res_wx.model_name, "whisperx")
+
+        # Test Distil-Whisper selection (cleanly resolves offline without unhandled error)
+        res_distil = self.engine.transcribe(pcm_data, duration=2.0, model="distil-large-v3")
+        self.assertIsNotNone(res_distil)
+        self.assertTrue("distil" in res_distil.backend_used.lower() or "fallback" in res_distil.backend_used.lower() or "base" in res_distil.backend_used.lower())
+
 
 if __name__ == "__main__":
     unittest.main()

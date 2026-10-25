@@ -76,11 +76,12 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             results = ResultValidator.run_benchmark_suite()
             self._send_json_response(200, results)
         elif path == "/api/models":
-            from scriber.transcription_engine import TOP_TRANSCRIBE_MODELS
+            from scriber.transcription_engine import TOP_TRANSCRIBE_MODELS, get_model_evaluation_matrix
             from scriber.voice_clone import TOP_VOICE_MODELS
             self._send_json_response(200, {
                 "transcribe_models": TOP_TRANSCRIBE_MODELS,
                 "voice_models": TOP_VOICE_MODELS,
+                "evaluation_matrix": get_model_evaluation_matrix(),
             })
         elif path == "/api/agents":
             from scriber.agent_swarm import CouncilAgentSwarm

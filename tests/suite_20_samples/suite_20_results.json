@@ -17,7 +17,7 @@
       "segments_count": 1,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 2.23,
+      "elapsed_sec": 2.36,
       "transcript_preview": "Speaker_1: The attackers are now targeting Ste..."
     },
     {
@@ -33,7 +33,7 @@
       "segments_count": 1,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 2.63,
+      "elapsed_sec": 2.1,
       "transcript_preview": "Speaker_1: We've been monitoring the attack si..."
     },
     {
@@ -49,7 +49,7 @@
       "segments_count": 1,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 2.32,
+      "elapsed_sec": 1.92,
       "transcript_preview": "Speaker_1: We have completed the deployment of..."
     },
     {
@@ -65,7 +65,7 @@
       "segments_count": 1,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 2.12,
+      "elapsed_sec": 2.24,
       "transcript_preview": "Speaker_1: Welcome to today's customer experie..."
     },
     {
@@ -81,7 +81,7 @@
       "segments_count": 1,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 2.5,
+      "elapsed_sec": 2.45,
       "transcript_preview": "Speaker_1: Our marketing analytics indicate th..."
     },
     {
@@ -97,7 +97,7 @@
       "segments_count": 1,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 2.17,
+      "elapsed_sec": 1.98,
       "transcript_preview": "Speaker_1: Storage volume encryption has been ..."
     },
     {
@@ -113,7 +113,7 @@
       "segments_count": 1,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 2.41,
+      "elapsed_sec": 1.71,
       "transcript_preview": "Speaker_1: Our engineering team will continue ..."
     },
     {
@@ -129,7 +129,7 @@
       "segments_count": 1,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 2.31,
+      "elapsed_sec": 1.71,
       "transcript_preview": "Speaker_1: Key rotation policies enforce autom..."
     },
     {
@@ -145,7 +145,7 @@
       "segments_count": 1,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 2.12,
+      "elapsed_sec": 1.68,
       "transcript_preview": "Speaker_1: I am thrilled to announce that our ..."
     },
     {
@@ -161,7 +161,7 @@
       "segments_count": 1,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 2.62,
+      "elapsed_sec": 1.73,
       "transcript_preview": "Speaker_1: All microservice health checks are ..."
     },
     {
@@ -177,7 +177,7 @@
       "segments_count": 1,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 2.17,
+      "elapsed_sec": 1.88,
       "transcript_preview": "Speaker_1: Security operations has confirmed t..."
     },
     {
@@ -193,7 +193,7 @@
       "segments_count": 1,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 2.08,
+      "elapsed_sec": 1.65,
       "transcript_preview": "Speaker_1: We are incorporating these insights..."
     },
     {
@@ -209,7 +209,7 @@
       "segments_count": 1,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 2.24,
+      "elapsed_sec": 1.76,
       "transcript_preview": "Speaker_1: We have completed the deployment of..."
     },
     {
@@ -225,7 +225,7 @@
       "segments_count": 1,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 4.94,
+      "elapsed_sec": 3.92,
       "transcript_preview": "Speaker_1: We have completed the deployment of..."
     },
     {
@@ -241,7 +241,7 @@
       "segments_count": 1,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 2.24,
+      "elapsed_sec": 1.71,
       "transcript_preview": "Speaker_1: Our recent user satisfaction survey..."
     },
     {
@@ -258,7 +258,7 @@
       "segments_count": 4,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 3.57,
+      "elapsed_sec": 2.75,
       "transcript_preview": "Speaker_1: We have completed the deployment of... | Speaker_2: Welcome to today's customer experie..."
     },
     {
@@ -275,7 +275,7 @@
       "segments_count": 4,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 3.41,
+      "elapsed_sec": 2.81,
       "transcript_preview": "Speaker_1: We have completed the deployment of... | Speaker_2: Storage volume encryption has been ..."
     },
     {
@@ -293,7 +293,7 @@
       "segments_count": 6,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 5.3,
+      "elapsed_sec": 3.98,
       "transcript_preview": "Speaker_1: We have completed the deployment of... | Speaker_2: Welcome to today's customer experie..."
     },
     {
@@ -312,7 +312,7 @@
       "segments_count": 6,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 5.12,
+      "elapsed_sec": 3.98,
       "transcript_preview": "Speaker_1: We have completed the deployment of... | Speaker_2: Welcome to today's customer experie..."
     },
     {
@@ -329,7 +329,7 @@
       "segments_count": 4,
       "memory_retained": true,
       "passed": true,
-      "elapsed_sec": 3.95,
+      "elapsed_sec": 2.57,
       "transcript_preview": "Speaker_1: Storage volume encryption has been ... | Speaker_2: Our marketing analytics indicate th..."
     }
   ]

@@ -115,7 +115,7 @@ def get_embedded_html() -> str:
   }
 
   /* Display & Section Typography */
-  h1, h2, h3, .manifest-engine-title, .console-title, .upload-headline {
+  h1, h2, h3, .model-selector-title, .upload-headline {
     font-family: var(--font-display);
     letter-spacing: -0.025em;
   }
@@ -209,71 +209,282 @@ def get_embedded_html() -> str:
   @keyframes fadeInView { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
   /* ========================================================= */
-  /* ASYMMETRIC STUDIO MODEL CONSOLE                            */
+  /* AESTHETIC ANIMATED MODEL SELECTOR DROPDOWNS               */
   /* ========================================================= */
   .studio-model-console, .model-switcher-card {
     background: #0B0E14;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    padding: 22px 24px;
-    margin: 0 0 28px 0;
+    border-radius: 10px;
+    padding: 16px 22px;
+    margin: 0 0 24px 0;
     width: 100%;
     box-sizing: border-box;
     position: relative;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
   }
-  .console-meta-bar, .model-switcher-header {
+  .model-selector-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    padding-bottom: 14px;
-    margin-bottom: 18px;
+    gap: 16px;
     flex-wrap: wrap;
-    gap: 12px;
   }
-  .console-label-group, .switcher-title {
+  .model-selector-meta {
     display: flex;
     align-items: center;
     gap: 12px;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-primary);
   }
-  .console-sys-tag {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 600;
+  .model-selector-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(255, 94, 0, 0.10);
+    border: 1px solid rgba(255, 94, 0, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--tangerine);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    flex-shrink: 0;
   }
-  .console-title {
+  .model-selector-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .model-selector-title {
+    font-family: var(--font-display);
     font-size: 15px;
     font-weight: 700;
     color: var(--text-primary);
+    letter-spacing: -0.01em;
   }
-  .active-model-tag {
-    background: rgba(255, 94, 0, 0.12);
-    color: #FFA826;
-    border: 1px solid rgba(255, 94, 0, 0.3);
-    padding: 3px 10px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 600;
-    font-family: var(--font-mono);
+  .model-selector-sub {
+    font-size: 12px;
+    color: var(--text-muted);
   }
-  .console-status-badge, .no-download-badge {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: #10B981;
-    background: rgba(16, 185, 129, 0.08);
-    border: 1px solid rgba(16, 185, 129, 0.25);
-    padding: 4px 10px;
-    border-radius: 4px;
+
+  /* Custom Dropdown Trigger & Floating Menu */
+  .custom-model-dropdown {
+    position: relative;
+    width: 340px;
+    max-width: 100%;
+  }
+  @media (max-width: 768px) {
+    .custom-model-dropdown {
+      width: 100%;
+      max-width: 100%;
+    }
+    .model-selector-bar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+    .model-dropdown-menu {
+      width: 100% !important;
+      max-width: 100% !important;
+      left: 0 !important;
+      right: 0 !important;
+      box-sizing: border-box;
+    }
+  }
+  .model-dropdown-trigger {
+    width: 100%;
+    box-sizing: border-box;
+    background: #11141D;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    color: var(--text-primary);
+  }
+  .model-dropdown-trigger:hover {
+    background: #161A26;
+    border-color: rgba(255, 94, 0, 0.45);
+    box-shadow: 0 0 16px rgba(255, 94, 0, 0.15);
+  }
+  .model-dropdown-trigger:focus-visible {
+    outline: 2px solid var(--tangerine);
+    outline-offset: 2px;
+  }
+  .model-dropdown-trigger.active {
+    border-color: var(--tangerine);
+    background: #171B28;
+    box-shadow: 0 0 20px rgba(255, 94, 0, 0.25);
+  }
+  .dropdown-trigger-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .dropdown-selected-name {
+    font-family: var(--font-display);
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #FFFFFF;
+  }
+  .dropdown-chevron {
+    color: var(--text-muted);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0;
+  }
+  .model-dropdown-trigger.active .dropdown-chevron {
+    transform: rotate(180deg);
+    color: var(--tangerine);
+  }
+
+  /* Floating Menu */
+  .model-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 420px;
+    max-width: 92vw;
+    background: rgba(13, 16, 23, 0.98);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.65), 0 0 30px rgba(255, 94, 0, 0.12);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px) scale(0.98);
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+    pointer-events: none;
+  }
+  .model-dropdown-menu.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+
+  /* Dropdown Item */
+  .dropdown-item {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .dropdown-item:hover {
+    background: rgba(255, 94, 0, 0.06);
+    border-color: rgba(255, 94, 0, 0.25);
+  }
+  .dropdown-item:focus-visible {
+    outline: 2px solid var(--tangerine);
+    outline-offset: 1px;
+    background: rgba(255, 94, 0, 0.08);
+  }
+  .dropdown-item.active {
+    background: rgba(255, 94, 0, 0.10);
+    border-color: rgba(255, 94, 0, 0.45);
+  }
+  .dropdown-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .dropdown-item-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dropdown-item-radio {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--text-muted);
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    font-weight: 500;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+  }
+  .dropdown-item.active .dropdown-item-radio {
+    border-color: var(--tangerine);
+    background: var(--tangerine);
+    box-shadow: 0 0 8px rgba(255, 94, 0, 0.5);
+  }
+  .dropdown-item.active .dropdown-item-radio::after {
+    content: '';
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #FFFFFF;
+  }
+  .dropdown-item-title {
+    font-family: var(--font-display);
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #FFFFFF;
+  }
+  .dropdown-item-desc {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    padding-left: 22px;
+  }
+
+  /* Model Tier Badges */
+  .model-tier-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.03em;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  .tier-recommended {
+    background: rgba(255, 94, 0, 0.14);
+    color: #FF7A1A;
+    border: 1px solid rgba(255, 94, 0, 0.35);
+  }
+  .tier-speed {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10B981;
+    border: 1px solid rgba(16, 185, 129, 0.30);
+  }
+  .tier-lightweight {
+    background: rgba(148, 163, 184, 0.12);
+    color: #94A3B8;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+  }
+  .tier-aligned {
+    background: rgba(229, 169, 60, 0.12);
+    color: #E5A93C;
+    border: 1px solid rgba(229, 169, 60, 0.30);
+  }
+  .tier-inversion {
+    background: rgba(139, 92, 246, 0.14);
+    color: #A78BFA;
+    border: 1px solid rgba(139, 92, 246, 0.32);
+  }
+  .tier-formant {
+    background: rgba(244, 63, 94, 0.14);
+    color: #FB7185;
+    border: 1px solid rgba(244, 63, 94, 0.32);
   }
   .status-dot-pulse {
     width: 6px;
@@ -283,187 +494,8 @@ def get_embedded_html() -> str:
     display: inline-block;
   }
 
-  /* 12-Column Asymmetric Grid Split: 5fr (Engine Manifest) : 7fr (Staggered Channels) */
-  .asymmetric-engine-grid {
-    display: grid;
-    grid-template-columns: 5fr 7fr;
-    gap: 20px;
-    align-items: stretch;
-  }
-  @media (max-width: 860px) {
-    .asymmetric-engine-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  /* Left Panel: Architectural Technical Manifest Readout */
-  .engine-manifest-panel {
-    background: #07090D;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 6px;
-    padding: 18px 20px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-  }
-  .manifest-header {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    padding-bottom: 12px;
-    margin-bottom: 14px;
-  }
-  .manifest-kicker {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--gold);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-    display: block;
-  }
-  .manifest-engine-title {
-    font-size: 20px;
-    font-weight: 800;
-    color: #FFFFFF;
-    margin: 0;
-  }
-  .manifest-specs-table {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 14px;
-  }
-  .manifest-spec-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    font-size: 11px;
-    border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
-    padding-bottom: 5px;
-    gap: 12px;
-  }
-  .manifest-spec-key {
-    font-family: var(--font-mono);
-    color: var(--text-muted);
-    letter-spacing: 0.04em;
-    font-size: 10px;
-    flex-shrink: 0;
-  }
-  .manifest-spec-val {
-    font-family: var(--font-mono);
-    color: #E2E8F0;
-    font-weight: 500;
-    text-align: right;
-  }
-  .manifest-footer-note {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text-muted);
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    padding: 8px 10px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  /* Right Panel: Staggered Channel Selector Strips (Not 3 equal cards) */
-  .engine-channels-stack, .model-options-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .channel-strip-btn, .model-option-card {
-    background: #0E1118;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 6px;
-    padding: 14px 18px;
-    cursor: pointer;
-    text-align: left;
-    transition: background 0.15s ease, border-color 0.15s ease;
-    display: grid;
-    grid-template-columns: 32px 1fr auto;
-    align-items: center;
-    gap: 16px;
-    user-select: none;
-    position: relative;
-  }
-  .channel-strip-btn:hover, .model-option-card:hover {
-    background: #131722;
-    border-color: rgba(255, 255, 255, 0.15);
-  }
-  .channel-strip-btn.active, .model-option-card.active {
-    background: #141824;
-    border-color: var(--tangerine);
-  }
-  .channel-strip-btn.active::before, .model-option-card.active::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: var(--tangerine);
-    border-top-left-radius: 6px;
-    border-bottom-left-radius: 6px;
-  }
-  .channel-strip-index {
-    font-family: var(--font-mono);
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-muted);
-  }
-  .channel-strip-btn.active .channel-strip-index, .model-option-card.active .channel-strip-index {
-    color: var(--tangerine);
-  }
-  .channel-strip-body {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .channel-strip-title-row, .model-opt-top {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .channel-strip-name, .model-name {
-    font-family: var(--font-display);
-    font-size: 14px;
-    font-weight: 700;
-    color: #FFFFFF;
-  }
-  .channel-strip-meta, .model-badge {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--gold);
-    background: rgba(229, 169, 60, 0.10);
-    padding: 2px 6px;
-    border-radius: 3px;
-  }
-  .channel-strip-desc, .model-desc {
-    font-size: 11.5px;
-    color: var(--text-secondary);
-    line-height: 1.4;
-    margin-top: 2px;
-  }
-  .channel-strip-state-pill {
-    font-family: var(--font-mono);
-    font-size: 9.5px;
-    padding: 3px 8px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    color: var(--text-muted);
-    background: rgba(255, 255, 255, 0.02);
-  }
-  .channel-strip-btn.active .channel-strip-state-pill, .model-option-card.active .channel-strip-state-pill {
-    border-color: rgba(255, 94, 0, 0.35);
-    background: rgba(255, 94, 0, 0.1);
-    color: #FFA826;
-    font-weight: 600;
-  }
-
   /* ========================================================= */
-  /* ASYMMETRIC INGESTION BAY (EDITORIAL DROPZONE)             */
+  /* ASYMMETRIC MEDIA UPLOAD DROPZONE                          */
   /* ========================================================= */
   .upload-bay-asymmetric, .upload-card {
     background: #0B0E14;
@@ -2323,7 +2355,6 @@ def get_embedded_html() -> str:
       <div class="logo-title">
         <div style="display:flex; align-items:center; gap:8px;">
           <h1>Scriber</h1>
-          <span id="desktop-badge" style="display:none; font-family:var(--font-mono); font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; padding:3px 8px; border-radius:4px; background:rgba(255,94,0,0.12); color:#FFA826; border:1px solid rgba(255,168,38,0.25);">Desktop Native</span>
         </div>
         <p class="subtitle">Autonomous Speech Intelligence & Voice Synthesis Studio</p>
       </div>
@@ -2351,114 +2382,88 @@ def get_embedded_html() -> str:
   <!-- ========================================================= -->
   <main id="transcribe-view" class="view-panel active">
     
-    <!-- Model Switcher: Top 3 Open-Source ASR Models (Asymmetric Studio Channel Strip) -->
+    <!-- Model Switcher: Custom Dropdown Menu for Transcription Engine -->
     <div class="studio-model-console" id="transcribe-model-switcher">
-      <div class="console-meta-bar">
-        <div class="console-label-group">
-          <span class="console-sys-tag">[SYS // ASR ENGINE CONSOLE]</span>
-          <span class="console-title">Transcription Model Switcher</span>
-          <span class="active-model-tag" id="active-transcribe-tag">Whisper Turbo</span>
-        </div>
-        <div class="console-status-badge">
-          <span class="status-dot-pulse"></span>
-          <span>Zero Bulk Download · On-Demand Streaming</span>
-        </div>
-      </div>
-
-      <div class="asymmetric-engine-grid">
-        <!-- 5fr Left Column: Architectural Engine Manifest Readout -->
-        <div class="engine-manifest-panel">
-          <div class="manifest-header">
-            <span class="manifest-kicker">ACTIVE ENGINE SPEC // <span id="transcribe-spec-id">01_TURBO</span></span>
-            <h3 id="transcribe-spec-name" class="manifest-engine-title">Whisper Turbo</h3>
+      <div class="model-selector-bar">
+        <div class="model-selector-meta">
+          <div class="model-selector-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v20M17 5v14M22 9v6M7 5v14M2 9v6"/>
+            </svg>
           </div>
-          <div class="manifest-specs-table">
-            <div class="manifest-spec-row">
-              <span class="manifest-spec-key">ARCHITECTURE</span>
-              <span class="manifest-spec-val" id="transcribe-spec-arch">CTranslate2 INT8 Quantized</span>
-            </div>
-            <div class="manifest-spec-row">
-              <span class="manifest-spec-key">PARAMETER COUNT</span>
-              <span class="manifest-spec-val" id="transcribe-spec-params">809M Parameters</span>
-            </div>
-            <div class="manifest-spec-row">
-              <span class="manifest-spec-key">LATENCY / RTF</span>
-              <span class="manifest-spec-val" id="transcribe-spec-rtf">~0.08x Real-Time Factor</span>
-            </div>
-            <div class="manifest-spec-row">
-              <span class="manifest-spec-key">LOCAL FOOTPRINT</span>
-              <span class="manifest-spec-val" id="transcribe-spec-mem">Dynamic On-Demand Stream</span>
-            </div>
-            <div class="manifest-spec-row">
-              <span class="manifest-spec-key">ACCURACY TIER</span>
-              <span class="manifest-spec-val" id="transcribe-spec-guard">SOTA Large-v3 Parity</span>
-            </div>
-          </div>
-          <div class="manifest-footer-note">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            <span>Production Stability Verified · Zero Bulk Download</span>
+          <div class="model-selector-text">
+            <span class="model-selector-title">Transcription Model</span>
+            <span class="model-selector-sub">Select speech recognition architecture</span>
           </div>
         </div>
 
-        <!-- 7fr Right Column: Staggered Channel Selector Strips -->
-        <div class="engine-channels-stack">
-          <div class="channel-strip-btn active" id="model-opt-turbo" onclick="selectTranscribeModel('turbo')">
-            <div class="channel-strip-index">01</div>
-            <div class="channel-strip-body">
-              <div class="channel-strip-title-row">
-                <span class="channel-strip-name">Whisper Turbo</span>
-                <span class="channel-strip-meta">large-v3-turbo · 809M</span>
-              </div>
-              <p class="channel-strip-desc">State-of-the-art accuracy with 8x accelerated CTranslate2 INT8 execution. Confirmed production stability.</p>
+        <div class="custom-model-dropdown">
+          <button type="button" class="model-dropdown-trigger" id="transcribe-dropdown-trigger" onclick="toggleModelDropdown('transcribe-dropdown-menu', event)" aria-haspopup="true" aria-expanded="false" aria-controls="transcribe-dropdown-menu">
+            <div class="dropdown-trigger-main">
+              <span class="status-dot-pulse"></span>
+              <span class="dropdown-selected-name" id="active-transcribe-tag">Whisper Turbo</span>
+              <span class="model-tier-badge tier-recommended" id="active-transcribe-badge">Best Accuracy · Recommended</span>
             </div>
-            <span class="channel-strip-state-pill">ULTRA-FAST</span>
-          </div>
+            <svg class="dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
 
-          <div class="channel-strip-btn" id="model-opt-distil-large-v3" onclick="selectTranscribeModel('distil-large-v3')">
-            <div class="channel-strip-index">02</div>
-            <div class="channel-strip-body">
-              <div class="channel-strip-title-row">
-                <span class="channel-strip-name">Distil-Whisper Large-v3</span>
-                <span class="channel-strip-meta">distil-large-v3 · 756M</span>
+          <div class="model-dropdown-menu" id="transcribe-dropdown-menu" role="listbox" aria-label="Transcription Models">
+            <div class="dropdown-item active" id="model-opt-turbo" role="option" aria-selected="true" tabindex="0" onclick="selectTranscribeModel('turbo')" onkeydown="if(event.key==='Enter'||event.key===' '){selectTranscribeModel('turbo');event.preventDefault();}">
+              <div class="dropdown-item-header">
+                <div class="dropdown-item-title-wrap">
+                  <span class="dropdown-item-radio" aria-hidden="true"></span>
+                  <span class="dropdown-item-title">Whisper Turbo</span>
+                </div>
+                <span class="model-tier-badge tier-recommended">Best Accuracy · Recommended</span>
               </div>
-              <p class="channel-strip-desc">Hugging Face distilled Whisper architecture matching Large-v3 benchmark accuracy with 6x real-time speed.</p>
+              <p class="dropdown-item-desc">OpenAI large-v3-turbo architecture with 8x accelerated INT8 execution. SOTA benchmark accuracy.</p>
             </div>
-            <span class="channel-strip-state-pill">6X-SPEED</span>
-          </div>
 
-          <div class="channel-strip-btn" id="model-opt-base" onclick="selectTranscribeModel('base')">
-            <div class="channel-strip-index">03</div>
-            <div class="channel-strip-body">
-              <div class="channel-strip-title-row">
-                <span class="channel-strip-name">Whisper Base</span>
-                <span class="channel-strip-meta">Low-RAM CPU · 74M</span>
+            <div class="dropdown-item" id="model-opt-distil-large-v3" role="option" aria-selected="false" tabindex="0" onclick="selectTranscribeModel('distil-large-v3')" onkeydown="if(event.key==='Enter'||event.key===' '){selectTranscribeModel('distil-large-v3');event.preventDefault();}">
+              <div class="dropdown-item-header">
+                <div class="dropdown-item-title-wrap">
+                  <span class="dropdown-item-radio" aria-hidden="true"></span>
+                  <span class="dropdown-item-title">Distil-Whisper Large-v3</span>
+                </div>
+                <span class="model-tier-badge tier-speed">High Speed</span>
               </div>
-              <p class="channel-strip-desc">Ultra-lightweight architecture with zero lag and minimal memory consumption on any standard CPU.</p>
+              <p class="dropdown-item-desc">Distilled Whisper architecture matching Large-v3 accuracy with 50% fewer parameters and 6x real-time speed.</p>
             </div>
-            <span class="channel-strip-state-pill">LOW-RAM</span>
-          </div>
 
-          <div class="channel-strip-btn" id="model-opt-whisperx" onclick="selectTranscribeModel('whisperx')">
-            <div class="channel-strip-index">04</div>
-            <div class="channel-strip-body">
-              <div class="channel-strip-title-row">
-                <span class="channel-strip-name">WhisperX</span>
-                <span class="channel-strip-meta">Silero VAD · Phoneme Sync</span>
+            <div class="dropdown-item" id="model-opt-base" role="option" aria-selected="false" tabindex="0" onclick="selectTranscribeModel('base')" onkeydown="if(event.key==='Enter'||event.key===' '){selectTranscribeModel('base');event.preventDefault();}">
+              <div class="dropdown-item-header">
+                <div class="dropdown-item-title-wrap">
+                  <span class="dropdown-item-radio" aria-hidden="true"></span>
+                  <span class="dropdown-item-title">Whisper Base</span>
+                </div>
+                <span class="model-tier-badge tier-lightweight">Lightweight / Low-RAM</span>
               </div>
-              <p class="channel-strip-desc">Phoneme alignment with Silero VAD acoustic pre-filtering to eliminate hallucinations and word drift.</p>
+              <p class="dropdown-item-desc">Ultra-lightweight engine with instant startup and minimal memory footprint on standard CPUs.</p>
             </div>
-            <span class="channel-strip-state-pill">ALIGNED</span>
+
+            <div class="dropdown-item" id="model-opt-whisperx" role="option" aria-selected="false" tabindex="0" onclick="selectTranscribeModel('whisperx')" onkeydown="if(event.key==='Enter'||event.key===' '){selectTranscribeModel('whisperx');event.preventDefault();}">
+              <div class="dropdown-item-header">
+                <div class="dropdown-item-title-wrap">
+                  <span class="dropdown-item-radio" aria-hidden="true"></span>
+                  <span class="dropdown-item-title">WhisperX</span>
+                </div>
+                <span class="model-tier-badge tier-aligned">Phoneme Aligned</span>
+              </div>
+              <p class="dropdown-item-desc">Silero VAD voice activity gating with sub-10ms forced phoneme alignment to eliminate word drift.</p>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- State 1: Dropzone / Select Media File (Asymmetric Ingestion Bay) -->
+    <!-- State 1: Dropzone / Select Media File -->
     <div class="upload-bay-asymmetric" id="dropzone" onclick="openFileDialog(event)">
       <div class="upload-editorial-copy">
-        <span class="upload-kicker">[INGESTION BAY // MULTI-FORMAT AUDIO &amp; VIDEO]</span>
-        <h2 class="upload-headline">Drop audio or video here</h2>
-        <p class="upload-editorial-desc">Click anywhere to browse or drag and drop your media file. Scriber extracts 16kHz speech streams with zero loss and executes acoustic diarization.</p>
+        <span class="upload-kicker">Universal Media Upload</span>
+        <h2 class="upload-headline">Upload Audio or Video</h2>
+        <p class="upload-editorial-desc">Drag and drop your media file here, or click to browse. Scriber extracts pristine 16kHz speech streams with acoustic diarization and instant transcription.</p>
         
         <div class="upload-btn-wrap" style="justify-content: flex-start; margin: 0;">
           <button type="button" class="btn-primary" id="select-media-btn" onclick="openFileDialog(event)">
@@ -2488,7 +2493,7 @@ def get_embedded_html() -> str:
           <span class="format-mono-tag">AVI</span>
         </div>
         <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted); margin-top:4px;">
-          UNIVERSAL INGESTION · ZERO CODEC CONVERSION REQUIRED
+          ALL MAJOR FORMATS SUPPORTED · ZERO CONVERSION REQUIRED
         </div>
       </div>
     </div>
@@ -2813,91 +2818,69 @@ def get_embedded_html() -> str:
         <p class="subtitle">Synthesize speech in the authentic voice of transcribed speakers with zero-shot acoustic timbre matching.</p>
       </div>
 
-      <!-- Model Switcher: Top 3 Open-Source Voice Cloning Models (Asymmetric Studio Channel Strip) -->
+      <!-- Model Switcher: Custom Dropdown Menu for Voice Cloning Engine -->
       <div class="studio-model-console" id="voice-model-switcher" style="margin: 0 0 24px 0; max-width: 100%;">
-        <div class="console-meta-bar">
-          <div class="console-label-group">
-            <span class="console-sys-tag">[SYS // VOICE SYNTHESIS CONSOLE]</span>
-            <span class="console-title">Voice Cloning Model Switcher</span>
-            <span class="active-model-tag" id="active-voice-tag">Edge-Neural Studio</span>
-          </div>
-          <div class="console-status-badge">
-            <span class="status-dot-pulse"></span>
-            <span>Zero Bulk Download · Realtime Synthesis</span>
-          </div>
-        </div>
-
-        <div class="asymmetric-engine-grid">
-          <!-- 5fr Left Column: Architectural Voice Engine Manifest Readout -->
-          <div class="engine-manifest-panel">
-            <div class="manifest-header">
-              <span class="manifest-kicker">ACTIVE VOICE ENGINE // <span id="voice-spec-id">01_EDGE</span></span>
-              <h3 id="voice-spec-name" class="manifest-engine-title">Edge-Neural Studio</h3>
+        <div class="model-selector-bar">
+          <div class="model-selector-meta">
+            <div class="model-selector-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
             </div>
-            <div class="manifest-specs-table">
-              <div class="manifest-spec-row">
-                <span class="manifest-spec-key">SYNTHESIS ENGINE</span>
-                <span class="manifest-spec-val" id="voice-spec-method">Zero-Shot Neural Timbre</span>
-              </div>
-              <div class="manifest-spec-row">
-                <span class="manifest-spec-key">LOCAL DOWNLOAD</span>
-                <span class="manifest-spec-val" id="voice-spec-download">0 MB Local Weights</span>
-              </div>
-              <div class="manifest-spec-row">
-                <span class="manifest-spec-key">TIMBRE FIDELITY</span>
-                <span class="manifest-spec-val" id="voice-spec-accuracy">Biometric Pitch & Timbre Lock</span>
-              </div>
-              <div class="manifest-spec-row">
-                <span class="manifest-spec-key">SAMPLING RATE</span>
-                <span class="manifest-spec-val" id="voice-spec-rate">24kHz / 48kHz HD Broadcast</span>
-              </div>
-              <div class="manifest-spec-row">
-                <span class="manifest-spec-key">LATENCY TIER</span>
-                <span class="manifest-spec-val" id="voice-spec-latency">&lt; 150ms Instant Synthesis</span>
-              </div>
-            </div>
-            <div class="manifest-footer-note">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              <span>Authentic Speaker Biometrics · Zero Bulk Download</span>
+            <div class="model-selector-text">
+              <span class="model-selector-title">Voice Synthesis Engine</span>
+              <span class="model-selector-sub">Select neural architecture for voice cloning</span>
             </div>
           </div>
 
-          <!-- 7fr Right Column: Staggered Channel Selector Strips -->
-          <div class="engine-channels-stack">
-            <div class="channel-strip-btn active" id="voice-opt-edge-neural" onclick="selectVoiceModel('edge-neural')">
-              <div class="channel-strip-index">01</div>
-              <div class="channel-strip-body">
-                <div class="channel-strip-title-row">
-                  <span class="channel-strip-name">Edge-Neural Studio</span>
-                  <span class="channel-strip-meta">Zero-Shot · Neural</span>
-                </div>
-                <p class="channel-strip-desc">High-fidelity multi-speaker biometric voice cloning with acoustic timbre matching and 0MB local download.</p>
+          <div class="custom-model-dropdown">
+            <button type="button" class="model-dropdown-trigger" id="voice-dropdown-trigger" onclick="toggleModelDropdown('voice-dropdown-menu', event)" aria-haspopup="true" aria-expanded="false" aria-controls="voice-dropdown-menu">
+              <div class="dropdown-trigger-main">
+                <span class="status-dot-pulse"></span>
+                <span class="dropdown-selected-name" id="active-voice-tag">Edge-Neural Studio</span>
+                <span class="model-tier-badge tier-recommended" id="active-voice-badge">Studio Quality · Recommended</span>
               </div>
-              <span class="channel-strip-state-pill">ZERO-SHOT</span>
-            </div>
+              <svg class="dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
 
-            <div class="channel-strip-btn" id="voice-opt-whisperspeech" onclick="selectVoiceModel('whisperspeech')">
-              <div class="channel-strip-index">02</div>
-              <div class="channel-strip-body">
-                <div class="channel-strip-title-row">
-                  <span class="channel-strip-name">WhisperSpeech</span>
-                  <span class="channel-strip-meta">Acoustic Inversion</span>
+            <div class="model-dropdown-menu" id="voice-dropdown-menu" role="listbox" aria-label="Voice Synthesis Models">
+              <div class="dropdown-item active" id="voice-opt-edge-neural" role="option" aria-selected="true" tabindex="0" onclick="selectVoiceModel('edge-neural')" onkeydown="if(event.key==='Enter'||event.key===' '){selectVoiceModel('edge-neural');event.preventDefault();}">
+                <div class="dropdown-item-header">
+                  <div class="dropdown-item-title-wrap">
+                    <span class="dropdown-item-radio" aria-hidden="true"></span>
+                    <span class="dropdown-item-title">Edge-Neural Studio</span>
+                  </div>
+                  <span class="model-tier-badge tier-recommended">Studio Quality · Recommended</span>
                 </div>
-                <p class="channel-strip-desc">Inverts Whisper transformer acoustic token representations to mirror reference speaker vocal resonance.</p>
+                <p class="dropdown-item-desc">High-fidelity multi-speaker biometric voice cloning with instantaneous neural synthesis.</p>
               </div>
-              <span class="channel-strip-state-pill">INVERSION</span>
-            </div>
 
-            <div class="channel-strip-btn" id="voice-opt-gpt-sovits" onclick="selectVoiceModel('gpt-sovits')">
-              <div class="channel-strip-index">03</div>
-              <div class="channel-strip-body">
-                <div class="channel-strip-title-row">
-                  <span class="channel-strip-name">GPT-SoVITS</span>
-                  <span class="channel-strip-meta">Formant Morph</span>
+              <div class="dropdown-item" id="voice-opt-whisperspeech" role="option" aria-selected="false" tabindex="0" onclick="selectVoiceModel('whisperspeech')" onkeydown="if(event.key==='Enter'||event.key===' '){selectVoiceModel('whisperspeech');event.preventDefault();}">
+                <div class="dropdown-item-header">
+                  <div class="dropdown-item-title-wrap">
+                    <span class="dropdown-item-radio" aria-hidden="true"></span>
+                    <span class="dropdown-item-title">WhisperSpeech</span>
+                  </div>
+                  <span class="model-tier-badge tier-inversion">Acoustic Inversion</span>
                 </div>
-                <p class="channel-strip-desc">Autocorrelation F0 pitch tracking and spectral formant resonances preserving authentic custom timbre.</p>
+                <p class="dropdown-item-desc">Inverts Whisper transformer acoustic token representations to mirror reference speaker vocal resonance.</p>
               </div>
-              <span class="channel-strip-state-pill">FORMANT</span>
+
+              <div class="dropdown-item" id="voice-opt-gpt-sovits" role="option" aria-selected="false" tabindex="0" onclick="selectVoiceModel('gpt-sovits')" onkeydown="if(event.key==='Enter'||event.key===' '){selectVoiceModel('gpt-sovits');event.preventDefault();}">
+                <div class="dropdown-item-header">
+                  <div class="dropdown-item-title-wrap">
+                    <span class="dropdown-item-radio" aria-hidden="true"></span>
+                    <span class="dropdown-item-title">GPT-SoVITS</span>
+                  </div>
+                  <span class="model-tier-badge tier-formant">Formant Morphing</span>
+                </div>
+                <p class="dropdown-item-desc">Autocorrelation pitch tracking and spectral formant resonances preserving authentic vocal timbre.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -3215,6 +3198,7 @@ def get_embedded_html() -> str:
   }
   /* Mode Switching */
   function switchMode(mode) {
+    if (typeof closeAllModelDropdowns === 'function') closeAllModelDropdowns();
     if (mode === 'swarm') mode = 'about';
     document.querySelectorAll('.nav-pill').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
@@ -4124,79 +4108,51 @@ def get_embedded_html() -> str:
   }
 
   /* ========================================================= */
-  /* TOP 3 OPEN SOURCE MODELS SWITCHER STATE & DISPATCH        */
+  /* MODEL SELECTION DROPDOWNS & DISPATCH                      */
   /* ========================================================= */
   var selectedTranscribeModel = 'turbo';
   var selectedVoiceModel = 'edge-neural';
 
-  var transcribeManifests = {
-    'turbo': {
-      id: '01_TURBO',
-      name: 'Whisper Turbo',
-      arch: 'CTranslate2 INT8 Quantized',
-      params: '809M Parameters',
-      rtf: '~0.08x Real-Time Factor',
-      mem: 'Dynamic On-Demand Stream',
-      guard: 'SOTA Large-v3 Parity'
-    },
-    'distil-large-v3': {
-      id: '02_DISTIL',
-      name: 'Distil-Whisper Large-v3',
-      arch: 'Distilled Transformer INT8',
-      params: '756M Parameters',
-      rtf: '~0.06x Real-Time Factor',
-      mem: 'Fast 6x Real-Time Engine',
-      guard: 'SOTA Large-v3 Parity (50% Dec)'
-    },
-    'base': {
-      id: '03_BASE',
-      name: 'Whisper Base',
-      arch: 'Standard Transformer INT8',
-      params: '74M Parameters',
-      rtf: '~0.02x Real-Time Factor',
-      mem: 'Ultra-Low CPU RAM Footprint',
-      guard: 'Standard Acoustic VAD'
-    },
-    'whisperx': {
-      id: '04_WHISPERX',
-      name: 'WhisperX',
-      arch: 'Silero VAD + Wav2Vec2 Phoneme',
-      params: 'Acoustic Alignment Pipeline',
-      rtf: '~0.12x Real-Time Factor',
-      mem: 'VAD Gated Buffer Stream',
-      guard: 'Zero Word Drift & Hallucination Elimination'
+  function toggleModelDropdown(menuId, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
     }
-  };
+    const menu = document.getElementById(menuId);
+    if (!menu) return;
+    const trigger = menu.closest('.custom-model-dropdown') ? menu.closest('.custom-model-dropdown').querySelector('.model-dropdown-trigger') : null;
+    const isAlreadyOpen = menu.classList.contains('open');
+    closeAllModelDropdowns();
+    if (!isAlreadyOpen) {
+      menu.classList.add('open');
+      if (trigger) {
+        trigger.classList.add('active');
+        trigger.setAttribute('aria-expanded', 'true');
+      }
+    }
+  }
 
-  var voiceManifests = {
-    'edge-neural': {
-      id: '01_EDGE',
-      name: 'Edge-Neural Studio',
-      method: 'Zero-Shot Neural Timbre',
-      download: '0 MB Local Weights',
-      accuracy: 'Biometric Pitch & Timbre Lock',
-      rate: '24kHz / 48kHz HD Broadcast',
-      latency: '< 150ms Instant Synthesis'
-    },
-    'whisperspeech': {
-      id: '02_INVERSION',
-      name: 'WhisperSpeech',
-      method: 'Whisper Transformer Acoustic Inversion',
-      download: '0 MB Local Weights',
-      accuracy: 'Deep Latent Token Matching',
-      rate: '24kHz Studio Output',
-      latency: '< 250ms Synthesis'
-    },
-    'gpt-sovits': {
-      id: '03_SOVITS',
-      name: 'GPT-SoVITS',
-      method: 'Autocorrelation F0 Formant Morphing',
-      download: '0 MB Local Weights',
-      accuracy: 'Spectral Resonant Formant Clone',
-      rate: '32kHz Hi-Fi Output',
-      latency: '< 300ms Dynamic Synthesis'
+  function closeAllModelDropdowns() {
+    document.querySelectorAll('.model-dropdown-menu.open').forEach(function(el) {
+      el.classList.remove('open');
+    });
+    document.querySelectorAll('.model-dropdown-trigger.active').forEach(function(el) {
+      el.classList.remove('active');
+      el.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.custom-model-dropdown')) {
+      closeAllModelDropdowns();
     }
-  };
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeAllModelDropdowns();
+    }
+  });
 
   function selectTranscribeModel(modelId) {
     selectedTranscribeModel = modelId;
@@ -4207,31 +4163,37 @@ def get_embedded_html() -> str:
       'base': 'Whisper Base',
       'whisperx': 'WhisperX'
     };
+    const badges = {
+      'turbo': 'Best Accuracy · Recommended',
+      'distil-large-v3': 'High Speed',
+      'base': 'Lightweight / Low-RAM',
+      'whisperx': 'Phoneme Aligned'
+    };
+    const badgeClasses = {
+      'turbo': 'tier-recommended',
+      'distil-large-v3': 'tier-speed',
+      'base': 'tier-lightweight',
+      'whisperx': 'tier-aligned'
+    };
     const tag = document.getElementById('active-transcribe-tag');
     if (tag) tag.innerText = names[modelId] || modelId;
 
-    const spec = transcribeManifests[modelId];
-    if (spec) {
-      const elId = document.getElementById('transcribe-spec-id');
-      const elName = document.getElementById('transcribe-spec-name');
-      const elArch = document.getElementById('transcribe-spec-arch');
-      const elParams = document.getElementById('transcribe-spec-params');
-      const elRtf = document.getElementById('transcribe-spec-rtf');
-      const elMem = document.getElementById('transcribe-spec-mem');
-      const elGuard = document.getElementById('transcribe-spec-guard');
-      if (elId) elId.innerText = spec.id;
-      if (elName) elName.innerText = spec.name;
-      if (elArch) elArch.innerText = spec.arch;
-      if (elParams) elParams.innerText = spec.params;
-      if (elRtf) elRtf.innerText = spec.rtf;
-      if (elMem) elMem.innerText = spec.mem;
-      if (elGuard) elGuard.innerText = spec.guard;
+    const badgeEl = document.getElementById('active-transcribe-badge');
+    if (badgeEl) {
+      badgeEl.innerText = badges[modelId] || '';
+      badgeEl.className = 'model-tier-badge ' + (badgeClasses[modelId] || '');
     }
 
-    ['turbo', 'distil-large-v3', 'base', 'whisperx'].forEach(m => {
+    ['turbo', 'distil-large-v3', 'base', 'whisperx'].forEach(function(m) {
       const el = document.getElementById('model-opt-' + m);
-      if (el) el.classList.toggle('active', m === modelId);
+      if (el) {
+        const isActive = (m === modelId);
+        el.classList.toggle('active', isActive);
+        el.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      }
     });
+
+    closeAllModelDropdowns();
     showToast(`Switched transcription engine to ${names[modelId] || modelId}`, 'info');
   }
 
@@ -4243,31 +4205,35 @@ def get_embedded_html() -> str:
       'whisperspeech': 'WhisperSpeech',
       'gpt-sovits': 'GPT-SoVITS'
     };
+    const badges = {
+      'edge-neural': 'Studio Quality · Recommended',
+      'whisperspeech': 'Acoustic Inversion',
+      'gpt-sovits': 'Formant Morphing'
+    };
+    const badgeClasses = {
+      'edge-neural': 'tier-recommended',
+      'whisperspeech': 'tier-inversion',
+      'gpt-sovits': 'tier-formant'
+    };
     const tag = document.getElementById('active-voice-tag');
     if (tag) tag.innerText = names[modelId] || modelId;
 
-    const spec = voiceManifests[modelId];
-    if (spec) {
-      const elId = document.getElementById('voice-spec-id');
-      const elName = document.getElementById('voice-spec-name');
-      const elMethod = document.getElementById('voice-spec-method');
-      const elDownload = document.getElementById('voice-spec-download');
-      const elAccuracy = document.getElementById('voice-spec-accuracy');
-      const elRate = document.getElementById('voice-spec-rate');
-      const elLatency = document.getElementById('voice-spec-latency');
-      if (elId) elId.innerText = spec.id;
-      if (elName) elName.innerText = spec.name;
-      if (elMethod) elMethod.innerText = spec.method;
-      if (elDownload) elDownload.innerText = spec.download;
-      if (elAccuracy) elAccuracy.innerText = spec.accuracy;
-      if (elRate) elRate.innerText = spec.rate;
-      if (elLatency) elLatency.innerText = spec.latency;
+    const badgeEl = document.getElementById('active-voice-badge');
+    if (badgeEl) {
+      badgeEl.innerText = badges[modelId] || '';
+      badgeEl.className = 'model-tier-badge ' + (badgeClasses[modelId] || '');
     }
 
-    ['edge-neural', 'whisperspeech', 'gpt-sovits'].forEach(m => {
+    ['edge-neural', 'whisperspeech', 'gpt-sovits'].forEach(function(m) {
       const el = document.getElementById('voice-opt-' + m);
-      if (el) el.classList.toggle('active', m === modelId);
+      if (el) {
+        const isActive = (m === modelId);
+        el.classList.toggle('active', isActive);
+        el.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      }
     });
+
+    closeAllModelDropdowns();
     showToast(`Switched voice cloning engine to ${names[modelId] || modelId}`, 'info');
   }
 
@@ -5486,34 +5452,11 @@ def get_embedded_html() -> str:
   }
 
   function checkDesktopRuntime() {
-    if (window.pywebview) {
-      const badge = document.getElementById('desktop-badge');
-      if (badge) {
-        badge.style.display = 'inline-block';
-        badge.title = 'Scriber Native Desktop Studio (Edge WebView2)';
-      }
-    }
     fetch('/api/desktop/info')
       .then(r => r.ok ? r.json() : null)
-      .then(info => {
-        if (info && info.desktop_mode) {
-          const badge = document.getElementById('desktop-badge');
-          if (badge) {
-            badge.style.display = 'inline-block';
-            badge.title = 'Scriber Native Desktop Studio v' + (info.version || '1.0');
-          }
-        }
-      })
       .catch(() => {});
   }
 
-  window.addEventListener('pywebviewready', function() {
-    const badge = document.getElementById('desktop-badge');
-    if (badge) {
-      badge.style.display = 'inline-block';
-      badge.title = 'Scriber Native Desktop Studio (Edge WebView2)';
-    }
-  });
   window.addEventListener('DOMContentLoaded', checkDesktopRuntime);
   setTimeout(checkDesktopRuntime, 300);
 

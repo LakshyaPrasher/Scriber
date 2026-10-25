@@ -47,6 +47,12 @@ def main():
         help="Comma-separated export formats (json, md, html, srt, vtt)",
     )
     proc_parser.add_argument("--ref", default=None, help="Optional ground-truth reference text for WER calculation")
+    proc_parser.add_argument(
+        "--model",
+        default="turbo",
+        choices=["turbo", "distil-large-v3", "base", "whisperx", "small", "medium", "large-v3"],
+        help="Transcription model to use (default: turbo)",
+    )
     proc_parser.add_argument("--redact-pii", action="store_true", help="Enable PII and credentials masking for privacy")
 
     # Command: swarm
@@ -115,6 +121,7 @@ def run_process(args):
     print(f"  🎬 Scriber Video Intelligence Pipeline v{__version__}")
     print(f"=======================================================")
     print(f"File:        {args.file}")
+    print(f"Model:       {getattr(args, 'model', 'turbo')}")
     print(f"Task:        {args.task}")
     print(f"Language:    {args.lang}")
     print(f"Export Dir:  {args.out_dir}")
@@ -122,7 +129,7 @@ def run_process(args):
     print(f"-------------------------------------------------------")
     print(f"[*] Ingesting media and extracting 16kHz PCM...")
     print(f"[*] Running Voice Activity Detection (VAD) chunking...")
-    print(f"[*] Whisper Flow Engine transcribing...")
+    print(f"[*] Whisper Flow Engine transcribing with {getattr(args, 'model', 'turbo')}...")
     print(f"[*] Sub-agent 2: Quality Check Guard auditing & culling hallucinations...")
     print(f"[*] Sub-agent 3: Supreme Council Multi-Agent Swarm synthesizing intelligence...")
     print(f"[*] Sub-agent 4: Result Validator verifying 99%+ accuracy & hash chain...")
@@ -136,6 +143,7 @@ def run_process(args):
         reference_text=args.ref,
         export_dir=args.out_dir,
         export_formats=formats,
+        model=getattr(args, "model", "turbo"),
         redact_pii=getattr(args, "redact_pii", False),
     )
 
@@ -253,6 +261,16 @@ def run_info():
         print(f"   URL:          {repo['url']}")
         print(f"   Description:  {repo['description']}")
         print(f"   Contribution: {repo['key_contribution']}\n")
+
+    from scriber.transcription_engine import get_model_evaluation_matrix
+    print(f"=======================================================")
+    print(f"  🔬 Evaluated Speech-to-Text & Word Alignment Models")
+    print(f"=======================================================")
+    matrix = get_model_evaluation_matrix()
+    for m_id, m_info in matrix.items():
+        print(f"• {m_info['name']} ({m_info['params']})")
+        print(f"  Speedup: {m_info['speedup_cpu']} | WER: {m_info['wer_librispeech']}% | RAM: {m_info['ram_mb']}MB | Timestamps: {m_info['timestamp_accuracy']}")
+        print(f"  Verdict: {m_info['evaluation_verdict']}\n")
 
 
 def run_clone_voice(args):

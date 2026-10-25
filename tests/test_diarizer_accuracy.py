@@ -102,6 +102,58 @@ class TestDiarizerAccuracy(unittest.TestCase):
 
         self.assertGreater(tested_count, 0, "At least one media file must be tested")
 
+    def test_natural_pitch_inflection_reidentification(self):
+        """Verifies that natural pitch inflections across non-adjacent turns do not split into phantom speakers."""
+        sr = 16000
+        t_turn = np.linspace(0, 2.0, int(2.0 * sr), endpoint=False)
+        # Speaker A turn 1: 120 Hz
+        pcm_a1 = ((0.5 * np.sin(2 * np.pi * 120 * t_turn) + 0.2 * np.sin(2 * np.pi * 240 * t_turn)) * 32767).astype(np.int16).tobytes()
+        # Speaker B turn 1: 220 Hz
+        pcm_b1 = ((0.5 * np.sin(2 * np.pi * 220 * t_turn) + 0.2 * np.sin(2 * np.pi * 440 * t_turn)) * 32767).astype(np.int16).tobytes()
+        # Speaker A turn 2: 145 Hz (natural pitch swing of ~3.2 semitones between statement and question)
+        pcm_a2 = ((0.5 * np.sin(2 * np.pi * 145 * t_turn) + 0.2 * np.sin(2 * np.pi * 290 * t_turn)) * 32767).astype(np.int16).tobytes()
+        # Speaker B turn 2: 222 Hz
+        pcm_b2 = ((0.5 * np.sin(2 * np.pi * 222 * t_turn) + 0.2 * np.sin(2 * np.pi * 444 * t_turn)) * 32767).astype(np.int16).tobytes()
+
+        full_pcm = pcm_a1 + pcm_b1 + pcm_a2 + pcm_b2
+        segs = [
+            AudioSegment(id=0, seek=0, start=0.0, end=2.0, text="First statement from speaker A."),
+            AudioSegment(id=1, seek=2, start=2.0, end=4.0, text="Response from speaker B."),
+            AudioSegment(id=2, seek=4, start=4.0, end=6.0, text="Did speaker A ask an enthusiastic question?"),
+            AudioSegment(id=3, seek=6, start=6.0, end=8.0, text="Closing remark from speaker B."),
+        ]
+        diarizer = AcousticDiarizer(similarity_threshold=0.48)
+        diarized = diarizer.diarize_segments(segs, full_pcm, sample_rate=sr)
+        distinct_speakers = {s.speaker for s in diarized}
+        self.assertEqual(len(distinct_speakers), 2, f"Expected 2 speakers, but got {distinct_speakers}")
+        self.assertEqual(diarized[0].speaker, diarized[2].speaker, "Turn 1 and Turn 3 must match Speaker A")
+        self.assertEqual(diarized[1].speaker, diarized[3].speaker, "Turn 2 and Turn 4 must match Speaker B")
+
+    def test_same_pitch_distinct_speakers_segregation(self):
+        """Verifies that two distinct speakers of the same gender with near-identical pitch (Jenny vs Emma) are segregated."""
+        suite_dir = os.path.join(os.path.dirname(__file__), "suite_20_samples")
+        f_jenny = os.path.join(suite_dir, "sample_04_single_spk_calm_female_turn_0_en-US-JennyNeural.mp3")
+        f_emma = os.path.join(suite_dir, "sample_07_single_spk_expressive_emma_turn_0_en-US-EmmaNeural.mp3")
+
+        if not os.path.exists(f_jenny) or not os.path.exists(f_emma):
+            self.skipTest("Sample files for Jenny and Emma not found")
+
+        pcm_j, _ = self.extractor.extract_pcm16(f_jenny)
+        pcm_e, _ = self.extractor.extract_pcm16(f_emma)
+        full_pcm = pcm_j + pcm_e
+        dur_j = len(pcm_j) / (16000.0 * 2.0)
+        dur_e = len(pcm_e) / (16000.0 * 2.0)
+
+        segs = [
+            AudioSegment(id=0, seek=0, start=0.0, end=dur_j, text="Welcome to today's customer experience update."),
+            AudioSegment(id=1, seek=int(dur_j), start=dur_j, end=dur_j + dur_e, text="Our engineering roadmap is progressing on schedule."),
+        ]
+        diarizer = AcousticDiarizer(similarity_threshold=0.48)
+        diarized = diarizer.diarize_segments(segs, full_pcm, sample_rate=16000)
+        distinct_speakers = {s.speaker for s in diarized}
+        self.assertEqual(len(distinct_speakers), 2, f"Jenny and Emma must be segregated into 2 distinct speakers, got: {distinct_speakers}")
+        self.assertNotEqual(diarized[0].speaker, diarized[1].speaker, "Jenny and Emma must receive different speaker IDs")
+
 
 if __name__ == "__main__":
     unittest.main()

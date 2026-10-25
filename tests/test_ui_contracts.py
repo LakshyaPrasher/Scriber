@@ -55,6 +55,29 @@ class TestUIContracts(unittest.TestCase):
             "FOUNDING ARCHITECT",
             "The Anti-Slop Philosophy",
             "Core Craft & Audio Intelligence",
+            "Desktop Native",
+            "Sys ASR Engine Console",
+            "ASR ENGINE CONSOLE",
+            "[SYS // ASR ENGINE CONSOLE]",
+            "VOICE SYNTHESIS CONSOLE",
+            "[SYS // VOICE SYNTHESIS CONSOLE]",
+            "Active Engine Spec",
+            "ACTIVE ENGINE SPEC",
+            "Active Voice Engine",
+            "ACTIVE VOICE ENGINE",
+            "Production Stability Verified",
+            "Ingestion Bay",
+            "INGESTION BAY",
+            "[INGESTION BAY // MULTI-FORMAT AUDIO & VIDEO]",
+            "Zero Bulk Download",
+            "Zero Bulk Download On-Demand Streaming",
+            "UNIVERSAL INGESTION",
+            "engine-manifest-panel",
+            "PARAMETER COUNT",
+            "CTranslate2 INT8",
+            "Dynamic On-Demand Stream",
+            "ACCURACY TIER",
+            'id="desktop-badge"',
         ]
         for element in cluttered_elements:
             self.assertNotIn(element, self.html, f"Cluttered element '{element}' must be removed from the UI")
@@ -139,11 +162,17 @@ class TestUIContracts(unittest.TestCase):
         self.assertIn("handleVoiceRefSelected", self.html)
 
     def test_top_models_switchers(self):
-        """Verifies presence of Top 3 Open-Source Models Switcher in both Transcribe & Voice Clone modes."""
+        """Verifies presence of sleek, animated model switchers with tier badges in both modes."""
         self.assertIn('id="transcribe-model-switcher"', self.html)
         self.assertIn('id="voice-model-switcher"', self.html)
+        self.assertIn('id="transcribe-dropdown-trigger"', self.html)
+        self.assertIn('id="transcribe-dropdown-menu"', self.html)
+        self.assertIn('id="voice-dropdown-trigger"', self.html)
+        self.assertIn('id="voice-dropdown-menu"', self.html)
         self.assertIn("selectTranscribeModel", self.html)
         self.assertIn("selectVoiceModel", self.html)
+        self.assertIn("toggleModelDropdown", self.html)
+        # All models present
         self.assertIn("Whisper Turbo", self.html)
         self.assertIn("Distil-Whisper Large-v3", self.html)
         self.assertIn("Whisper Base", self.html)
@@ -151,7 +180,23 @@ class TestUIContracts(unittest.TestCase):
         self.assertIn("Edge-Neural Studio", self.html)
         self.assertIn("WhisperSpeech", self.html)
         self.assertIn("GPT-SoVITS", self.html)
-        self.assertIn("Zero Bulk Download", self.html)
+        # Specific model option IDs
+        self.assertIn('id="model-opt-turbo"', self.html)
+        self.assertIn('id="model-opt-distil-large-v3"', self.html)
+        self.assertIn('id="model-opt-base"', self.html)
+        self.assertIn('id="model-opt-whisperx"', self.html)
+        self.assertIn('id="voice-opt-edge-neural"', self.html)
+        self.assertIn('id="voice-opt-whisperspeech"', self.html)
+        self.assertIn('id="voice-opt-gpt-sovits"', self.html)
+        # Model tier badges
+        self.assertIn("model-tier-badge", self.html)
+        self.assertIn("Best Accuracy · Recommended", self.html)
+        self.assertIn("High Speed", self.html)
+        self.assertIn("Lightweight / Low-RAM", self.html)
+        self.assertIn("Phoneme Aligned", self.html)
+        self.assertIn("Studio Quality · Recommended", self.html)
+        self.assertIn("Acoustic Inversion", self.html)
+        self.assertIn("Formant Morphing", self.html)
 
     def test_minimalist_harmonic_logo_everywhere(self):
         """Verifies complete, authoritative harmonic S monogram emblem is present."""
