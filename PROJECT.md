@@ -44,7 +44,7 @@
 | M2 | Whisper Turbo Model Cache Repair | Download complete `model.bin` for `deepdml/faster-whisper-large-v3-turbo-ct2`, add snapshot verification in `transcription_engine.py`, eliminate Base fallback | none | DONE |
 | M3 | Acoustic Diarization ONNX Neural Upgrade | Place CAM++ ONNX model asset, implement 80-bin Mel Fbank extractor + ONNX session in `scriber/diarizer.py`, upgrade `SpeakerMemory` and AHC clustering to 192-d cosine distance | none | DONE |
 | M4 | Voice Cloning Overhaul & Cloud Connectors | Implement local GPU companion microservice, Voicemaker.in & ElevenLabs 48kHz connectors, 4-tier fallback matrix, dual-rate audio processing, UI/server integration | M1 | DONE |
-| M5 | Verification, Executable Packaging & GitHub Push | Run automated test suite, rebuild desktop executable bundle (`dist/Scriber`), update desktop shortcuts, commit and push to remote origin | M1, M2, M3, M4 | PLANNED |
+| M5 | Verification, Executable Packaging & GitHub Push | Run automated test suite, rebuild desktop executable bundle (`dist/Scriber`), update desktop shortcuts, commit and push to remote origin | M1, M2, M3, M4 | DONE |
 
 ## Interface Contracts
 
