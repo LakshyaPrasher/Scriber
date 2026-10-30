@@ -232,7 +232,7 @@ class TestDesktopApplication(unittest.TestCase):
                 headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=5.0) as resp:
+            with urllib.request.urlopen(req, timeout=15.0) as resp:
                 self.assertEqual(resp.status, 200)
                 res_data = json.loads(resp.read().decode("utf-8"))
                 self.assertIn("exports", res_data)

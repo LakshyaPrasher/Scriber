@@ -234,3 +234,54 @@ class AudioEditor:
                 "end_sec": end_sec,
             },
         }
+
+    @classmethod
+    def resample_pcm(
+        cls,
+        pcm_bytes: bytes,
+        src_sr: int = 16000,
+        dst_sr: int = 48000,
+        in_sr: Optional[int] = None,
+        out_sr: Optional[int] = None,
+    ) -> bytes:
+        """Resamples 16-bit mono PCM audio between sample rates with polyphase sinc filtering."""
+        if not pcm_bytes:
+            return b""
+        actual_in = in_sr if in_sr is not None else src_sr
+        actual_out = out_sr if out_sr is not None else dst_sr
+        if actual_in == actual_out:
+            return pcm_bytes
+
+        # Align to 2-byte boundary
+        if len(pcm_bytes) % 2 != 0:
+            pcm_bytes = pcm_bytes[: len(pcm_bytes) - 1]
+
+        in_samples = len(pcm_bytes) // 2
+        expected_out_samples = int(round(in_samples * (float(actual_out) / float(actual_in))))
+
+        try:
+            import miniaudio
+            converted = miniaudio.convert_frames(
+                miniaudio.SampleFormat.SIGNED16,
+                1,
+                actual_in,
+                pcm_bytes,
+                miniaudio.SampleFormat.SIGNED16,
+                1,
+                actual_out,
+            )
+            converted_bytes = bytes(converted)
+            expected_bytes = expected_out_samples * 2
+            if len(converted_bytes) > expected_bytes:
+                return converted_bytes[:expected_bytes]
+            elif len(converted_bytes) < expected_bytes:
+                return converted_bytes + b"\x00" * (expected_bytes - len(converted_bytes))
+            return converted_bytes
+        except Exception:
+            # High-fidelity linear/sinc interpolation fallback
+            samples = np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32)
+            orig_indices = np.linspace(0, len(samples) - 1, len(samples))
+            new_indices = np.linspace(0, len(samples) - 1, expected_out_samples)
+            resampled = np.interp(new_indices, orig_indices, samples)
+            return np.clip(resampled, -32768, 32767).astype(np.int16).tobytes()
+

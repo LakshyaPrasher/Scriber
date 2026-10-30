@@ -61,6 +61,10 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self._send_json_response(404, {"error": "Asset not found"})
         elif path == "/api/health":
             self._send_json_response(200, {"status": "ok", "app": "Scriber"})
+        elif path == "/api/hardware":
+            from scriber.hardware import get_hardware_capabilities
+            caps = get_hardware_capabilities()
+            self._send_json_response(200, caps.to_dict())
         elif path == "/api/desktop/info":
             from scriber import __version__
             self._send_json_response(200, {
@@ -82,6 +86,23 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 "transcribe_models": TOP_TRANSCRIBE_MODELS,
                 "voice_models": TOP_VOICE_MODELS,
                 "evaluation_matrix": get_model_evaluation_matrix(),
+            })
+        elif path == "/api/voice/credentials":
+            vm_key = os.environ.get("VOICEMAKER_API_KEY", "")
+            if not vm_key and hasattr(self, "pipeline") and hasattr(self.pipeline, "voice_cloner") and hasattr(self.pipeline.voice_cloner, "voicemaker_conn"):
+                vm_key = getattr(self.pipeline.voice_cloner.voicemaker_conn, "api_key", "")
+            el_key = os.environ.get("ELEVENLABS_API_KEY", "")
+            if not el_key and hasattr(self, "pipeline") and hasattr(self.pipeline, "voice_cloner") and hasattr(self.pipeline.voice_cloner, "elevenlabs_conn"):
+                el_key = getattr(self.pipeline.voice_cloner.elevenlabs_conn, "api_key", "")
+
+            def _mask(k: str) -> str:
+                return (k[:4] + "..." + k[-4:]) if len(k) > 8 else ("***" if k else "")
+
+            self._send_json_response(200, {
+                "voicemaker_configured": bool(vm_key),
+                "elevenlabs_configured": bool(el_key),
+                "voicemaker_masked_key": _mask(vm_key),
+                "elevenlabs_masked_key": _mask(el_key),
             })
         elif path == "/api/agents":
             from scriber.agent_swarm import CouncilAgentSwarm
@@ -203,8 +224,44 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._handle_pii_redact()
         elif path == "/api/plugin/install":
             self._handle_plugin_install()
+        elif path == "/api/voice/credentials":
+            self._handle_voice_credentials()
         else:
             self._send_json_response(404, {"error": "Endpoint not found"})
+
+    def _handle_voice_credentials(self):
+        """Saves Voicemaker and ElevenLabs API credentials."""
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+            body_bytes = self.rfile.read(content_length)
+            req_data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+
+            vm_key = req_data.get("voicemaker_api_key")
+            el_key = req_data.get("elevenlabs_api_key")
+
+            if vm_key is not None:
+                vm_key_str = str(vm_key).strip()
+                os.environ["VOICEMAKER_API_KEY"] = vm_key_str
+                if hasattr(self, "pipeline") and hasattr(self.pipeline, "voice_cloner") and hasattr(self.pipeline.voice_cloner, "voicemaker_conn"):
+                    self.pipeline.voice_cloner.voicemaker_conn.api_key = vm_key_str
+
+            if el_key is not None:
+                el_key_str = str(el_key).strip()
+                os.environ["ELEVENLABS_API_KEY"] = el_key_str
+                if hasattr(self, "pipeline") and hasattr(self.pipeline, "voice_cloner") and hasattr(self.pipeline.voice_cloner, "elevenlabs_conn"):
+                    self.pipeline.voice_cloner.elevenlabs_conn.api_key = el_key_str
+
+            vm_active = bool(os.environ.get("VOICEMAKER_API_KEY"))
+            el_active = bool(os.environ.get("ELEVENLABS_API_KEY"))
+
+            self._send_json_response(200, {
+                "status": "success",
+                "message": "Voice studio credentials updated successfully",
+                "voicemaker_configured": vm_active,
+                "elevenlabs_configured": el_active,
+            })
+        except Exception as e:
+            self._send_json_response(500, {"error": str(e)})
 
     def _handle_pii_redact(self):
         """Redacts sensitive PII and secrets from arbitrary input text."""
@@ -509,6 +566,11 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             backend = req_data.get("backend") or req_data.get("model") or "edge-neural"
             output_format = req_data.get("output_format") or req_data.get("format") or "mp3"
+            sample_rate = int(req_data.get("sample_rate", 48000))
+            voice_id = req_data.get("voice_id")
+            vm_key = req_data.get("voicemaker_api_key")
+            el_key = req_data.get("elevenlabs_api_key")
+
             result = self.pipeline.clone_voice(
                 profile=profile,
                 text_prompt=text_prompt,
@@ -517,6 +579,10 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 output_format=output_format,
                 reference_pcm=ref_pcm,
                 backend=backend,
+                sample_rate=sample_rate,
+                voice_id=voice_id,
+                voicemaker_api_key=vm_key,
+                elevenlabs_api_key=el_key,
             )
             if result.audio_pcm16:
                 self.pipeline.last_pcm_data = result.audio_pcm16

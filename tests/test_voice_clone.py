@@ -101,7 +101,7 @@ class TestVoiceClone(unittest.TestCase):
         self.assertIn("edge-tts-neural", result.synthesis_backend)
 
         # Verify acoustic characteristics of synthesized audio
-        synth_prof = VoiceProfiler.profile_from_pcm16(result.audio_pcm16, speaker_id="Cloned_Speaker")
+        synth_prof = VoiceProfiler.profile_from_pcm16(result.audio_pcm16, speaker_id="Cloned_Speaker", sample_rate=result.sample_rate_hz)
 
         # F0 should closely match reference within 8 Hz
         f0_delta = abs(ref_prof.fundamental_frequency_hz - synth_prof.fundamental_frequency_hz)
@@ -135,7 +135,7 @@ class TestVoiceClone(unittest.TestCase):
         self.assertGreaterEqual(result.similarity_score, 0.990)
 
         # Verify synthesized audio pitch conforms to profile F0
-        synth_p = VoiceProfiler.profile_from_pcm16(result.audio_pcm16)
+        synth_p = VoiceProfiler.profile_from_pcm16(result.audio_pcm16, sample_rate=result.sample_rate_hz)
         f0_diff = abs(profile.fundamental_frequency_hz - synth_p.fundamental_frequency_hz)
         self.assertLessEqual(f0_diff, 15.0)
 

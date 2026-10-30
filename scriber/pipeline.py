@@ -260,6 +260,8 @@ class ScriberPipeline:
         output_format: str = "mp3",
         reference_pcm: Optional[bytes] = None,
         backend: str = "edge-neural",
+        sample_rate: int = 48000,
+        **kwargs,
     ) -> VoiceCloneResult:
         """Clones speech matching the given speaker profile and reference audio."""
         target_ref = reference_pcm or getattr(self, "reference_pcm", None) or self.last_pcm_data
@@ -271,6 +273,8 @@ class ScriberPipeline:
             output_format=output_format,
             reference_pcm=target_ref,
             backend=backend,
+            sample_rate=sample_rate,
+            **kwargs,
         )
 
     def _extract_speaker_voice_profiles(

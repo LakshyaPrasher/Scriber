@@ -237,15 +237,91 @@ def get_model_evaluation_matrix() -> Dict[str, Any]:
     return MODEL_EVALUATION_MATRIX
 
 
+def is_model_snapshot_valid(model_name_or_id: str) -> bool:
+    """Validates whether a model snapshot is complete and ready for local inference.
+
+    Verifies that model configuration and binary weight files (model.bin) are present
+    without requiring external network requests.
+    """
+    if not model_name_or_id:
+        return False
+    resolved = model_name_or_id
+    if resolved.lower() in SUPPORTED_TRANSCRIBE_MODELS:
+        resolved = SUPPORTED_TRANSCRIBE_MODELS[resolved.lower()]["ct2_name"]
+    if os.path.isdir(resolved):
+        return os.path.exists(os.path.join(resolved, "model.bin"))
+    try:
+        import faster_whisper
+        resolved_path = faster_whisper.download_model(resolved, local_files_only=True)
+        if resolved_path and os.path.isdir(resolved_path):
+            bin_path = os.path.join(resolved_path, "model.bin")
+            return bool(os.path.exists(bin_path) and os.path.getsize(bin_path) > 0)
+    except Exception:
+        pass
+    return False
+
+
+def resolve_transcription_device() -> Tuple[str, str]:
+    """Dynamically determine transcription execution device and compute type.
+
+    Queries scriber.hardware.get_transcription_device_config() when available,
+    respecting WHISPER_DEVICE and WHISPER_COMPUTE_TYPE environment variable overrides.
+    """
+    env_device = os.environ.get("WHISPER_DEVICE")
+    env_compute = os.environ.get("WHISPER_COMPUTE_TYPE")
+    if env_device:
+        return env_device, env_compute or ("float16" if env_device == "cuda" else "int8")
+
+    device = "cpu"
+    compute_type = "int8"
+    try:
+        from scriber.hardware import get_transcription_device_config
+        cfg = get_transcription_device_config()
+        if cfg and isinstance(cfg, (tuple, list)) and len(cfg) >= 2:
+            device = str(cfg[0])
+            compute_type = str(cfg[1])
+    except Exception:
+        try:
+            import ctranslate2
+            if ctranslate2.get_cuda_device_count() > 0:
+                supported = ctranslate2.get_supported_compute_types("cuda")
+                compute_type = "float16" if "float16" in supported else "int8"
+                device = "cuda"
+        except Exception:
+            pass
+
+    # Safe validation: If CUDA is selected, verify cuBLAS library is genuinely loadable.
+    # If cuBLAS DLL is missing on host, safely fall back to CPU int8.
+    if device == "cuda":
+        import ctypes
+        cublas_available = False
+        for dll_name in ["cublas64_12.dll", "cublas64_11.dll"]:
+            try:
+                ctypes.cdll.LoadLibrary(dll_name)
+                cublas_available = True
+                break
+            except Exception:
+                continue
+        if not cublas_available:
+            device = "cpu"
+            compute_type = "int8"
+
+    return device, compute_type
+
+
 
 class TranscriptionEngine:
     """Core transcription and translation engine implementing Whisper flow."""
 
-    def __init__(self, backend_preference: str = "auto"):
+    def __init__(self, backend_preference: str = "auto", model_name: str = "turbo"):
         self.backend_preference = backend_preference
         self.leveraged_repos = TOP_LEVERAGED_REPOS
         self.models = TOP_TRANSCRIBE_MODELS
+        self.model_name = model_name
+        model_info = SUPPORTED_TRANSCRIBE_MODELS.get(model_name.lower())
+        self.active_model_id = model_info["ct2_name"] if model_info else model_name
         self.active_backend = self._detect_backend()
+        self.device, self.compute_type = resolve_transcription_device()
 
     def _detect_backend(self) -> str:
         """Determines best available backend given the environment."""
@@ -647,32 +723,82 @@ class TranscriptionEngine:
             target_model = model_info["ct2_name"] if model_info else model_name
 
         is_whisperx = (model_name.lower() == "whisperx")
+        is_turbo = (model_name.lower() in ("turbo", "whisper-turbo", "large-v3-turbo") or target_model == "deepdml/faster-whisper-large-v3-turbo-ct2")
 
-        # Attempt to load target model; if not locally cached, fall back cleanly
-        # to cached models ("base" or "tiny") without blocking on massive network downloads
+        # Snapshot validation: inspect if target_model snapshot is valid
+        # For turbo, verify that model snapshot is complete on disk.
+        # For non-cached non-turbo models, avoid blocking on massive network downloads
+        # and instead rely on local candidates.
+        target_snapshot_valid = is_model_snapshot_valid(target_model)
+        if not target_snapshot_valid and is_turbo:
+            try:
+                import huggingface_hub
+                huggingface_hub.snapshot_download(
+                    target_model,
+                    allow_patterns=["config.json", "preprocessor_config.json", "model.bin", "tokenizer.json", "vocabulary.*"],
+                    local_files_only=False,
+                )
+            except Exception:
+                pass
+
+        # Determine target device & compute type dynamically (CUDA float16 vs CPU int8)
+        pref_device, pref_compute = resolve_transcription_device()
+
+        # Model loading:
+        # If Turbo is requested, eliminate silent fallback to Base.
+        # Try preferred device first (e.g. CUDA float16), falling back to CPU int8 safely.
         model = None
         active_model_id = target_model
         fallback_occurred = False
-        candidates = [target_model]
-        if target_model != "base":
-            candidates.append("base")
-        if "tiny" not in candidates:
-            candidates.append("tiny")
+
+        if is_turbo:
+            candidates = [target_model]
+        else:
+            candidates = [target_model]
+            if target_model != "base":
+                candidates.append("base")
+            if "tiny" not in candidates:
+                candidates.append("tiny")
 
         for candidate in candidates:
             try:
-                model = faster_whisper.WhisperModel(candidate, device="cpu", compute_type="int8", local_files_only=True)
+                model = faster_whisper.WhisperModel(
+                    candidate,
+                    device=pref_device,
+                    compute_type=pref_compute,
+                    local_files_only=True,
+                )
                 active_model_id = candidate
                 if candidate != target_model:
                     fallback_occurred = True
                 break
             except Exception:
+                # If preferred device failed (e.g. CUDA without cuBLAS or OOM), fall back to CPU safely
+                if pref_device != "cpu":
+                    try:
+                        model = faster_whisper.WhisperModel(
+                            candidate,
+                            device="cpu",
+                            compute_type="int8",
+                            local_files_only=True,
+                        )
+                        active_model_id = candidate
+                        if candidate != target_model:
+                            fallback_occurred = True
+                        break
+                    except Exception:
+                        pass
                 continue
 
         if model is None:
+            if is_turbo:
+                raise RuntimeError(
+                    f"Failed to load Whisper Turbo model '{target_model}'. "
+                    f"Fallback to Base is strictly disabled for Turbo."
+                )
             try:
                 fallback_name = os.environ.get("WHISPER_MODEL", "tiny")
-                model = faster_whisper.WhisperModel(fallback_name, device="cpu", compute_type="int8")
+                model = faster_whisper.WhisperModel(fallback_name, device="cpu", compute_type="int8", local_files_only=True)
                 active_model_id = fallback_name
                 if fallback_name != target_model:
                     fallback_occurred = True
@@ -693,16 +819,45 @@ class TranscriptionEngine:
             )
             segments_list = list(segments_gen)
         except Exception:
-            # Fallback to standard chunking if Silero VAD ONNX model is missing or fails to execute
-            buf.seek(0)
-            segments_gen, info = model.transcribe(
-                buf,
-                language=whisper_lang,
-                task=actual_task,
-                vad_filter=False,
-                word_timestamps=True,
-            )
-            segments_list = list(segments_gen)
+            # If CUDA runtime error during inference, safely fallback to CPU int8 for the same model
+            if pref_device != "cpu" and getattr(model, "model", None) and getattr(model.model, "device", None) != "cpu":
+                try:
+                    buf.seek(0)
+                    model = faster_whisper.WhisperModel(
+                        active_model_id,
+                        device="cpu",
+                        compute_type="int8",
+                        local_files_only=True,
+                    )
+                    segments_gen, info = model.transcribe(
+                        buf,
+                        language=whisper_lang,
+                        task=actual_task,
+                        vad_filter=True,
+                        word_timestamps=True,
+                    )
+                    segments_list = list(segments_gen)
+                except Exception:
+                    buf.seek(0)
+                    segments_gen, info = model.transcribe(
+                        buf,
+                        language=whisper_lang,
+                        task=actual_task,
+                        vad_filter=False,
+                        word_timestamps=True,
+                    )
+                    segments_list = list(segments_gen)
+            else:
+                # Fallback to standard chunking if Silero VAD ONNX model is missing or fails to execute
+                buf.seek(0)
+                segments_gen, info = model.transcribe(
+                    buf,
+                    language=whisper_lang,
+                    task=actual_task,
+                    vad_filter=False,
+                    word_timestamps=True,
+                )
+                segments_list = list(segments_gen)
 
         segments = []
         text_parts = []

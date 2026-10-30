@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -67,6 +67,37 @@ class AudioMetadata:
 
     def to_dict(self) -> Dict[str, Any]:
         return dataclasses.asdict(self)
+
+
+@dataclass
+class HardwareCapabilities:
+    """Hardware and GPU acceleration capabilities detected on the host system."""
+    gpu_name: Optional[str] = None
+    vram_total_mb: float = 0.0
+    vram_free_mb: float = 0.0
+    compute_capability: Tuple[int, int] = (0, 0)
+    cuda_available: bool = False
+    cuda_version: str = ""
+    directx_12_supported: bool = False
+    directx_feature_level: str = ""
+    recommended_device: str = "cpu"  # "cuda" or "cpu"
+    recommended_compute_type: str = "int8"  # "float16", "int8_float16", or "int8"
+    supports_local_speech_llm: bool = False
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "gpu_name": self.gpu_name,
+            "vram_total_mb": round(self.vram_total_mb, 1),
+            "vram_free_mb": round(self.vram_free_mb, 1),
+            "compute_capability": list(self.compute_capability),
+            "cuda_available": self.cuda_available,
+            "cuda_version": self.cuda_version,
+            "directx_12_supported": self.directx_12_supported,
+            "directx_feature_level": self.directx_feature_level,
+            "recommended_device": self.recommended_device,
+            "recommended_compute_type": self.recommended_compute_type,
+            "supports_local_speech_llm": self.supports_local_speech_llm,
+        }
 
 
 @dataclass
@@ -411,12 +442,18 @@ class VoiceCloneResult:
     audio_base64: str
     duration: float
     mp3_base64: Optional[str] = None
+    sample_rate_hz: int = 48000
+    provider: str = "local"
+    fallback_chain: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         d = {
             "speaker_id": self.profile.speaker_id,
             "text_prompt": self.text_prompt,
             "audio_format": self.audio_format,
+            "sample_rate_hz": self.sample_rate_hz,
+            "provider": self.provider,
+            "fallback_chain": list(self.fallback_chain),
             "similarity_score": round(self.similarity_score, 4),
             "similarity_percentage": f"{self.similarity_score * 100:.2f}%",
             "synthesis_backend": self.synthesis_backend,

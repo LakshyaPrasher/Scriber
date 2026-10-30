@@ -14,13 +14,144 @@ Performs genuine voice-based speaker recognition:
 from __future__ import annotations
 
 import math
+import os
 import re
+import sys
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+try:
+    import onnxruntime as ort
+except ImportError:
+    ort = None
+
 from scriber.models import AudioSegment, VoiceProfile, WordTimestamp
 from scriber.voice_clone import VoiceProfiler
+
+
+class NeuralSpeakerExtractor:
+    """Deep ONNX neural speaker embedding extractor using CAM++ (200k speakers).
+
+    Extracts 192-dimensional unit-normalized ($L_2 = 1.0$) speaker embeddings
+    from 16kHz mono PCM speech frames via 80-bin Mel filterbank with CMVN normalization.
+    Provides graceful zero-dependency fallback when ONNX model is missing or fails.
+    """
+
+    def __init__(self, model_path: Optional[str] = None):
+        self.model_path = model_path or self._resolve_model_path()
+        self.session: Optional[Any] = None
+        self.input_name: str = "feats"
+        self.output_name: str = "embs"
+        self.is_available: bool = False
+
+        if ort is not None and self.model_path and os.path.exists(self.model_path):
+            try:
+                available = ort.get_available_providers()
+                providers = [p for p in ["CUDAExecutionProvider", "DmlExecutionProvider", "CPUExecutionProvider"] if p in available]
+                if not providers:
+                    providers = ["CPUExecutionProvider"]
+                self.session = ort.InferenceSession(self.model_path, providers=providers)
+                self.input_name = self.session.get_inputs()[0].name
+                self.output_name = self.session.get_outputs()[0].name
+                self.is_available = True
+            except Exception:
+                self.session = None
+                self.is_available = False
+
+    @staticmethod
+    def _resolve_model_path() -> Optional[str]:
+        env_path = os.environ.get("CAMPPLUS_MODEL_PATH")
+        if env_path and os.path.exists(env_path):
+            return env_path
+        here = os.path.abspath(os.path.dirname(__file__))
+        candidates = [
+            os.path.join(here, "assets", "models", "campplus_cn_en_common_200k.onnx"),
+            os.path.abspath("scriber/assets/models/campplus_cn_en_common_200k.onnx"),
+        ]
+        if hasattr(sys, "_MEIPASS"):
+            candidates.append(os.path.join(sys._MEIPASS, "scriber", "assets", "models", "campplus_cn_en_common_200k.onnx"))
+        for c in candidates:
+            if os.path.exists(c):
+                return c
+        return None
+
+    @classmethod
+    def compute_fbank(cls, pcm16_data: bytes, sample_rate: int = 16000) -> np.ndarray:
+        """Computes 80-bin log mel-filterbank features with CMVN from 16kHz PCM audio."""
+        if pcm16_data.startswith(b"RIFF") and len(pcm16_data) > 44:
+            data_idx = pcm16_data.find(b"data")
+            pcm16_data = pcm16_data[data_idx + 8:] if data_idx != -1 else pcm16_data[44:]
+        if len(pcm16_data) % 2 != 0:
+            pcm16_data = pcm16_data[:-1]
+
+        samples = np.frombuffer(pcm16_data, dtype=np.int16).astype(np.float32)
+        frame_len = int(0.025 * sample_rate)   # 400 samples (25ms)
+        frame_shift = int(0.010 * sample_rate) # 160 samples (10ms)
+        n_fft = 512
+        num_bins = 80
+        low_freq = 20.0
+        high_freq = sample_rate / 2.0
+
+        if len(samples) < frame_len:
+            samples = np.pad(samples, (0, frame_len - len(samples)), mode="constant")
+        num_frames = max(1, (len(samples) - frame_len) // frame_shift + 1)
+
+        def hz_to_mel(f: float) -> float:
+            return 1127.0 * np.log(1.0 + f / 700.0)
+
+        def mel_to_hz(m: float) -> float:
+            return 700.0 * (np.exp(m / 1127.0) - 1.0)
+
+        mel_points = np.linspace(hz_to_mel(low_freq), hz_to_mel(high_freq), num_bins + 2)
+        bin_points = np.floor((n_fft + 1) * mel_to_hz(mel_points) / sample_rate).astype(int)
+
+        filters = np.zeros((num_bins, n_fft // 2 + 1), dtype=np.float32)
+        for m in range(1, num_bins + 1):
+            f_m_minus = bin_points[m - 1]
+            f_m = bin_points[m]
+            f_m_plus = bin_points[m + 1]
+            for k in range(f_m_minus, f_m):
+                if f_m > f_m_minus:
+                    filters[m - 1, k] = (k - f_m_minus) / (f_m - f_m_minus)
+            for k in range(f_m, f_m_plus):
+                if f_m_plus > f_m:
+                    filters[m - 1, k] = (f_m_plus - k) / (f_m_plus - f_m)
+
+        # Pre-emphasis (0.97) and Povey window
+        window = (0.5 - 0.5 * np.cos(2 * np.pi * np.arange(frame_len) / (frame_len - 1))) ** 0.85
+        frames = np.zeros((num_frames, frame_len), dtype=np.float32)
+        for i in range(num_frames):
+            st = i * frame_shift
+            fr = samples[st:st + frame_len].copy()
+            fr[1:] -= 0.97 * fr[:-1]
+            fr[0] *= (1.0 - 0.97)
+            fr -= np.mean(fr)
+            frames[i] = fr * window
+
+        spec = np.fft.rfft(frames, n=n_fft)
+        power_spec = np.abs(spec) ** 2
+        mel_energies = np.maximum(np.dot(power_spec, filters.T), 1e-10)
+        log_mel = np.log(mel_energies)
+
+        # Frame-level CMVN
+        log_mel -= np.mean(log_mel, axis=0, keepdims=True)
+        return log_mel.astype(np.float32)
+
+    def extract_embedding(self, pcm16_data: bytes, sample_rate: int = 16000) -> Optional[np.ndarray]:
+        """Extracts 192-d unit-normalized speaker embedding. Returns None on failure/fallback."""
+        if not self.is_available or self.session is None or len(pcm16_data) < 160:
+            return None
+        try:
+            feats = self.compute_fbank(pcm16_data, sample_rate)
+            inp = np.expand_dims(feats, axis=0)
+            out = self.session.run(None, {self.input_name: inp})[0][0]
+            norm = np.linalg.norm(out)
+            if norm > 1e-6:
+                return (out / norm).astype(np.float32)
+            return out.astype(np.float32)
+        except Exception:
+            return None
 
 
 class SpeakerMemory:
@@ -60,7 +191,39 @@ class SpeakerMemory:
         pause_sec: float = 0.0,
     ) -> float:
         """Computes continuous probabilistic biometric match score between new audio chunk and this speaker."""
-        # 1. Pitch semitone distance (soft tolerance up to 3.5 semitones for conversational inflection)
+        # 192-d Deep ONNX Neural Embedding branch
+        if len(vector) == 192 and len(self.centroid_vector) == 192:
+            n_vec = np.linalg.norm(vector)
+            n_cent = np.linalg.norm(self.centroid_vector)
+            u = (vector / n_vec) if n_vec > 1e-6 else vector
+            v = (self.centroid_vector / n_cent) if n_cent > 1e-6 else self.centroid_vector
+            cos_sim = float(np.dot(u, v))
+            cos_dist = max(0.0, 1.0 - max(0.0, min(1.0, cos_sim)))
+
+            gender_penalty = 0.0
+            if (
+                profile.gender_estimate != "androgynous"
+                and self.gender != "androgynous"
+                and profile.gender_estimate != self.gender
+            ):
+                gender_penalty = 0.50
+
+            f0_curr = max(60.0, profile.fundamental_frequency_hz)
+            f0_base = max(60.0, self.mean_f0)
+            semitone_diff = abs(12.0 * math.log2(f0_curr / f0_base))
+            pitch_pen = min(0.40, (semitone_diff - 4.5) / 8.0) if semitone_diff > 4.5 else 0.0
+
+            dist = cos_dist + gender_penalty + pitch_pen
+            if is_active_speaker and pause_sec <= 2.5 and gender_penalty == 0.0:
+                if cos_sim >= 0.70 or (semitone_diff <= 2.5 and cos_sim >= 0.60):
+                    dist *= 0.60
+
+            score = math.exp(-0.5 * (dist / 0.45) ** 2)
+            if is_active_speaker and pause_sec <= 3.5:
+                score = min(1.0, score + 0.08)
+            return max(0.0, min(1.0, score))
+
+        # Fallback: 16-d Handcrafted Acoustic DSP Feature branch
         f0_curr = max(60.0, profile.fundamental_frequency_hz)
         f0_base = max(60.0, self.mean_f0)
         f0_delta = abs(f0_curr - f0_base)
@@ -119,8 +282,13 @@ class SpeakerMemory:
 class AcousticDiarizer:
     """Intelligent voice-based speaker segmentation, memory clustering, and English dialogue formatter."""
 
-    def __init__(self, similarity_threshold: float = 0.48):
+    def __init__(
+        self,
+        similarity_threshold: float = 0.48,
+        extractor: Optional[NeuralSpeakerExtractor] = None,
+    ):
         self.similarity_threshold = similarity_threshold
+        self.extractor = extractor if extractor is not None else NeuralSpeakerExtractor()
 
     def diarize_segments(
         self,
@@ -147,10 +315,64 @@ class AcousticDiarizer:
                 s.text = self.polish_english(s.text)
             return self.group_consecutive_speaker_segments(segments)
 
+        # Pre-segmentation pass: If an input segment contains internal silence gaps >= 0.50s between words,
+        # split it into distinct speech turns so each speaker turn can be profiled and diarized individually.
+        refined_segments: List[AudioSegment] = []
+        for seg in segments:
+            if not seg.words or len(seg.words) < 2:
+                refined_segments.append(seg)
+                continue
+            turn_words: List[WordTimestamp] = []
+            turn_start = seg.words[0].start
+            for idx, w in enumerate(seg.words):
+                turn_words.append(w)
+                if idx < len(seg.words) - 1:
+                    gap = seg.words[idx + 1].start - w.end
+                    if gap >= 0.50:
+                        turn_text = " ".join(tw.word.strip() for tw in turn_words).strip()
+                        turn_seg = AudioSegment(
+                            id=len(refined_segments),
+                            seek=int(turn_start),
+                            start=turn_start,
+                            end=w.end,
+                            text=turn_text,
+                            words=list(turn_words),
+                            tokens=[],
+                            temperature=seg.temperature,
+                            avg_logprob=seg.avg_logprob,
+                            compression_ratio=seg.compression_ratio,
+                            no_speech_prob=seg.no_speech_prob,
+                            speaker=seg.speaker,
+                            confidence=seg.confidence,
+                        )
+                        refined_segments.append(turn_seg)
+                        turn_words = []
+                        turn_start = seg.words[idx + 1].start
+            if turn_words:
+                turn_text = " ".join(tw.word.strip() for tw in turn_words).strip()
+                turn_seg = AudioSegment(
+                    id=len(refined_segments),
+                    seek=int(turn_start),
+                    start=turn_start,
+                    end=turn_words[-1].end,
+                    text=turn_text,
+                    words=list(turn_words),
+                    tokens=[],
+                    temperature=seg.temperature,
+                    avg_logprob=seg.avg_logprob,
+                    compression_ratio=seg.compression_ratio,
+                    no_speech_prob=seg.no_speech_prob,
+                    speaker=seg.speaker,
+                    confidence=seg.confidence,
+                )
+                refined_segments.append(turn_seg)
+        segments = refined_segments
+
         bytes_per_sec = sample_rate * 2
         total_pcm_len = len(pcm16_data)
+        min_bytes = int(0.25 * bytes_per_sec)
 
-        # First pass: Extract profiles and normalized acoustic vectors for all segments
+        # First pass: Extract profiles and normalized acoustic/neural vectors for all segments
         extracted_info = []
         for seg in segments:
             start_byte = max(0, int(seg.start * bytes_per_sec))
@@ -159,18 +381,30 @@ class AcousticDiarizer:
             end_byte -= (end_byte % 2)
 
             seg_pcm = pcm16_data[start_byte:end_byte]
-            if len(seg_pcm) < int(0.2 * bytes_per_sec):
-                pad_start = max(0, int((seg.start - 0.15) * bytes_per_sec))
+            if len(seg_pcm) < min_bytes:
+                pad_start = max(0, int((seg.start - 0.20) * bytes_per_sec))
                 pad_start -= (pad_start % 2)
-                pad_end = min(total_pcm_len, int((seg.end + 0.15) * bytes_per_sec))
+                pad_end = min(total_pcm_len, int((seg.end + 0.20) * bytes_per_sec))
                 pad_end -= (pad_end % 2)
                 seg_pcm = pcm16_data[pad_start:pad_end]
 
-            p = VoiceProfiler.profile_from_pcm16(seg_pcm, speaker_id="temp")
-            vec = np.array(p.voice_vector, dtype=np.float32)
-            v_norm = np.linalg.norm(vec)
-            if v_norm > 1e-6:
-                vec = vec / v_norm
+            if len(seg_pcm) < min_bytes and len(seg_pcm) > 0:
+                reps = (min_bytes // len(seg_pcm)) + 1
+                seg_pcm = (seg_pcm * reps)[:min_bytes]
+
+            p = VoiceProfiler.profile_from_pcm16(seg_pcm, speaker_id="temp", sample_rate=sample_rate)
+
+            # Extract 192-d deep ONNX neural embedding
+            neural_vec = self.extractor.extract_embedding(seg_pcm, sample_rate=sample_rate)
+            if neural_vec is not None:
+                vec = neural_vec
+                setattr(p, "_neural_embedding", neural_vec)
+            else:
+                # Clean zero-dependency fallback to 16-d DSP voice vector
+                dsp_vec = np.array(p.voice_vector, dtype=np.float32)
+                v_norm = np.linalg.norm(dsp_vec)
+                vec = (dsp_vec / v_norm) if v_norm > 1e-6 else dsp_vec
+
             extracted_info.append((seg, p, vec))
 
         # Adaptive Agglomerative Hierarchical Clustering (AHC)
@@ -192,12 +426,16 @@ class AcousticDiarizer:
                     extracted_info[j][1],
                     pause_sec=pause_sec,
                     is_adjacent=is_adj,
+                    vec1=extracted_info[i][2],
+                    vec2=extracted_info[j][2],
                 )
                 dist_mat[i, j] = d
                 dist_mat[j, i] = d
 
-        # Calibrate distance threshold based on similarity_threshold (default 0.48 maps to 0.78)
-        distance_threshold = 0.78 * (0.48 / max(0.1, self.similarity_threshold))
+        # Calibrate distance threshold: neural cosine distance (~0.44) vs DSP composite (~0.78)
+        is_neural = (extracted_info[0][2].shape[0] == 192)
+        base_threshold = 0.44 if is_neural else 0.78
+        distance_threshold = base_threshold * (0.48 / max(0.1, self.similarity_threshold))
 
         clusters = [[i] for i in range(n)]
         while len(clusters) > 1:
@@ -235,10 +473,6 @@ class AcousticDiarizer:
                         inter_cos = float(np.dot(mean_vec_a, mean_vec_b) / (norm_a * norm_b))
                     else:
                         inter_cos = 0.5
-                    avg_f0_a = float(np.mean([p.fundamental_frequency_hz for p in p_a]))
-                    avg_f0_b = float(np.mean([p.fundamental_frequency_hz for p in p_b]))
-                    avg_sc_a = float(np.mean([p.spectral_centroid_hz for p in p_a]))
-                    avg_sc_b = float(np.mean([p.spectral_centroid_hz for p in p_b]))
 
                     genders_a = [p.gender_estimate for p in p_a if p.gender_estimate != "androgynous"]
                     genders_b = [p.gender_estimate for p in p_b if p.gender_estimate != "androgynous"]
@@ -247,20 +481,31 @@ class AcousticDiarizer:
                     if gen_a != "androgynous" and gen_b != "androgynous" and gen_a != gen_b:
                         continue
 
+                    avg_f0_a = float(np.mean([p.fundamental_frequency_hz for p in p_a]))
+                    avg_f0_b = float(np.mean([p.fundamental_frequency_hz for p in p_b]))
+                    avg_sc_a = float(np.mean([p.spectral_centroid_hz for p in p_a]))
+                    avg_sc_b = float(np.mean([p.spectral_centroid_hz for p in p_b]))
                     semitone_diff = abs(12.0 * math.log2(max(60.0, avg_f0_a) / max(60.0, avg_f0_b)))
                     sc_rel = abs(avg_sc_a - avg_sc_b) / max(avg_sc_a, avg_sc_b, 100.0)
 
                     should_merge = False
-                    if inter_cos >= 0.90 and sc_rel <= 0.18 and semitone_diff <= 3.5:
-                        should_merge = True
-                    elif semitone_diff <= 1.5 and sc_rel <= 0.12 and inter_cos >= 0.85:
-                        should_merge = True
+                    inter_d = float("inf")
+                    if is_neural:
+                        if inter_cos >= 0.75:
+                            should_merge = True
+                            inter_d = 1.0 - inter_cos
+                    else:
+                        if inter_cos >= 0.90 and sc_rel <= 0.18 and semitone_diff <= 3.5:
+                            should_merge = True
+                        elif semitone_diff <= 1.5 and sc_rel <= 0.12 and inter_cos >= 0.85:
+                            should_merge = True
+                        if should_merge:
+                            inter_d = (1.0 - inter_cos) * 0.4 + (sc_rel / 0.18) * 0.3 + (semitone_diff / 3.5) * 0.3
 
-                    if should_merge:
-                        inter_d = (1.0 - inter_cos) * 0.4 + (sc_rel / 0.18) * 0.3 + (semitone_diff / 3.5) * 0.3
-                        if inter_d < best_inter_d:
-                            best_inter_d = inter_d
-                            merge_pair = (a, b)
+                    if should_merge and inter_d < best_inter_d:
+                        best_inter_d = inter_d
+                        merge_pair = (a, b)
+
             if merge_pair[0] != -1:
                 a, b = merge_pair
                 clusters[a].extend(clusters[b])
@@ -298,8 +543,51 @@ class AcousticDiarizer:
         p2: VoiceProfile,
         pause_sec: float = 1.0,
         is_adjacent: bool = False,
+        vec1: Optional[np.ndarray] = None,
+        vec2: Optional[np.ndarray] = None,
     ) -> float:
-        """Calibrated multi-dimensional acoustic distance metric between two voice profiles."""
+        """Calibrated distance metric between two voice profiles (192-d neural cosine or 16-d DSP composite)."""
+        if vec1 is None:
+            vec1 = getattr(p1, "_neural_embedding", None)
+            if vec1 is None:
+                vec1 = np.array(p1.voice_vector, dtype=np.float32)
+        if vec2 is None:
+            vec2 = getattr(p2, "_neural_embedding", None)
+            if vec2 is None:
+                vec2 = np.array(p2.voice_vector, dtype=np.float32)
+
+        # 192-d Deep ONNX Neural Embedding branch
+        if len(vec1) == 192 and len(vec2) == 192:
+            norm1 = np.linalg.norm(vec1)
+            norm2 = np.linalg.norm(vec2)
+            u = (vec1 / norm1) if norm1 > 1e-6 else vec1
+            v = (vec2 / norm2) if norm2 > 1e-6 else vec2
+            cos_sim = float(np.dot(u, v))
+            cos_dist = max(0.0, 1.0 - max(0.0, min(1.0, cos_sim)))
+
+            gender_penalty = 0.0
+            if (
+                p1.gender_estimate != "androgynous"
+                and p2.gender_estimate != "androgynous"
+                and p1.gender_estimate != p2.gender_estimate
+            ):
+                gender_penalty = 0.50
+
+            f1 = max(60.0, p1.fundamental_frequency_hz)
+            f2 = max(60.0, p2.fundamental_frequency_hz)
+            semitone_diff = abs(12.0 * math.log2(f1 / f2))
+            pitch_penalty = min(0.40, (semitone_diff - 4.5) / 8.0) if semitone_diff > 4.5 else 0.0
+
+            composite = cos_dist + gender_penalty + pitch_penalty
+
+            # Conversational continuity discount (0.60x) for adjacent turns
+            if is_adjacent and pause_sec <= 2.5 and gender_penalty == 0.0:
+                if cos_sim >= 0.70 or (semitone_diff <= 2.5 and cos_sim >= 0.60):
+                    composite *= 0.60
+
+            return composite
+
+        # Fallback: 16-d Handcrafted Acoustic DSP Feature branch
         f1 = max(60.0, p1.fundamental_frequency_hz)
         f2 = max(60.0, p2.fundamental_frequency_hz)
         f0_delta = abs(f1 - f2)

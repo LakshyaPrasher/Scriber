@@ -365,7 +365,7 @@ class TestServerAPI(unittest.TestCase):
         self.assertIn("transcribe_models", written)
         self.assertIn("voice_models", written)
         self.assertEqual(len(written["transcribe_models"]), 4)
-        self.assertEqual(len(written["voice_models"]), 3)
+        self.assertEqual(len(written["voice_models"]), 6)
 
         transcribe_ids = [m["id"] for m in written["transcribe_models"]]
         self.assertIn("turbo", transcribe_ids)
@@ -374,6 +374,9 @@ class TestServerAPI(unittest.TestCase):
         self.assertIn("whisperx", transcribe_ids)
 
         voice_ids = [m["id"] for m in written["voice_models"]]
+        self.assertIn("local-gpu", voice_ids)
+        self.assertIn("voicemaker", voice_ids)
+        self.assertIn("elevenlabs", voice_ids)
         self.assertIn("edge-neural", voice_ids)
         self.assertIn("whisperspeech", voice_ids)
         self.assertIn("gpt-sovits", voice_ids)
