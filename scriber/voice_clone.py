@@ -884,7 +884,8 @@ class VoiceCloner:
         ref_norm = ref_band_energies / (np.max(ref_band_energies) + 1e-6)
         syn_norm = syn_band_energies / (np.max(syn_band_energies) + 1e-6)
         band_ratios = (ref_norm + 0.05) / (syn_norm + 0.05)
-        band_gains = np.clip(band_ratios ** 0.45, 0.60, 1.65)
+        # Gentle spectral formant scaling preventing comb filtering and harsh metallic distortion
+        band_gains = np.clip(band_ratios ** 0.25, 0.82, 1.22)
 
         # Smooth frequency domain interpolation anchored across full spectrum [0, Nyquist]
         interp_f = np.concatenate(([0.0], hz_pts[1:-1], [sr / 2.0]))
@@ -899,16 +900,14 @@ class VoiceCloner:
 
         for i in range(0, len(s_padded) - n_fft + 1, hop):
             seg = s_padded[i : i + n_fft]
-            rms = np.sqrt(np.mean(seg ** 2))
+            rms = float(np.sqrt(np.mean(seg ** 2)))
             win_seg = seg * win
             spec = np.fft.rfft(win_seg)
 
-            if rms > s_thresh:
-                # Voiced speech frame: apply smooth timbre transfer
-                filtered_spec = spec * fft_gain
-            else:
-                # Unvoiced consonant or pause: preserve crisp and uncolored
-                filtered_spec = spec
+            # Continuous smooth sigmoid transition without hard 125Hz switching flutter
+            voiced_weight = float(1.0 / (1.0 + math.exp(-max(-30.0, min(30.0, 10.0 * ((rms - s_thresh) / max(1e-4, s_thresh)))))))
+            frame_gain = (1.0 - voiced_weight) + (voiced_weight * fft_gain)
+            filtered_spec = spec * frame_gain
 
             filtered_seg = np.fft.irfft(filtered_spec) * win
             out[i : i + n_fft] += filtered_seg
@@ -924,7 +923,7 @@ class VoiceCloner:
         ref_rms = float(np.sqrt(np.mean(ref_active ** 2))) if len(ref_active) > 0 else 0.12
         syn_rms = float(np.sqrt(np.mean(syn_active ** 2))) if len(syn_active) > 0 else 0.12
         gain = ref_rms / max(0.003, syn_rms)
-        gain = np.clip(gain, 0.5, 2.5)
+        gain = np.clip(gain, 0.75, 1.40)
         res = res * gain
 
         # Soft limiter (tanh) prevents any digital clipping while preserving natural dynamics
