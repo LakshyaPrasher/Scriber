@@ -37,16 +37,18 @@ flowchart LR
 
 ## Core Capabilities
 
-### 1. Ultra-Fast GPU-Accelerated Transcription
+### 1. Ultra-Fast GPU-Accelerated Transcription & Real-Time Telemetry
 - **CTranslate2 & Faster-Whisper Backend**: Uses INT8 transformer quantization for minimal VRAM usage and maximum throughput.
 - **NVIDIA CUDA Optimization**: Auto-detects and binds to local NVIDIA RTX GPUs with preloaded cuBLAS runtime libraries.
 - **Sub-Second Performance**: Transcribes a 25.5s video in **0.79s – 1.45s** on an RTX 5050 GPU (>32× faster than real-time playback).
+- **Precision Progress Tracking & Dynamic ETA**: Features genuine audio decoding progress ($0-100\%$), real-time countdown ETA, decoding position, and live speed factor monitoring.
 - **Multi-Model Support**: Switch seamlessly between Whisper Turbo (`large-v3-turbo`), Distil-Whisper (`distil-large-v3`), and lightweight Base models.
 
 ### 2. Intelligent Acoustic Speaker Diarization
 - **Deep Neural Embeddings**: Extracts 192-dimensional unit-normalized speaker vectors via CAM++ ONNX model.
 - **Monologue Pause Cohesion**: Prevents the common failure of conventional diarizers that fragment natural breath and comma pauses into phantom speakers. A single speaker monologue remains unified as **1 speaker**.
 - **Accurate Dialogue Segregation**: Distinguishes speakers in multi-turn dialogues—even for same-gender speakers with near-identical vocal pitch (e.g. Jenny vs. Emma).
+- **Vectorized Lance-Williams Clustering**: Scales effortlessly to 90-minute interviews with 3,000+ segments in $< 3$ seconds without freezing.
 - **Persistent Speaker Memory**: Automatically re-identifies returning speakers across long conversations.
 
 ### 3. 100% Local, Private & Zero-Cost

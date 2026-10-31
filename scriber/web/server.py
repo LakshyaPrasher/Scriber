@@ -25,6 +25,54 @@ from scriber.validator import ResultValidator
 from scriber.voice_clone import VoiceCloner, VoiceProfiler
 from scriber.web.ui import get_embedded_html
 
+_ACTIVE_PROGRESS: Dict[str, Any] = {
+    "active": False,
+    "percent": 0,
+    "stage": "idle",
+    "phase": "Ready",
+    "title": "Ready",
+    "subtitle": "Standing by",
+    "file_name": "",
+    "current_time_sec": 0.0,
+    "total_duration_sec": 0.0,
+    "speed_factor": 0.0,
+    "elapsed_sec": 0.0,
+    "eta_sec": 0.0,
+}
+_PROGRESS_LOCK = threading.Lock()
+
+def update_progress_state(data: Dict[str, Any]) -> None:
+    """Updates global active progress state safely across threads."""
+    clean = {}
+    for k, v in data.items():
+        if hasattr(v, "item"):
+            clean[k] = v.item()
+        elif isinstance(v, (int, float, str, bool, list, dict)) or v is None:
+            clean[k] = v
+        else:
+            clean[k] = str(v)
+    with _PROGRESS_LOCK:
+        _ACTIVE_PROGRESS.update(clean)
+        _ACTIVE_PROGRESS["active"] = True
+
+def reset_progress_state(file_name: str = "") -> None:
+    """Resets global progress state back to clean baseline."""
+    with _PROGRESS_LOCK:
+        _ACTIVE_PROGRESS.update({
+            "active": False,
+            "percent": 0,
+            "stage": "idle",
+            "phase": "Ready",
+            "title": "Ready",
+            "subtitle": "Standing by",
+            "file_name": file_name,
+            "current_time_sec": 0.0,
+            "total_duration_sec": 0.0,
+            "speed_factor": 0.0,
+            "elapsed_sec": 0.0,
+            "eta_sec": 0.0,
+        })
+
 
 class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     """Custom HTTP handler for Scriber Web UI and REST API."""
@@ -61,6 +109,10 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self._send_json_response(404, {"error": "Asset not found"})
         elif path == "/api/health":
             self._send_json_response(200, {"status": "ok", "app": "Scriber"})
+        elif path == "/api/progress":
+            with _PROGRESS_LOCK:
+                resp = dict(_ACTIVE_PROGRESS)
+            self._send_json_response(200, resp)
         elif path == "/api/hardware":
             from scriber.hardware import get_hardware_capabilities
             caps = get_hardware_capabilities()
@@ -322,14 +374,19 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     self._send_json_response(400, {"error": f"File '{file_path_arg}' not found on server"})
                     return
                 redact_pii_val = bool(data.get("redact_pii", False))
-                output = self.pipeline.process_file(
-                    file_path=file_path_arg,
-                    task=data.get("task", "translate"),
-                    language=None if data.get("language") in ("auto", "none", "", None) else data.get("language"),
-                    reference_text=data.get("reference_text"),
-                    model=data.get("model", "turbo"),
-                    redact_pii=redact_pii_val,
-                )
+                reset_progress_state(file_name=os.path.basename(file_path_arg))
+                try:
+                    output = self.pipeline.process_file(
+                        file_path=file_path_arg,
+                        task=data.get("task", "translate"),
+                        language=None if data.get("language") in ("auto", "none", "", None) else data.get("language"),
+                        reference_text=data.get("reference_text"),
+                        model=data.get("model", "turbo"),
+                        redact_pii=redact_pii_val,
+                        progress_callback=update_progress_state,
+                    )
+                finally:
+                    reset_progress_state()
                 output.video_source = os.path.basename(file_path_arg)
                 try:
                     self.pipeline._export_all_formats(output, "./scriber_output", ["json", "md", "srt", "vtt", "txt", "html"])
@@ -402,14 +459,19 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             # Handle file_path parameter if provided and valid
             if file_path_param and os.path.isfile(file_path_param):
-                output = self.pipeline.process_file(
-                    file_path=file_path_param,
-                    task=task,
-                    language=None if language in ("auto", "none", "", None) else language,
-                    reference_text=ref_text,
-                    model=model,
-                    redact_pii=redact_pii,
-                )
+                reset_progress_state(file_name=os.path.basename(file_path_param))
+                try:
+                    output = self.pipeline.process_file(
+                        file_path=file_path_param,
+                        task=task,
+                        language=None if language in ("auto", "none", "", None) else language,
+                        reference_text=ref_text,
+                        model=model,
+                        redact_pii=redact_pii,
+                        progress_callback=update_progress_state,
+                    )
+                finally:
+                    reset_progress_state()
                 output.video_source = os.path.basename(file_path_param)
                 try:
                     self.pipeline._export_all_formats(output, "./scriber_output", ["json", "md", "srt", "vtt", "txt", "html"])
@@ -441,14 +503,19 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 tmp_path = tmp.name
                 tmp.write(file_data)
 
-            output = self.pipeline.process_file(
-                file_path=tmp_path,
-                task=task,
-                language=None if language in ("auto", "none", "", None) else language,
-                reference_text=ref_text,
-                model=model,
-                redact_pii=redact_pii,
-            )
+            reset_progress_state(file_name=filename)
+            try:
+                output = self.pipeline.process_file(
+                    file_path=tmp_path,
+                    task=task,
+                    language=None if language in ("auto", "none", "", None) else language,
+                    reference_text=ref_text,
+                    model=model,
+                    redact_pii=redact_pii,
+                    progress_callback=update_progress_state,
+                )
+            finally:
+                reset_progress_state()
             output.video_source = filename
             try:
                 self.pipeline._export_all_formats(output, "./scriber_output", ["json", "md", "srt", "vtt", "txt", "html"])

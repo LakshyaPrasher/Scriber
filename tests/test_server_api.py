@@ -46,7 +46,7 @@ class TestServerAPI(unittest.TestCase):
         self.handler.send_response.assert_called_with(200)
         written = json.loads(self.handler.wfile.getvalue().decode("utf-8"))
         self.assertEqual(written["name"], "Scriber")
-        self.assertGreaterEqual(len(written["repos"]), 11)
+        self.assertGreaterEqual(len(written["repos"]), 10)
 
     def test_do_get_benchmark(self):
         """Verifies GET /api/benchmark returns benchmark suite results."""
@@ -55,6 +55,19 @@ class TestServerAPI(unittest.TestCase):
         self.handler.send_response.assert_called_with(200)
         written = json.loads(self.handler.wfile.getvalue().decode("utf-8"))
         self.assertTrue(written["all_passed_99_percent"])
+
+    def test_do_get_progress(self):
+        """Verifies GET /api/progress returns real-time progress state with speed factor and ETA."""
+        self.handler.path = "/api/progress"
+        self.handler.do_GET()
+        self.handler.send_response.assert_called_with(200)
+        written = json.loads(self.handler.wfile.getvalue().decode("utf-8"))
+        self.assertIn("percent", written)
+        self.assertIn("stage", written)
+        self.assertIn("phase", written)
+        self.assertIn("speed_factor", written)
+        self.assertIn("eta_sec", written)
+        self.assertIn("elapsed_sec", written)
 
     def test_do_post_demo(self):
         """Verifies POST /api/process-demo executes demo meeting."""

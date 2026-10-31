@@ -4,9 +4,9 @@ import tempfile
 
 def create_desktop_shortcut():
     desktop = os.path.expanduser("~/Desktop")
-    target = os.path.abspath("dist/Scriber/Scriber.exe")
-    icon = os.path.abspath("scriber/assets/icon.ico")
-    workdir = os.path.abspath("dist/Scriber")
+    target = os.path.abspath("dist/Scriber/Scriber.exe").replace(r"\criber\dist", r"\scriber\dist").replace("/criber/dist", "/scriber/dist")
+    icon = os.path.abspath("scriber/assets/icon.ico").replace(r"\criber\scriber", r"\scriber\scriber").replace("/criber/scriber", "/scriber/scriber")
+    workdir = os.path.abspath("dist/Scriber").replace(r"\criber\dist", r"\scriber\dist").replace("/criber/dist", "/scriber/dist")
     lnk_path = os.path.join(desktop, "Scriber.lnk")
 
     vbs_content = f'''Set oWS = WScript.CreateObject("WScript.Shell")

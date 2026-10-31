@@ -12,8 +12,9 @@ import re
 import struct
 import sys
 import threading
+import time
 import unicodedata
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 def _register_nvidia_dll_directories() -> None:
     """Ensures nvidia-cublas and nvidia-cudnn DLL directories are registered and preloaded on Windows."""
@@ -458,6 +459,7 @@ class TranscriptionEngine:
         ground_truth_hint: Optional[str] = None,
         model: str = "turbo",
         beam_size: int = 1,
+        progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> TranscriptionResult:
         """Executes speech-to-text or speech translation matching Whisper's processing flow."""
         selected_model = (model or "turbo").lower()
@@ -484,6 +486,7 @@ class TranscriptionEngine:
                     model_name=selected_model,
                     vad_segments=vad_segments,
                     beam_size=beam_size,
+                    progress_callback=progress_callback,
                 )
                 pass
             except Exception:
@@ -792,6 +795,7 @@ class TranscriptionEngine:
         model_name: str = "turbo",
         vad_segments: Optional[List[Tuple[float, float, bytes]]] = None,
         beam_size: int = 1,
+        progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> TranscriptionResult:
         """Integration with SYSTRAN/faster-whisper for real speech-to-text and translation."""
         import faster_whisper  # type: ignore
@@ -940,6 +944,35 @@ class TranscriptionEngine:
         actual_task = "translate" if (task == "translate" or language in ("auto", None, "") or (language and language != "en")) else task
         whisper_lang = None if language in (None, "", "auto", "none") else language
 
+        def _consume_generator(gen):
+            out = []
+            t_whisper_start = time.time()
+            for seg in gen:
+                # Discard ghost segments hallucinated past audio duration
+                if duration > 0 and seg.start >= duration:
+                    continue
+                out.append(seg)
+                if progress_callback:
+                    cur_sec = float(min(duration, seg.end) if duration > 0 else seg.end)
+                    elapsed = float(max(0.01, time.time() - t_whisper_start))
+                    speed = float(cur_sec / elapsed)
+                    eta = float(max(0.0, (duration - cur_sec) / speed) if (duration > 0 and speed > 0.05) else 0.0)
+                    frac = float(min(1.0, cur_sec / max(0.1, duration)) if duration > 0 else 0.5)
+                    pct = int(20 + int(frac * 60))
+                    progress_callback({
+                        "percent": pct,
+                        "stage": "transcription",
+                        "phase": f"Phase 3/4 · Transcribing ({pct}%)",
+                        "title": "Whisper Flow Transformer Inference",
+                        "subtitle": f"Decoded {int(cur_sec // 60):02d}:{int(cur_sec % 60):02d} of {int(duration // 60):02d}:{int(duration % 60):02d} ({speed:.1f}x real-time speed)",
+                        "current_time_sec": float(round(cur_sec, 2)),
+                        "total_duration_sec": float(round(duration, 2)),
+                        "speed_factor": float(round(speed, 1)),
+                        "elapsed_sec": float(round(elapsed, 1)),
+                        "eta_sec": float(round(eta, 1)),
+                    })
+            return out
+
         try:
             segments_gen, info = model.transcribe(
                 buf,
@@ -949,7 +982,7 @@ class TranscriptionEngine:
                 word_timestamps=True,
                 beam_size=beam_size,
             )
-            segments_list = list(segments_gen)
+            segments_list = _consume_generator(segments_gen)
         except Exception:
             # If CUDA runtime error during inference, safely fallback to CPU int8 for the same model
             if pref_device != "cpu" and getattr(model, "model", None) and getattr(model.model, "device", None) != "cpu":
@@ -975,7 +1008,7 @@ class TranscriptionEngine:
                         word_timestamps=True,
                         beam_size=beam_size,
                     )
-                    segments_list = list(segments_gen)
+                    segments_list = _consume_generator(segments_gen)
                 except Exception:
                     buf.seek(0)
                     segments_gen, info = model.transcribe(
@@ -985,7 +1018,7 @@ class TranscriptionEngine:
                         vad_filter=False,
                         word_timestamps=True,
                     )
-                    segments_list = list(segments_gen)
+                    segments_list = _consume_generator(segments_gen)
             else:
                 # Fallback to standard chunking if Silero VAD ONNX model is missing or fails to execute
                 buf.seek(0)
@@ -996,7 +1029,7 @@ class TranscriptionEngine:
                     vad_filter=False,
                     word_timestamps=True,
                 )
-                segments_list = list(segments_gen)
+                segments_list = _consume_generator(segments_gen)
 
         segments = []
         text_parts = []

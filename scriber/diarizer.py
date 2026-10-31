@@ -17,7 +17,7 @@ import math
 import os
 import re
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -76,26 +76,16 @@ class NeuralSpeakerExtractor:
                 return c
         return None
 
-    @classmethod
-    def compute_fbank(cls, pcm16_data: bytes, sample_rate: int = 16000) -> np.ndarray:
-        """Computes 80-bin log mel-filterbank features with CMVN from 16kHz PCM audio."""
-        if pcm16_data.startswith(b"RIFF") and len(pcm16_data) > 44:
-            data_idx = pcm16_data.find(b"data")
-            pcm16_data = pcm16_data[data_idx + 8:] if data_idx != -1 else pcm16_data[44:]
-        if len(pcm16_data) % 2 != 0:
-            pcm16_data = pcm16_data[:-1]
+    _FILTERS: Optional[np.ndarray] = None
+    _WINDOW: Optional[np.ndarray] = None
 
-        samples = np.frombuffer(pcm16_data, dtype=np.int16).astype(np.float32)
-        frame_len = int(0.025 * sample_rate)   # 400 samples (25ms)
-        frame_shift = int(0.010 * sample_rate) # 160 samples (10ms)
-        n_fft = 512
-        num_bins = 80
+    @classmethod
+    def _get_filterbank_and_window(cls, sample_rate: int = 16000, n_fft: int = 512, num_bins: int = 80, frame_len: int = 400) -> Tuple[np.ndarray, np.ndarray]:
+        if cls._FILTERS is not None and cls._WINDOW is not None:
+            return cls._FILTERS, cls._WINDOW
+
         low_freq = 20.0
         high_freq = sample_rate / 2.0
-
-        if len(samples) < frame_len:
-            samples = np.pad(samples, (0, frame_len - len(samples)), mode="constant")
-        num_frames = max(1, (len(samples) - frame_len) // frame_shift + 1)
 
         def hz_to_mel(f: float) -> float:
             return 1127.0 * np.log(1.0 + f / 700.0)
@@ -118,8 +108,32 @@ class NeuralSpeakerExtractor:
                 if f_m_plus > f_m:
                     filters[m - 1, k] = (f_m_plus - k) / (f_m_plus - f_m)
 
-        # Pre-emphasis (0.97) and Povey window
         window = (0.5 - 0.5 * np.cos(2 * np.pi * np.arange(frame_len) / (frame_len - 1))) ** 0.85
+        cls._FILTERS = filters
+        cls._WINDOW = window.astype(np.float32)
+        return cls._FILTERS, cls._WINDOW
+
+    @classmethod
+    def compute_fbank(cls, pcm16_data: bytes, sample_rate: int = 16000) -> np.ndarray:
+        """Computes 80-bin log mel-filterbank features with CMVN from 16kHz PCM audio."""
+        if pcm16_data.startswith(b"RIFF") and len(pcm16_data) > 44:
+            data_idx = pcm16_data.find(b"data")
+            pcm16_data = pcm16_data[data_idx + 8:] if data_idx != -1 else pcm16_data[44:]
+        if len(pcm16_data) % 2 != 0:
+            pcm16_data = pcm16_data[:-1]
+
+        samples = np.frombuffer(pcm16_data, dtype=np.int16).astype(np.float32)
+        frame_len = int(0.025 * sample_rate)   # 400 samples (25ms)
+        frame_shift = int(0.010 * sample_rate) # 160 samples (10ms)
+        n_fft = 512
+
+        if len(samples) < frame_len:
+            samples = np.pad(samples, (0, frame_len - len(samples)), mode="constant")
+        num_frames = max(1, (len(samples) - frame_len) // frame_shift + 1)
+
+        filters, window = cls._get_filterbank_and_window(sample_rate, n_fft=n_fft, frame_len=frame_len)
+
+        # Pre-emphasis (0.97) and Povey window
         frames = np.zeros((num_frames, frame_len), dtype=np.float32)
         for i in range(num_frames):
             st = i * frame_shift
@@ -295,6 +309,7 @@ class AcousticDiarizer:
         segments: List[AudioSegment],
         pcm16_data: bytes,
         sample_rate: int = 16000,
+        progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> List[AudioSegment]:
         """Analyzes acoustic voice characteristics of each segment and assigns speakers based on real vocal biometrics."""
         if not segments:
@@ -375,13 +390,15 @@ class AcousticDiarizer:
 
         # First pass: Extract profiles and normalized acoustic/neural vectors for all segments
         extracted_info = []
-        for seg in segments:
+        total_segs = len(segments)
+
+        for idx_seg, seg in enumerate(segments):
+            seg_dur = max(0.05, seg.end - seg.start)
             start_byte = max(0, int(seg.start * bytes_per_sec))
             start_byte -= (start_byte % 2)
             end_byte = min(total_pcm_len, int(seg.end * bytes_per_sec))
             end_byte -= (end_byte % 2)
 
-            seg_dur = max(0.05, seg.end - seg.start)
             # Short turns (< 1.5s) are padded symmetrically with surrounding context audio
             # so CAM++ neural speaker embeddings receive adequate temporal context
             target_context_sec = 1.5
@@ -406,20 +423,40 @@ class AcousticDiarizer:
                 reps = (min_bytes // len(seg_pcm)) + 1
                 seg_pcm = (seg_pcm * reps)[:min_bytes]
 
-            p = VoiceProfiler.profile_from_pcm16(seg_pcm, speaker_id="temp", sample_rate=sample_rate)
+            p = VoiceProfiler.profile_fast(seg_pcm, speaker_id="temp", sample_rate=sample_rate)
 
             # Extract 192-d deep ONNX neural embedding
             neural_vec = self.extractor.extract_embedding(seg_pcm, sample_rate=sample_rate)
             if neural_vec is not None:
-                vec = neural_vec
-                setattr(p, "_neural_embedding", neural_vec)
+                vec = np.asarray(neural_vec, dtype=np.float32)
+                setattr(p, "_neural_embedding", vec)
             else:
                 # Clean zero-dependency fallback to 16-d DSP voice vector
                 dsp_vec = np.array(p.voice_vector, dtype=np.float32)
                 v_norm = np.linalg.norm(dsp_vec)
-                vec = (dsp_vec / v_norm) if v_norm > 1e-6 else dsp_vec
+                normed_dsp = (dsp_vec / v_norm) if v_norm > 1e-6 else dsp_vec
+                if self.extractor.is_available:
+                    vec = np.pad(normed_dsp, (0, 192 - len(normed_dsp)), mode="constant")
+                else:
+                    vec = normed_dsp
 
             extracted_info.append((seg, p, vec))
+
+            if progress_callback and (idx_seg % 15 == 0 or idx_seg == total_segs - 1):
+                frac = (idx_seg + 1) / max(1, total_segs)
+                pct = 80 + int(frac * 16)
+                progress_callback({
+                    "percent": pct,
+                    "stage": "diarization",
+                    "phase": f"Phase 4/4 · Diarizing ({pct}%)",
+                    "title": "Biometric Diarization & Speaker Separation",
+                    "subtitle": f"Profiling speaker segment {idx_seg + 1} of {total_segs}...",
+                    "current_time_sec": round(seg.end, 2),
+                    "total_duration_sec": round(segments[-1].end if segments else 0.0, 2),
+                    "speed_factor": 1.0,
+                    "elapsed_sec": 0.0,
+                    "eta_sec": max(0.5, round((total_segs - idx_seg) * 0.01, 1)),
+                })
 
         # Adaptive Agglomerative Hierarchical Clustering (AHC)
         n = len(extracted_info)
@@ -429,112 +466,197 @@ class AcousticDiarizer:
                 s.text = self.polish_english(s.text)
             return self.group_consecutive_speaker_segments(segments)
 
-        # Build pairwise distance matrix across all segments
-        dist_mat = np.zeros((n, n), dtype=np.float32)
-        for i in range(n):
-            for j in range(i + 1, n):
-                is_adj = (j == i + 1)
-                pause_sec = max(0.0, segments[j].start - segments[i].end)
-                d = self.compute_acoustic_distance(
-                    extracted_info[i][1],
-                    extracted_info[j][1],
-                    pause_sec=pause_sec,
-                    is_adjacent=is_adj,
-                    vec1=extracted_info[i][2],
-                    vec2=extracted_info[j][2],
-                )
-                dist_mat[i, j] = d
-                dist_mat[j, i] = d
-
         # Calibrate distance threshold: neural cosine distance (~0.44) vs DSP composite (~0.78)
-        is_neural = (extracted_info[0][2].shape[0] == 192)
+        is_neural = (len(extracted_info[0][2]) == 192)
         base_threshold = 0.44 if is_neural else 0.78
         distance_threshold = base_threshold * (0.48 / max(0.1, self.similarity_threshold))
 
+        # Vectorized pairwise distance computation
+        if is_neural:
+            embs = np.array([x[2] for x in extracted_info], dtype=np.float32)
+            norms = np.linalg.norm(embs, axis=1, keepdims=True)
+            embs_norm = np.where(norms > 1e-6, embs / norms, embs)
+            cos_sim = np.clip(np.dot(embs_norm, embs_norm.T), -1.0, 1.0)
+            cos_dist = np.maximum(0.0, 1.0 - np.maximum(0.0, cos_sim))
+
+            genders = np.array([x[1].gender_estimate for x in extracted_info])
+            gen_diff = (genders[:, None] != genders[None, :]) & (genders[:, None] != "androgynous") & (genders[None, :] != "androgynous")
+            gender_penalty = np.where(gen_diff, 0.50, 0.0).astype(np.float32)
+
+            f0s = np.array([max(60.0, x[1].fundamental_frequency_hz) for x in extracted_info], dtype=np.float32)
+            semitone_diff = np.abs(12.0 * np.log2(f0s[:, None] / f0s[None, :]))
+            pitch_penalty = np.where(semitone_diff > 4.5, np.minimum(0.40, (semitone_diff - 4.5) / 8.0), 0.0).astype(np.float32)
+
+            dist_mat = (cos_dist + gender_penalty + pitch_penalty).astype(np.float32)
+
+            # Symmetrical adjacent turn continuity discount
+            for i in range(n - 1):
+                p1 = extracted_info[i][1]
+                p2 = extracted_info[i + 1][1]
+                pause_sec = max(0.0, segments[i + 1].start - segments[i].end)
+                min_turn_dur = min(p1.sample_duration, p2.sample_duration)
+                if pause_sec <= 3.5 and gender_penalty[i, i + 1] == 0.0:
+                    c_sim = cos_sim[i, i + 1]
+                    s_diff = semitone_diff[i, i + 1]
+                    if c_sim >= 0.60:
+                        dist_mat[i, i + 1] *= 0.60
+                        dist_mat[i + 1, i] *= 0.60
+                    elif min_turn_dur < 1.5 and (s_diff <= 3.0 and c_sim >= 0.45):
+                        dist_mat[i, i + 1] *= 0.60
+                        dist_mat[i + 1, i] *= 0.60
+        else:
+            dist_mat = np.zeros((n, n), dtype=np.float32)
+            for i in range(n):
+                for j in range(i + 1, n):
+                    is_adj = (j == i + 1)
+                    pause_sec = max(0.0, segments[j].start - segments[i].end)
+                    d = self.compute_acoustic_distance(
+                        extracted_info[i][1],
+                        extracted_info[j][1],
+                        pause_sec=pause_sec,
+                        is_adjacent=is_adj,
+                        vec1=extracted_info[i][2],
+                        vec2=extracted_info[j][2],
+                    )
+                    dist_mat[i, j] = d
+                    dist_mat[j, i] = d
+
+        # Fast Lance-Williams Agglomerative Hierarchical Clustering (average linkage)
         clusters = [[i] for i in range(n)]
-        while len(clusters) > 1:
-            min_d = float("inf")
-            best_pair = (-1, -1)
-            for a in range(len(clusters)):
-                for b in range(a + 1, len(clusters)):
-                    d_ab = float(np.mean([dist_mat[i, j] for i in clusters[a] for j in clusters[b]]))
-                    if d_ab < min_d:
-                        min_d = d_ab
-                        best_pair = (a, b)
-            if min_d < distance_threshold:
-                a, b = best_pair
-                clusters[a].extend(clusters[b])
-                clusters.pop(b)
-            else:
+        cluster_sizes = np.ones(n, dtype=np.int32)
+        dist_copy = dist_mat.copy()
+        np.fill_diagonal(dist_copy, np.inf)
+
+        mins = np.min(dist_copy, axis=1)
+        min_indices = np.argmin(dist_copy, axis=1)
+
+        merges = 0
+        while merges < n - 1:
+            best_a = int(np.argmin(mins))
+            min_d = float(mins[best_a])
+            if min_d >= distance_threshold:
                 break
+            best_b = int(min_indices[best_a])
+            if best_a > best_b:
+                best_a, best_b = best_b, best_a
+
+            sa = cluster_sizes[best_a]
+            sb = cluster_sizes[best_b]
+            new_s = sa + sb
+
+            d_ak = dist_copy[best_a]
+            d_bk = dist_copy[best_b]
+            new_d = (sa * d_ak + sb * d_bk) / new_s
+            dist_copy[best_a] = new_d
+            dist_copy[:, best_a] = new_d
+            dist_copy[best_a, best_a] = np.inf
+
+            dist_copy[best_b] = np.inf
+            dist_copy[:, best_b] = np.inf
+            mins[best_b] = np.inf
+            cluster_sizes[best_a] = new_s
+
+            mins[best_a] = np.min(dist_copy[best_a])
+            min_indices[best_a] = np.argmin(dist_copy[best_a])
+
+            mask = (min_indices == best_a) | (min_indices == best_b)
+            mask[best_b] = False
+            if np.any(mask):
+                affected = np.where(mask)[0]
+                mins[affected] = np.min(dist_copy[affected], axis=1)
+                min_indices[affected] = np.argmin(dist_copy[affected], axis=1)
+
+            clusters[best_a].extend(clusters[best_b])
+            clusters[best_b] = []
+            merges += 1
+
+        clusters = [c for c in clusters if c]
 
         # Inter-cluster centroid consolidation: merge any remaining clusters that share matching vocal biometrics
-        merged = True
-        while merged and len(clusters) > 1:
-            merged = False
-            best_inter_d = float("inf")
-            merge_pair = (-1, -1)
-            for a in range(len(clusters)):
-                for b in range(a + 1, len(clusters)):
-                    p_a = [extracted_info[idx][1] for idx in clusters[a]]
-                    p_b = [extracted_info[idx][1] for idx in clusters[b]]
-                    vecs_a = [extracted_info[idx][2] for idx in clusters[a]]
-                    vecs_b = [extracted_info[idx][2] for idx in clusters[b]]
-                    mean_vec_a = np.mean(vecs_a, axis=0)
-                    mean_vec_b = np.mean(vecs_b, axis=0)
-                    norm_a, norm_b = np.linalg.norm(mean_vec_a), np.linalg.norm(mean_vec_b)
-                    if norm_a > 1e-6 and norm_b > 1e-6:
-                        inter_cos = float(np.dot(mean_vec_a, mean_vec_b) / (norm_a * norm_b))
-                    else:
-                        inter_cos = 0.5
+        if len(clusters) > 1 and len(clusters) <= 80:
+            c_vecs = [np.sum([extracted_info[idx][2] for idx in c], axis=0) for c in clusters]
+            c_f0s = [float(np.mean([extracted_info[idx][1].fundamental_frequency_hz for idx in c])) for c in clusters]
+            c_scs = [float(np.mean([extracted_info[idx][1].spectral_centroid_hz for idx in c])) for c in clusters]
+            c_durs = [float(sum(extracted_info[idx][0].end - extracted_info[idx][0].start for idx in c)) for c in clusters]
+            c_genders = []
+            for c in clusters:
+                gens = [extracted_info[idx][1].gender_estimate for idx in c if extracted_info[idx][1].gender_estimate != "androgynous"]
+                c_genders.append(max(set(gens), key=gens.count) if gens else "androgynous")
 
-                    genders_a = [p.gender_estimate for p in p_a if p.gender_estimate != "androgynous"]
-                    genders_b = [p.gender_estimate for p in p_b if p.gender_estimate != "androgynous"]
-                    gen_a = max(set(genders_a), key=genders_a.count) if genders_a else "androgynous"
-                    gen_b = max(set(genders_b), key=genders_b.count) if genders_b else "androgynous"
-                    if gen_a != "androgynous" and gen_b != "androgynous" and gen_a != gen_b:
+            merged = True
+            while merged and len(clusters) > 1:
+                merged = False
+                best_inter_d = float("inf")
+                merge_pair = (-1, -1)
+                num_c = len(clusters)
+                for a in range(num_c):
+                    v_a = c_vecs[a]
+                    norm_a = np.linalg.norm(v_a)
+                    if norm_a < 1e-6:
                         continue
+                    u_a = v_a / norm_a
+                    gen_a = c_genders[a]
+                    f0_a = c_f0s[a]
+                    sc_a = c_scs[a]
+                    dur_a = c_durs[a]
 
-                    avg_f0_a = float(np.mean([p.fundamental_frequency_hz for p in p_a]))
-                    avg_f0_b = float(np.mean([p.fundamental_frequency_hz for p in p_b]))
-                    avg_sc_a = float(np.mean([p.spectral_centroid_hz for p in p_a]))
-                    avg_sc_b = float(np.mean([p.spectral_centroid_hz for p in p_b]))
-                    semitone_diff = abs(12.0 * math.log2(max(60.0, avg_f0_a) / max(60.0, avg_f0_b)))
-                    sc_rel = abs(avg_sc_a - avg_sc_b) / max(avg_sc_a, avg_sc_b, 100.0)
+                    for b in range(a + 1, num_c):
+                        gen_b = c_genders[b]
+                        if gen_a != "androgynous" and gen_b != "androgynous" and gen_a != gen_b:
+                            continue
+                        v_b = c_vecs[b]
+                        norm_b = np.linalg.norm(v_b)
+                        if norm_b < 1e-6:
+                            continue
+                        u_b = v_b / norm_b
 
-                    should_merge = False
-                    inter_d = float("inf")
-                    dur_a = sum(extracted_info[idx][0].end - extracted_info[idx][0].start for idx in clusters[a])
-                    dur_b = sum(extracted_info[idx][0].end - extracted_info[idx][0].start for idx in clusters[b])
-                    min_cluster_dur = min(dur_a, dur_b)
+                        inter_cos = float(np.dot(u_a, u_b))
+                        semitone_diff = abs(12.0 * math.log2(max(60.0, f0_a) / max(60.0, c_f0s[b])))
+                        sc_rel = abs(sc_a - c_scs[b]) / max(sc_a, c_scs[b], 100.0)
+                        min_cluster_dur = min(dur_a, c_durs[b])
 
-                    if is_neural:
-                        if inter_cos >= 0.55 and semitone_diff <= 3.5:
-                            should_merge = True
-                            inter_d = 1.0 - inter_cos
-                        elif min_cluster_dur < 2.5 and semitone_diff <= 4.0 and inter_cos >= 0.45:
-                            should_merge = True
-                            inter_d = 1.0 - inter_cos
-                        elif inter_cos >= 0.70:
-                            should_merge = True
-                            inter_d = 1.0 - inter_cos
-                    else:
-                        if inter_cos >= 0.90 and sc_rel <= 0.18 and semitone_diff <= 3.5:
-                            should_merge = True
-                        elif semitone_diff <= 1.5 and sc_rel <= 0.12 and inter_cos >= 0.85:
-                            should_merge = True
-                        if should_merge:
-                            inter_d = (1.0 - inter_cos) * 0.4 + (sc_rel / 0.18) * 0.3 + (semitone_diff / 3.5) * 0.3
+                        should_merge = False
+                        inter_d = float("inf")
 
-                    if should_merge and inter_d < best_inter_d:
-                        best_inter_d = inter_d
-                        merge_pair = (a, b)
+                        if is_neural:
+                            if inter_cos >= 0.55 and semitone_diff <= 3.5:
+                                should_merge = True
+                                inter_d = 1.0 - inter_cos
+                            elif min_cluster_dur < 2.5 and semitone_diff <= 4.0 and inter_cos >= 0.45:
+                                should_merge = True
+                                inter_d = 1.0 - inter_cos
+                            elif inter_cos >= 0.70:
+                                should_merge = True
+                                inter_d = 1.0 - inter_cos
+                        else:
+                            if inter_cos >= 0.90 and sc_rel <= 0.18 and semitone_diff <= 3.5:
+                                should_merge = True
+                            elif semitone_diff <= 1.5 and sc_rel <= 0.12 and inter_cos >= 0.85:
+                                should_merge = True
+                            if should_merge:
+                                inter_d = (1.0 - inter_cos) * 0.4 + (sc_rel / 0.18) * 0.3 + (semitone_diff / 3.5) * 0.3
 
-            if merge_pair[0] != -1:
-                a, b = merge_pair
-                clusters[a].extend(clusters[b])
-                clusters.pop(b)
-                merged = True
+                        if should_merge and inter_d < best_inter_d:
+                            best_inter_d = inter_d
+                            merge_pair = (a, b)
+
+                if merge_pair[0] != -1:
+                    a, b = merge_pair
+                    sa = len(clusters[a])
+                    sb = len(clusters[b])
+                    c_f0s[a] = (c_f0s[a] * sa + c_f0s[b] * sb) / (sa + sb)
+                    c_scs[a] = (c_scs[a] * sa + c_scs[b] * sb) / (sa + sb)
+                    c_durs[a] += c_durs[b]
+                    c_vecs[a] += c_vecs[b]
+                    clusters[a].extend(clusters[b])
+
+                    clusters.pop(b)
+                    c_vecs.pop(b)
+                    c_f0s.pop(b)
+                    c_scs.pop(b)
+                    c_durs.pop(b)
+                    c_genders.pop(b)
+                    merged = True
 
         # Monologue Cohesion: If all remaining clusters exhibit uniform gender, consistent pitch (<= 3.0 semitones),
         # AND high centroid cosine similarity (>= 0.65 neural / >= 0.88 DSP), consolidate into a single speaker.

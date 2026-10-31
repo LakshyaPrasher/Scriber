@@ -12,7 +12,7 @@ from __future__ import annotations
 import os
 import time
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from scriber.audio_editor import AudioEditor
 from scriber.audio_extractor import AudioExtractor
@@ -68,10 +68,22 @@ class ScriberPipeline:
         export_formats: Optional[List[str]] = None,
         model: str = "turbo",
         redact_pii: bool = False,
+        progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> ScriberOutput:
         """Processes any video or audio file through the 4-subagent pipeline."""
         start_time = time.time()
         session_id = f"sess_{uuid.uuid4().hex[:10]}"
+
+        if progress_callback:
+            progress_callback({
+                "percent": 5,
+                "stage": "extraction",
+                "phase": "Phase 1/4 · Acoustic Normalization",
+                "title": "Ingesting Media & Audio Extraction",
+                "subtitle": f"Extracting 16kHz speech stream from {os.path.basename(file_path)}...",
+                "file_name": os.path.basename(file_path),
+                "elapsed_sec": round(time.time() - start_time, 1),
+            })
 
         # Step 1: Ingest & Extract 16kHz mono PCM
         pcm16_data, audio_meta = self.audio_extractor.extract_pcm16(file_path)
@@ -79,11 +91,34 @@ class ScriberPipeline:
         self.last_audio_meta = audio_meta
         self.last_file_path = file_path
 
+        if progress_callback:
+            dur_fmt = f"{int(audio_meta.duration // 60):02d}:{int(audio_meta.duration % 60):02d}"
+            progress_callback({
+                "percent": 12,
+                "stage": "vad",
+                "phase": "Phase 2/4 · VAD Segmentation",
+                "title": "Voice Activity Detection & Filtering",
+                "subtitle": f"Analyzing speech boundaries across {dur_fmt} audio...",
+                "total_duration_sec": round(audio_meta.duration, 2),
+                "elapsed_sec": round(time.time() - start_time, 1),
+            })
+
         # Step 2: VAD Silence Chunking (mirroring WhisperX / Silero VAD)
         vad_segments = self.audio_extractor.split_vad_segments(
             pcm16_data=pcm16_data,
             energy_threshold=0.015,
         )
+
+        if progress_callback:
+            progress_callback({
+                "percent": 20,
+                "stage": "transcription",
+                "phase": "Phase 3/4 · Transformer Inference",
+                "title": "Whisper Flow & Cross-Attention Alignment",
+                "subtitle": f"Identified {len(vad_segments)} speech turns. Initializing neural transformer...",
+                "total_duration_sec": round(audio_meta.duration, 2),
+                "elapsed_sec": round(time.time() - start_time, 1),
+            })
 
         # Step 3: Transcription Engine - Whisper Flow Speech-to-Text
         raw_transcription = self.transcription_engine.transcribe(
@@ -95,16 +130,40 @@ class ScriberPipeline:
             vad_segments=vad_segments,
             ground_truth_hint=reference_text,
             model=model,
+            progress_callback=progress_callback,
         )
+
+        if progress_callback:
+            progress_callback({
+                "percent": 80,
+                "stage": "diarization",
+                "phase": "Phase 4/4 · Diarization & Polish",
+                "title": "Biometric Diarization & English Synthesis",
+                "subtitle": f"Diarizing {len(raw_transcription.segments)} transcribed segments...",
+                "total_duration_sec": round(audio_meta.duration, 2),
+                "elapsed_sec": round(time.time() - start_time, 1),
+            })
 
         # Step 3.5: Acoustic Diarizer with Speaker Memory & Proper English Formatting
         diarized_segments = self.diarizer.diarize_segments(
             segments=raw_transcription.segments,
             pcm16_data=pcm16_data,
             sample_rate=16000,
+            progress_callback=progress_callback,
         )
         raw_transcription.segments = diarized_segments
         raw_transcription.text = " ".join(s.text for s in diarized_segments).strip()
+
+        if progress_callback:
+            progress_callback({
+                "percent": 96,
+                "stage": "quality",
+                "phase": "Phase 4/4 · Diarization & Polish",
+                "title": "Synthesizing Transcripts & Metadata",
+                "subtitle": "Generating structured minutes, action items, and voice profiles...",
+                "total_duration_sec": round(audio_meta.duration, 2),
+                "elapsed_sec": round(time.time() - start_time, 1),
+            })
 
         # Step 4: Quality Check Sub-Agent - Hallucination Guard & Repetition Penalty
         cleaned_transcription, quality_report = self.quality_checker.audit_and_clean(raw_transcription)
@@ -156,6 +215,18 @@ class ScriberPipeline:
 
         duration_sec = time.time() - start_time
 
+        if progress_callback:
+            progress_callback({
+                "percent": 100,
+                "stage": "complete",
+                "phase": "Complete · 100%",
+                "title": "Transcription & Translation Complete",
+                "subtitle": f"Processed {len(raw_transcription.segments)} segments in {duration_sec:.1f}s",
+                "total_duration_sec": round(audio_meta.duration, 2),
+                "elapsed_sec": round(duration_sec, 1),
+                "eta_sec": 0.0,
+            })
+
         output = ScriberOutput(
             session_id=session_id,
             video_source=os.path.basename(file_path),
@@ -185,6 +256,7 @@ class ScriberPipeline:
         language: Optional[str] = None,
         reference_text: Optional[str] = None,
         model: str = "turbo",
+        progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> ScriberOutput:
         """Processes in-memory PCM bytes (useful for serverless Lambda execution)."""
         start_time = time.time()
@@ -214,6 +286,7 @@ class ScriberPipeline:
             vad_segments=vad_segments,
             ground_truth_hint=reference_text,
             model=model,
+            progress_callback=progress_callback,
         )
 
         # Step 3.5: Acoustic Diarizer with Speaker Memory & Proper English Formatting
@@ -221,6 +294,7 @@ class ScriberPipeline:
             segments=raw_trans.segments,
             pcm16_data=pcm16_data,
             sample_rate=16000,
+            progress_callback=progress_callback,
         )
         raw_trans.segments = diarized_segments
         raw_trans.text = " ".join(s.text for s in diarized_segments).strip()
@@ -295,13 +369,19 @@ class ScriberPipeline:
                 spk_segments = segments
 
             spk_bytes_list = []
+            accum_bytes = 0
+            max_bytes_needed = sample_rate * 2 * 30  # 30 seconds of representative speech
             for s in spk_segments:
                 start_byte = int(s.start * sample_rate * 2)
                 end_byte = min(len(pcm16_data), int(s.end * sample_rate * 2))
                 if start_byte < end_byte:
-                    spk_bytes_list.append(pcm16_data[start_byte:end_byte])
+                    chunk = pcm16_data[start_byte:end_byte]
+                    spk_bytes_list.append(chunk)
+                    accum_bytes += len(chunk)
+                    if accum_bytes >= max_bytes_needed:
+                        break
 
-            spk_pcm = b"".join(spk_bytes_list) if spk_bytes_list else pcm16_data
+            spk_pcm = b"".join(spk_bytes_list) if spk_bytes_list else pcm16_data[:max_bytes_needed]
             vp = VoiceProfiler.profile_from_pcm16(spk_pcm, speaker_id=spk)
             profiles.append(vp)
 

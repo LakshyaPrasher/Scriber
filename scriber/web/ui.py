@@ -772,6 +772,88 @@ def get_embedded_html() -> str:
     color: #FFA826;
   }
 
+  /* Real-Time Precision Progress Bar & Metrics */
+  .progress-meter-container {
+    width: 100%;
+    max-width: 540px;
+    margin: 4px auto 22px auto;
+    background: rgba(18, 19, 24, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 16px 20px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 30px rgba(0, 0, 0, 0.35);
+  }
+  .progress-meter-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .progress-pct-badge {
+    font-family: 'Cabinet Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: #FF7A1A;
+    letter-spacing: -0.5px;
+    text-shadow: 0 0 20px rgba(255, 122, 26, 0.4);
+  }
+  .progress-eta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .progress-track {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 9999px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+    margin-bottom: 12px;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #FF5E00 0%, #FFA826 100%);
+    border-radius: 9999px;
+    transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 14px rgba(255, 122, 26, 0.6);
+    position: relative;
+  }
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+    animation: progressGlint 1.8s infinite;
+  }
+  @keyframes progressGlint {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
+  }
+  .progress-metrics-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .progress-metric-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
   /* ========================================================= */
   /* STATE 3: CLEAN OUTPUT VIEWPORT (COPY-PASTE READY)         */
   /* ========================================================= */
@@ -2525,7 +2607,7 @@ def get_embedded_html() -> str:
     <!-- Native hidden file input (outside dropzone to eliminate click event bubbling & COM dialog deadlock) -->
     <input type="file" id="media-file-input" name="file" accept="audio/*,video/*,.mp4,.mp3,.wav,.m4a,.mov,.webm,.flac,.ogg,.aac,.mkv,.avi,.flv,.wmv,.opus,.wma,.3gp,.ts,.m4v" class="visually-hidden-input" onchange="handleFileSelected(event)" onclick="event.stopPropagation();" />
 
-    <!-- State 2: Minimalist Claude Liquid Morphing Light Orb -->
+    <!-- State 2: Minimalist Liquid Light Orb + Precision Live Progress Tracker -->
     <div class="processing-card" id="processing-card">
       <div class="liquid-orb-stage liquid-canvas-stage">
         <canvas id="liquid-orb-canvas" width="220" height="220"></canvas>
@@ -2533,6 +2615,34 @@ def get_embedded_html() -> str:
       </div>
       <h3 class="processing-title" id="processing-main-title">Transcribing & Translating to English</h3>
       <p class="processing-sub" id="processing-status-text">Ingesting media buffer · Extracting 16kHz speech stream...</p>
+
+      <!-- Precision Real-Time Progress Bar & Metrics -->
+      <div class="progress-meter-container" id="progress-meter-container">
+        <div class="progress-meter-header">
+          <div class="progress-pct-badge" id="progress-pct-badge">0%</div>
+          <div class="progress-eta-badge" id="progress-eta-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span id="progress-eta-text">Estimating time...</span>
+          </div>
+        </div>
+        <div class="progress-track" id="progress-track">
+          <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+        </div>
+        <div class="progress-metrics-row" id="progress-metrics-row">
+          <span class="progress-metric-item" id="progress-speed-item">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <span id="progress-speed-text">--x speed</span>
+          </span>
+          <span class="progress-metric-item" id="progress-position-item">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+            <span id="progress-position-text">00:00 / 00:00</span>
+          </span>
+          <span class="progress-metric-item" id="progress-elapsed-item">
+            <span id="progress-elapsed-text">Elapsed: 0s</span>
+          </span>
+        </div>
+      </div>
+
       <div class="processing-meta-row">
         <div class="processing-file-badge" id="processing-file-name">media_file.mp4</div>
         <div class="processing-stage-pill" id="processing-stage-pill">Phase 1/4 · Neural Alignment</div>
@@ -3433,43 +3543,126 @@ def get_embedded_html() -> str:
     }
   }
 
-  /* Process Media with Automatic English Translation & Progressive Stages */
-  var stageTimer = null;
-  var processingStages = [
-    { title: "Transcribing & Translating to English", sub: "Ingesting media buffer · Extracting 16kHz speech stream...", pill: "Phase 1/4 · Acoustic Normalization" },
-    { title: "Voice Activity Detection & Filtering", sub: "Isolating human speech boundaries · Culling ambient silence...", pill: "Phase 2/4 · VAD Segmentation" },
-    { title: "Whisper Flow & Cross-Attention Alignment", sub: "Decoding acoustic tokens · Generating word-level phoneme timestamps...", pill: "Phase 3/4 · Transformer Inference" },
-    { title: "Biometric Diarization & English Synthesis", sub: "Profiling vocal harmonics · Polishing English grammar and punctuation...", pill: "Phase 4/4 · Diarization & Polish" }
-  ];
+  /* Precision Real-Time Progress Tracker with Backend Telemetry & Dynamic ETA */
+  var progressPollInterval = null;
 
-  function runProcessingStageAnimation() {
-    var stageIdx = 0;
-    if (stageTimer) clearInterval(stageTimer);
-    stageTimer = setInterval(function() {
-      stageIdx = (stageIdx + 1) % processingStages.length;
-      var cur = processingStages[stageIdx];
-      var titleEl = document.getElementById('processing-main-title');
-      var subEl = document.getElementById('processing-status-text');
-      var pillEl = document.getElementById('processing-stage-pill');
-      if (titleEl) titleEl.innerText = cur.title;
-      if (subEl) subEl.innerText = cur.sub;
-      if (pillEl) pillEl.innerText = cur.pill;
-    }, 2800);
+  function formatDuration(sec) {
+    if (!sec || isNaN(sec) || sec < 0) return '00:00';
+    var m = Math.floor(sec / 60);
+    var s = Math.floor(sec % 60);
+    return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function formatEta(sec) {
+    if (!sec || isNaN(sec) || sec <= 0) return 'Calculating remaining time...';
+    if (sec < 60) return Math.ceil(sec) + 's remaining';
+    var m = Math.floor(sec / 60);
+    var s = Math.floor(sec % 60);
+    return m + 'm ' + (s > 0 ? s + 's ' : '') + 'remaining';
+  }
+
+  function updateProgressUI(data) {
+    if (!data) return;
+    var pct = Math.max(0, Math.min(100, data.percent || 0));
+    var fillEl = document.getElementById('progress-fill');
+    var pctBadge = document.getElementById('progress-pct-badge');
+    var etaText = document.getElementById('progress-eta-text');
+    var speedText = document.getElementById('progress-speed-text');
+    var posText = document.getElementById('progress-position-text');
+    var elapsedText = document.getElementById('progress-elapsed-text');
+    var titleEl = document.getElementById('processing-main-title');
+    var subEl = document.getElementById('processing-status-text');
+    var pillEl = document.getElementById('processing-stage-pill');
+
+    if (fillEl) fillEl.style.width = pct + '%';
+    if (pctBadge) pctBadge.innerText = pct + '%';
+
+    if (etaText) {
+      if (pct >= 100) {
+        etaText.innerText = 'Completed';
+      } else if (data.eta_sec && data.eta_sec > 0) {
+        etaText.innerText = formatEta(data.eta_sec);
+      } else if (pct >= 95) {
+        etaText.innerText = 'Finalizing...';
+      } else {
+        etaText.innerText = 'Estimating time...';
+      }
+    }
+
+    if (speedText) {
+      if (data.speed_factor && data.speed_factor > 0) {
+        speedText.innerText = data.speed_factor.toFixed(1) + 'x real-time speed';
+      } else {
+        speedText.innerText = 'Accelerated GPU';
+      }
+    }
+
+    if (posText) {
+      if (data.total_duration_sec && data.total_duration_sec > 0) {
+        posText.innerText = formatDuration(data.current_time_sec) + ' / ' + formatDuration(data.total_duration_sec) + ' decoded';
+      } else {
+        posText.innerText = 'Analyzing audio...';
+      }
+    }
+
+    if (elapsedText) {
+      elapsedText.innerText = 'Elapsed: ' + Math.floor(data.elapsed_sec || 0) + 's';
+    }
+
+    if (titleEl && data.title) titleEl.innerText = data.title;
+    if (subEl && data.subtitle) subEl.innerText = data.subtitle;
+    if (pillEl && data.phase) pillEl.innerText = data.phase;
+  }
+
+  function startLiveProgressTracker() {
+    if (progressPollInterval) clearInterval(progressPollInterval);
+
+    updateProgressUI({
+      percent: 4,
+      title: "Transcribing & Translating to English",
+      subtitle: "Ingesting media buffer · Extracting 16kHz speech stream...",
+      phase: "Phase 1/4 · Acoustic Normalization",
+      speed_factor: 0,
+      current_time_sec: 0,
+      total_duration_sec: 0,
+      elapsed_sec: 0,
+      eta_sec: 0
+    });
+
+    progressPollInterval = setInterval(async function() {
+      try {
+        var res = await fetch('/api/progress');
+        if (!res.ok) return;
+        var p = await res.json();
+        if (p && p.active) {
+          updateProgressUI(p);
+        }
+      } catch (e) {
+        // Silent retry
+      }
+    }, 350);
+  }
+
+  function stopLiveProgressTracker() {
+    if (progressPollInterval) {
+      clearInterval(progressPollInterval);
+      progressPollInterval = null;
+    }
   }
 
   async function startProcessing(file) {
     if (!file) return;
 
-    // Transition into Liquid Morphing Orb Processing
+    // Transition into Liquid Morphing Orb & Genuine Progress Viewport
     document.getElementById('dropzone').style.display = 'none';
     const procCard = document.getElementById('processing-card');
     procCard.style.display = 'block';
     document.getElementById('processing-file-name').innerText = file.name;
     document.getElementById('output-viewport').style.display = 'none';
 
-    // Start minimalist organic liquid light animation
+    // Start minimalist organic liquid light animation and live backend progress polling
     startLiquidOrbAnimation();
-    runProcessingStageAnimation();
+    startLiveProgressTracker();
 
     if (loadedMediaUrl) URL.revokeObjectURL(loadedMediaUrl);
     loadedMediaUrl = URL.createObjectURL(file);
@@ -3490,7 +3683,7 @@ def get_embedded_html() -> str:
       const res = await fetch('/api/process', { method: 'POST', body: formData });
       const data = await res.json();
 
-      if (stageTimer) clearInterval(stageTimer);
+      stopLiveProgressTracker();
       stopLiquidOrbAnimation();
 
       if (data.error) {
@@ -3499,11 +3692,19 @@ def get_embedded_html() -> str:
         return;
       }
 
+      updateProgressUI({
+        percent: 100,
+        phase: 'Phase 4/4 · Complete',
+        title: 'Transcription & Translation Complete',
+        subtitle: 'All speaker segments verified and ready',
+        eta_sec: 0
+      });
+
       currentResult = data;
       showToast('Transcription & Translation complete! Ready for review.', 'success');
       renderTranscription(data);
     } catch (err) {
-      if (stageTimer) clearInterval(stageTimer);
+      stopLiveProgressTracker();
       stopLiquidOrbAnimation();
       showToast('Upload or network failed: ' + err, 'error');
       resetToUpload();
@@ -4243,24 +4444,18 @@ def get_embedded_html() -> str:
     window.selectedVoiceModel = modelId;
     const names = {
       'local-gpu': 'Local GPU (F5-TTS Flow-Matching 48kHz)',
-      'voicemaker': 'Voicemaker.in Cloud Studio (48kHz)',
-      'elevenlabs': 'ElevenLabs Studio (48kHz)',
       'edge-neural': 'Edge-Neural Studio',
       'whisperspeech': 'WhisperSpeech',
       'gpt-sovits': 'GPT-SoVITS'
     };
     const badges = {
       'local-gpu': 'Zero-Shot · NVIDIA GPU',
-      'voicemaker': 'Cloud Studio · Neural HD',
-      'elevenlabs': 'Instant Clone · 48kHz PCM',
       'edge-neural': 'Studio Quality · Recommended',
       'whisperspeech': 'Acoustic Inversion',
       'gpt-sovits': 'Formant Morphing'
     };
     const badgeClasses = {
       'local-gpu': 'tier-recommended',
-      'voicemaker': 'tier-inversion',
-      'elevenlabs': 'tier-formant',
       'edge-neural': 'tier-recommended',
       'whisperspeech': 'tier-inversion',
       'gpt-sovits': 'tier-formant'
@@ -4285,63 +4480,6 @@ def get_embedded_html() -> str:
 
     closeAllModelDropdowns();
     showToast(`Switched voice cloning engine to ${names[modelId] || modelId}`, 'info');
-  }
-
-  async function openVoiceCredentialsModal() {
-    const modal = document.getElementById('voice-cred-modal');
-    if (modal) modal.style.display = 'flex';
-    try {
-      const res = await fetch('/api/voice/credentials');
-      if (res.ok) {
-        const data = await res.json();
-        const vmStatus = document.getElementById('voicemaker-status-badge');
-        const elStatus = document.getElementById('elevenlabs-status-badge');
-        if (vmStatus) {
-          vmStatus.innerText = data.voicemaker_configured ? `Configured (${data.voicemaker_masked_key})` : 'Not configured';
-          vmStatus.style.color = data.voicemaker_configured ? 'var(--emerald)' : 'var(--text-muted)';
-        }
-        if (elStatus) {
-          elStatus.innerText = data.elevenlabs_configured ? `Configured (${data.elevenlabs_masked_key})` : 'Not configured';
-          elStatus.style.color = data.elevenlabs_configured ? 'var(--emerald)' : 'var(--text-muted)';
-        }
-      }
-    } catch (e) {
-      console.warn('Could not fetch voice credentials', e);
-    }
-  }
-
-  function closeVoiceCredentialsModal() {
-    const modal = document.getElementById('voice-cred-modal');
-    if (modal) modal.style.display = 'none';
-  }
-
-  async function saveVoiceCredentials() {
-    const vmKey = document.getElementById('voicemaker-api-key-input')?.value.trim();
-    const elKey = document.getElementById('elevenlabs-api-key-input')?.value.trim();
-    const payload = {};
-    if (vmKey) {
-      payload.voicemaker_api_key = vmKey;
-      localStorage.setItem('voicemaker_api_key', vmKey);
-    }
-    if (elKey) {
-      payload.elevenlabs_api_key = elKey;
-      localStorage.setItem('elevenlabs_api_key', elKey);
-    }
-    try {
-      const res = await fetch('/api/voice/credentials', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        showToast('Cloud voice credentials saved', 'info');
-        closeVoiceCredentialsModal();
-      } else {
-        showToast('Failed to save credentials', 'error');
-      }
-    } catch (e) {
-      showToast('Error saving credentials: ' + e, 'error');
-    }
   }
 
   /* ========================================================= */
