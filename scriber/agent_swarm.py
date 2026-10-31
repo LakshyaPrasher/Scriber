@@ -66,27 +66,45 @@ class ExecutiveBrieferAgent:
 
         # Generate contextual headline
         lower_text = full_text.lower()
-        if "desktop" in lower_text or "studio" in lower_text:
+        has_questions = "?" in full_text
+
+        if "interview" in lower_text or ("virat" in lower_text and "cricket" in lower_text):
+            headline = "In-Depth Autobiographical & Career Interview"
+            category = "in_depth_interview"
+        elif "desktop" in lower_text or "studio" in lower_text:
             headline = "Desktop Studio & Application Architecture Review"
+            category = "technical_engineering"
         elif "whisper" in lower_text or "transcribe" in lower_text:
             headline = "Speech Intelligence Pipeline & Transcription Strategy"
+            category = "speech_ai"
         elif "api" in lower_text or "architecture" in lower_text:
             headline = "System Design & Technical Implementation Session"
+            category = "technical_engineering"
+        elif has_questions:
+            headline = "Comprehensive Dialogue & Discussion Session"
+            category = "dialogue_interview"
         else:
-            headline = "Executive Briefing & Strategic Working Session"
+            headline = "Session Briefing & Key Discussion Summary"
+            category = "general_discussion"
 
-        tldr = (
-            f"Recorded video session spanning {duration:.1f}s ({word_count} spoken words). "
-            f"The team addressed {len(discussion_points)} core discussion topics, "
-            f"ratified {len(decisions)} primary decisions, and formulated "
-            f"{len(action_items)} high-confidence action items."
-        )
+        duration_min = round(duration / 60.0, 1)
+        tldr_parts = [
+            f"Recorded media session spanning {duration_min} minutes ({word_count} spoken words)",
+            f"covering {len(discussion_points)} thematic discussion chapters",
+        ]
+        if decisions:
+            tldr_parts.append(f"{len(decisions)} primary decisions")
+        if action_items:
+            tldr_parts.append(f"{len(action_items)} verified action items")
+        tldr = ", ".join(tldr_parts) + "."
 
         takeaways = [
-            f"Successfully processed and transcribed all spoken media across {len(discussion_points)} thematic sections.",
-            f"Formulated {len(action_items)} actionable task items with designated ownership and timeline targets.",
-            f"Maintained clear consensus on primary operational deliverables.",
+            f"Processed and organized spoken content across {len(discussion_points)} thematic chapters.",
         ]
+        if action_items:
+            takeaways.append(f"Identified {len(action_items)} actionable commitments with assigned ownership.")
+        if decisions:
+            takeaways.append(f"Documented {len(decisions)} ratified decisions.")
 
         summary = ExecutiveSummary(
             headline=headline,
@@ -96,7 +114,7 @@ class ExecutiveBrieferAgent:
             unresolved_questions=open_questions,
             action_items_count=len(action_items),
             sentiment_overview="collaborative_and_focused",
-            meeting_type_category="technical_engineering",
+            meeting_type_category=category,
         )
 
         elapsed_ms = (time.perf_counter() - start) * 1000
@@ -135,10 +153,32 @@ class ActionItemAuditorAgent:
     )
 
     ACTION_PATTERNS = [
-        r"(?P<assignee>[A-Z][a-z]+)\s+(?:will|is going to|needs to|must|should|to)\s+(?P<task>[^.!?]+)",
-        r"(?P<assignee>I|We|Team)\s+(?:will|must|should|need to|are going to|have to|plan to)\s+(?P<task>[^.!?]+)",
-        r"(?P<assignee>Let's|Please|Be sure to|Make sure to)\s+(?P<task>[^.!?]+)",
-        r"(?:Action item|Action point|TODO|Next step):\s*(?P<task>[^.!?]+)",
+        # Explicit task assignment to a named person: "Alice will deploy...", "Sarah needs to test..."
+        r"(?P<assignee>[A-Z][a-z]+)\s+(?:will|shall|must|needs to|is tasked with|is responsible for|agreed to)\s+(?P<task>[A-Za-z0-9\s,-]+)",
+        # First-person team commitments (future-oriented): "I will finalize...", "We plan to release..."
+        r"(?P<assignee>I|We|Team)\s+(?:will|shall|commit to|promise to|plan to|aim to)\s+(?P<task>[A-Za-z0-9\s,-]+)",
+        # Directives / action items with imperative verbs
+        r"(?P<assignee>Please|Make sure to|Be sure to|Remember to)\s+(?P<task>[A-Za-z0-9\s,-]+)",
+        # Explicit action item prefixes
+        r"(?:Action item|Action point|TODO|Next step|Deliverable):\s*(?P<task>[A-Za-z0-9\s,-]+)",
+    ]
+
+    INVALID_ASSIGNEES = {
+        "wanted", "wanting", "used", "was", "were", "had", "next", "went", "excited",
+        "time", "resources", "tough", "opportunity", "chance", "me", "him", "her", "out",
+        "going", "opposed", "guy", "clothes", "when", "life", "that", "this", "there",
+        "here", "it", "what", "how", "why", "who", "where", "then", "just", "also",
+        "even", "still", "never", "always", "actually", "really", "pretty", "back",
+        "from", "with", "about", "like", "some", "one", "two", "three", "someone",
+        "anyone", "everyone", "nobody", "something", "anything", "nothing", "everything",
+        "speaker", "speaker_1", "speaker_2", "speaker_3", "speaker_4"
+    }
+
+    RETROSPECTIVE_TRIGGERS = [
+        "used to", "wanted to", "had to", "was able to", "were able to", "years ago",
+        "back then", "when i was", "when we were", "as a kid", "in childhood", "grew up",
+        "yesterday", "last year", "last month", "last week", "at the hospital",
+        "started staying on rent", "business collapsed", "my father", "my brother"
     ]
 
     PRIORITY_KEYWORDS = {
@@ -165,6 +205,11 @@ class ActionItemAuditorAgent:
                 if not s_clean:
                     continue
 
+                s_lower = s_clean.lower()
+                # Skip historical / retrospective storytelling sentences
+                if any(trig in s_lower for trig in self.RETROSPECTIVE_TRIGGERS):
+                    continue
+
                 for pattern in self.ACTION_PATTERNS:
                     match = re.search(pattern, s_clean, re.IGNORECASE)
                     if match:
@@ -172,24 +217,24 @@ class ActionItemAuditorAgent:
                         raw_assignee = groups.get("assignee", "Team").strip()
                         raw_task = groups.get("task", s_clean).strip()
 
+                        if raw_assignee.lower() in self.INVALID_ASSIGNEES:
+                            continue
+
+                        # Clean task text
+                        task = raw_task.strip().rstrip(".?!,")
+                        if len(task) < 10 or task.lower() in seen_tasks:
+                            continue
+
                         # Normalize assignee
-                        if raw_assignee.lower() in ["i", "we", "team", "let's", "please", "make sure to", "be sure to"]:
+                        if raw_assignee.lower() in ["i", "we", "team", "let's", "please", "make sure to", "be sure to", "remember to"]:
                             assignee = seg.speaker or "Lead Engineer"
                         else:
                             assignee = raw_assignee.capitalize()
 
-                        # Clean task
-                        task = raw_task.strip().rstrip(".?!,")
-                        if task:
-                            task = task[0].upper() + task[1:]
-
-                        if len(task) < 5 or task.lower() in seen_tasks:
-                            continue
                         seen_tasks.add(task.lower())
 
                         # Priority detection
                         priority = "medium"
-                        s_lower = s_clean.lower()
                         for prio, kws in self.PRIORITY_KEYWORDS.items():
                             if any(k in s_lower for k in kws):
                                 priority = prio
@@ -210,7 +255,7 @@ class ActionItemAuditorAgent:
 
                         item = ActionItem(
                             id=f"ACT-{len(items) + 1:03d}",
-                            task=task,
+                            task=task[0].upper() + task[1:] if task else task,
                             assignee=assignee,
                             priority=priority,
                             status="open",
@@ -222,25 +267,6 @@ class ActionItemAuditorAgent:
                         )
                         items.append(item)
                         break
-
-        # Fallback if no explicit obligations found
-        non_silent = [s for s in segments if not s.text.startswith("[silence]") and s.text.strip()]
-        if not items and non_silent:
-            first_seg = non_silent[0]
-            items.append(
-                ActionItem(
-                    id="ACT-001",
-                    task="Review transcription and validate synthesized meeting action items.",
-                    assignee="Reviewer / Owner",
-                    priority="medium",
-                    status="open",
-                    due_date="Next Sync",
-                    context_quote=first_seg.text[:80],
-                    start_time=first_seg.start,
-                    end_time=first_seg.end,
-                    confidence=0.950,
-                )
-            )
 
         elapsed_ms = (time.perf_counter() - start) * 1000
         telemetry = AgentTelemetry(
@@ -299,34 +325,71 @@ class ThematicChapterArchitectAgent:
             )
             return points, topics, telemetry
 
-        block_size = max(1, min(5, len(segments) // 3 if len(segments) >= 6 else len(segments)))
+        SPOKEN_STOP_WORDS = {
+            "know", "just", "like", "think", "yeah", "right", "well", "mean", "really",
+            "actually", "pretty", "going", "people", "someone", "things", "stuff", "always",
+            "never", "something", "anything", "nothing", "everything", "sort", "kind", "good",
+            "much", "little", "back", "time", "year", "years", "said", "told", "look",
+            "come", "came", "done", "doing", "make", "made", "take", "took", "give", "gave",
+            "tell", "want", "wanted", "went", "this", "that", "with", "have", "from", "they",
+            "will", "would", "there", "about", "which", "their", "them", "then", "were", "been",
+            "being", "because", "could", "should", "into", "over", "after", "before", "also",
+            "even", "still", "more", "most", "some", "very", "every", "other", "than", "able",
+            "around", "through", "first", "last", "what", "when", "where", "who", "why", "how",
+            "guys", "game", "feel", "life", "hard", "play", "sure", "fine", "okay", "alright",
+            "those", "these", "such", "only", "same", "many", "part", "both", "used", "having",
+            "started", "staying", "become", "became", "where", "which", "every", "since"
+        }
+
+        # Dynamic chapter sizing: aims for 180s - 450s per chapter
+        total_dur = sum(s.end - s.start for s in segments)
+        target_chapters = max(1, min(12, int(total_dur / 300.0) or len(segments) // 4 or 1))
+        target_dur_per_chapter = max(60.0, total_dur / target_chapters)
+
         current_block: List[AudioSegment] = []
+        current_dur = 0.0
 
         def build_point(block: List[AudioSegment], idx: int) -> DiscussionPoint:
             start_t = block[0].start
             end_t = block[-1].end
             block_text = " ".join(s.text.strip() for s in block)
 
-            words = [w for w in re.findall(r"\b[A-Za-z]{4,}\b", block_text) if w.lower() not in {
-                "this", "that", "with", "have", "from", "they", "will", "would", "there", "about", "which"
-            }]
-            if words:
-                common = [w.capitalize() for w, _ in Counter(words).most_common(2)]
-                title = f"Topic {idx}: {' & '.join(common)}"
+            # Check if there is an interviewer question in the block
+            question_match = None
+            for s in block:
+                if "?" in s.text and len(s.text.strip()) > 15:
+                    q_clean = s.text.strip()
+                    # Clean the question into a concise chapter title
+                    q_sub = re.sub(r"^(?:Alright,?\s*so\s*|so\s*|well\s*|tell\s*me\s*|how\s*would\s*you\s*describe\s*|what\s*was\s*it\s*like\s*)", "", q_clean, flags=re.IGNORECASE)
+                    q_sub = q_sub.rstrip("?").strip()
+                    if len(q_sub) > 6:
+                        question_match = q_sub[0].upper() + q_sub[1:]
+                        break
+
+            if question_match:
+                title = f"Chapter {idx}: {question_match}"
             else:
-                title = f"Discussion Segment {idx}"
+                words = [
+                    w for w in re.findall(r"\b[A-Za-z]{4,}\b", block_text)
+                    if w.lower() not in SPOKEN_STOP_WORDS
+                ]
+                if words:
+                    common = [w.capitalize() for w, _ in Counter(words).most_common(2)]
+                    title = f"Chapter {idx}: {' & '.join(common)}"
+                else:
+                    title = f"Chapter {idx}: General Deliberation"
 
             speakers = sorted(list({s.speaker for s in block if s.speaker}))
 
             # Sentiment check
-            pos_words = ["great", "excellent", "agreed", "perfect", "good", "resolve", "pass", "success"]
-            crit_words = ["issue", "bug", "fail", "blocker", "problem", "delay", "risk", "critical"]
+            pos_words = ["great", "excellent", "agreed", "perfect", "good", "resolve", "pass", "success", "beautiful"]
+            crit_words = ["issue", "bug", "fail", "blocker", "problem", "delay", "risk", "critical", "collapsed"]
             b_lower = block_text.lower()
             p_cnt = sum(1 for w in pos_words if w in b_lower)
             c_cnt = sum(1 for w in crit_words if w in b_lower)
             sentiment = "positive" if p_cnt > c_cnt else ("critical" if c_cnt > p_cnt else "constructive")
 
-            summary = f"Deliberation on {title.lower()} covering {len(block)} conversational exchanges between {start_t:.1f}s and {end_t:.1f}s."
+            summary = f"Deliberation on {title.lower()} covering conversational exchanges between {start_t:.1f}s and {end_t:.1f}s."
             quotes = [s.text.strip() for s in block[:2] if len(s.text.strip()) > 10]
 
             return DiscussionPoint(
@@ -344,11 +407,15 @@ class ThematicChapterArchitectAgent:
             if seg.text.startswith("[silence]"):
                 continue
             current_block.append(seg)
-            if len(current_block) >= block_size:
+            current_dur += (seg.end - seg.start)
+
+            # Break block if reached target chapter duration and ended on sentence boundary
+            if current_dur >= target_dur_per_chapter and seg.text.rstrip().endswith((".", "!", "?")):
                 dp = build_point(current_block, len(points) + 1)
                 points.append(dp)
                 topics.append(dp.title)
                 current_block = []
+                current_dur = 0.0
 
         if current_block:
             dp = build_point(current_block, len(points) + 1)
@@ -542,11 +609,6 @@ class CouncilAgentSwarm:
                     if qm and s_clean not in open_questions:
                         open_questions.append(s_clean)
                         break
-
-        if not decisions:
-            decisions.append("Consensus reached on primary operational agenda items.")
-        if not open_questions:
-            open_questions.append("Confirm SLA and deployment timeline during the next review.")
 
         # 5. Executive Briefer Agent (pro tier)
         exec_summary, brief_telem = self.executive_briefer.execute(

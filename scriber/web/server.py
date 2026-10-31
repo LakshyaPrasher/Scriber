@@ -288,8 +288,14 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     bytes_left -= len(chunk)
             self.wfile.flush()
             self.close_connection = True
+        except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
+            # Client closed the byte-range connection or scrubbed to another timestamp
+            self.close_connection = True
         except Exception as e:
-            self._send_json_response(500, {"error": str(e)})
+            try:
+                self._send_json_response(500, {"error": str(e)})
+            except Exception:
+                pass
 
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -1023,6 +1029,9 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Connection", "close")
         self.end_headers()

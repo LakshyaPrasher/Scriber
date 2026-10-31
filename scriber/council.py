@@ -27,14 +27,32 @@ class SupremeCouncil:
 
     # Modal patterns indicating obligations or task assignments
     ACTION_PATTERNS = [
-        # Explicit assignments: "John will deploy X", "Alice to write Y"
-        r"(?P<assignee>[A-Z][a-z]+)\s+(?:will|is going to|needs to|must|should|to)\s+(?P<task>[^.!?]+)",
-        # First-person commitments: "I will review X", "We should finish Y"
-        r"(?P<assignee>I|We|Team)\s+(?:will|must|should|need to|are going to|have to|plan to)\s+(?P<task>[^.!?]+)",
-        # Imperatives / directives: "Let's update X", "Make sure to Y", "Please test Z"
-        r"(?P<assignee>Let's|Please|Be sure to|Make sure to)\s+(?P<task>[^.!?]+)",
+        # Explicit assignments: "John will deploy X", "Sarah needs to test Y"
+        r"(?P<assignee>[A-Z][a-z]+)\s+(?:will|shall|must|needs to|is tasked with|is responsible for)\s+(?P<task>[A-Za-z0-9\s,-]+)",
+        # First-person commitments: "I will review X"
+        r"(?P<assignee>I|We|Team)\s+(?:will|shall|commit to|promise to|plan to)\s+(?P<task>[A-Za-z0-9\s,-]+)",
+        # Imperatives / directives: "Make sure to Y", "Please test Z"
+        r"(?P<assignee>Please|Make sure to|Be sure to|Remember to)\s+(?P<task>[A-Za-z0-9\s,-]+)",
         # Action item keywords: "Action item: Bob to...", "TODO: fix..."
-        r"(?:Action item|Action point|TODO|Next step):\s*(?P<task>[^.!?]+)",
+        r"(?:Action item|Action point|TODO|Next step|Deliverable):\s*(?P<task>[A-Za-z0-9\s,-]+)",
+    ]
+
+    INVALID_ASSIGNEES = {
+        "wanted", "wanting", "used", "was", "were", "had", "next", "went", "excited",
+        "time", "resources", "tough", "opportunity", "chance", "me", "him", "her", "out",
+        "going", "opposed", "guy", "clothes", "when", "life", "that", "this", "there",
+        "here", "it", "what", "how", "why", "who", "where", "then", "just", "also",
+        "even", "still", "never", "always", "actually", "really", "pretty", "back",
+        "from", "with", "about", "like", "some", "one", "two", "three", "someone",
+        "anyone", "everyone", "nobody", "something", "anything", "nothing", "everything",
+        "speaker", "speaker_1", "speaker_2", "speaker_3", "speaker_4"
+    }
+
+    RETROSPECTIVE_TRIGGERS = [
+        "used to", "wanted to", "had to", "was able to", "were able to", "years ago",
+        "back then", "when i was", "when we were", "as a kid", "in childhood", "grew up",
+        "yesterday", "last year", "last month", "last week", "at the hospital",
+        "started staying on rent", "business collapsed", "my father", "my brother"
     ]
 
     PRIORITY_KEYWORDS = {
@@ -116,6 +134,10 @@ class SupremeCouncil:
                 if not s_clean:
                     continue
 
+                s_lower = s_clean.lower()
+                if any(trig in s_lower for trig in self.RETROSPECTIVE_TRIGGERS):
+                    continue
+
                 for pattern in self.ACTION_PATTERNS:
                     match = re.search(pattern, s_clean, re.IGNORECASE)
                     if match:
@@ -123,14 +145,17 @@ class SupremeCouncil:
                         raw_assignee = groups.get("assignee", "Team").strip()
                         raw_task = groups.get("task", s_clean).strip()
 
-                        # Normalize assignee
-                        assignee = self._normalize_assignee(raw_assignee, seg.speaker)
+                        if raw_assignee.lower() in self.INVALID_ASSIGNEES:
+                            continue
 
                         # Clean task string
                         task = self._clean_task_text(raw_task)
-                        if len(task) < 5 or task.lower() in seen_tasks:
+                        if len(task) < 10 or task.lower() in seen_tasks:
                             continue
                         seen_tasks.add(task.lower())
+
+                        # Normalize assignee
+                        assignee = self._normalize_assignee(raw_assignee, seg.speaker)
 
                         # Determine priority
                         priority = self._detect_priority(s_clean)
@@ -152,25 +177,6 @@ class SupremeCouncil:
                         )
                         items.append(item)
                         break  # Match only one pattern per sentence
-
-        # If no explicit patterns matched, generate synthesized action item from high-level topics
-        non_silent_segs = [s for s in segments if not s.text.startswith("[silence]") and s.text.strip()]
-        if not items and non_silent_segs:
-            first_seg = non_silent_segs[0]
-            items.append(
-                ActionItem(
-                    id="ACT-001",
-                    task="Review transcription and validate synthesized meeting action items.",
-                    assignee="Reviewer / Owner",
-                    priority="medium",
-                    status="open",
-                    due_date="Next Sync",
-                    context_quote=first_seg.text[:80],
-                    start_time=first_seg.start,
-                    end_time=first_seg.end,
-                    confidence=0.950,
-                )
-            )
 
         return items
 
@@ -262,8 +268,6 @@ class SupremeCouncil:
                         decisions.append(f"Approved: {dec.capitalize()}")
                         break
 
-        if not decisions:
-            decisions.append("Consensus reached on primary operational agenda items.")
         return decisions
 
     def _extract_open_questions(self, segments: List[AudioSegment], full_text: str) -> List[str]:

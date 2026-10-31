@@ -330,9 +330,14 @@ class AcousticDiarizer:
                 s.text = self.polish_english(s.text)
             return self.group_consecutive_speaker_segments(segments)
 
-        # Pre-segmentation pass: If an input segment contains internal silence gaps >= 0.50s between words,
-        # split it into distinct speech turns so each speaker turn can be profiled and diarized individually.
+        # Pre-segmentation pass: Split into distinct conversational turns based on word timestamps,
+        # pause duration, sentence boundaries, and question transitions.
         refined_segments: List[AudioSegment] = []
+        QUESTION_WORDS = {
+            "how", "what", "why", "who", "where", "when", "did", "do", "does",
+            "are", "is", "can", "could", "would", "will", "so", "tell", "alright"
+        }
+
         for seg in segments:
             if not seg.words or len(seg.words) < 2:
                 refined_segments.append(seg)
@@ -342,9 +347,31 @@ class AcousticDiarizer:
             for idx, w in enumerate(seg.words):
                 turn_words.append(w)
                 if idx < len(seg.words) - 1:
-                    gap = seg.words[idx + 1].start - w.end
-                    # Only split on substantial conversational pauses (>= 1.80s), avoiding shattering monologues across breath pauses
-                    if gap >= 1.80:
+                    next_w = seg.words[idx + 1]
+                    gap = next_w.start - w.end
+                    w_text = w.word.strip()
+                    next_w_text = next_w.word.strip()
+                    ends_question = w_text.endswith("?")
+                    ends_sentence = w_text.endswith((".", "!"))
+                    next_is_q_starter = (
+                        next_w_text.lower().rstrip("?,.!") in QUESTION_WORDS
+                        and len(next_w_text) > 0
+                        and next_w_text[0].isupper()
+                    )
+
+                    should_split = False
+                    if ends_question and gap >= 0.15:
+                        should_split = True
+                    elif ends_sentence and next_is_q_starter and gap >= 0.10:
+                        should_split = True
+                    elif ends_sentence and gap >= 0.30:
+                        should_split = True
+                    elif gap >= 0.45:
+                        should_split = True
+                    elif (w.end - turn_start) >= 20.0 and ends_sentence and gap >= 0.15:
+                        should_split = True
+
+                    if should_split:
                         turn_text = " ".join(tw.word.strip() for tw in turn_words).strip()
                         turn_seg = AudioSegment(
                             id=len(refined_segments),
@@ -363,7 +390,8 @@ class AcousticDiarizer:
                         )
                         refined_segments.append(turn_seg)
                         turn_words = []
-                        turn_start = seg.words[idx + 1].start
+                        turn_start = next_w.start
+
             if turn_words:
                 turn_text = " ".join(tw.word.strip() for tw in turn_words).strip()
                 turn_seg = AudioSegment(
@@ -382,7 +410,7 @@ class AcousticDiarizer:
                     confidence=seg.confidence,
                 )
                 refined_segments.append(turn_seg)
-        segments = refined_segments
+        segments = [s for s in refined_segments if s.end > s.start and s.text.strip()]
 
         bytes_per_sec = sample_rate * 2
         total_pcm_len = len(pcm16_data)
@@ -658,35 +686,46 @@ class AcousticDiarizer:
                     c_genders.pop(b)
                     merged = True
 
-        # Monologue Cohesion: If all remaining clusters exhibit uniform gender, consistent pitch (<= 3.0 semitones),
-        # AND high centroid cosine similarity (>= 0.65 neural / >= 0.88 DSP), consolidate into a single speaker.
-        # This protects distinct speakers of the same gender/pitch (e.g. Jenny vs Emma at cos ~0.53) while binding true monologues.
+        # Outlier Pruning: Identify primary clusters (accounting for >= 3% of duration or >= 5s)
+        # and reassign micro-turn outliers (< 3% of speech) to the nearest dominant speaker centroid.
+        # This completely eliminates spurious phantom speakers (Speaker 3, Speaker 4) from 0.5s interjections.
         if len(clusters) > 1:
-            all_genders = [extracted_info[i][1].gender_estimate for i in range(n) if extracted_info[i][1].gender_estimate != "androgynous"]
-            primary_gender = max(set(all_genders), key=all_genders.count) if all_genders else "androgynous"
-            all_gender_match = all(g == primary_gender for g in all_genders) if all_genders else True
+            total_dur = sum(extracted_info[i][0].end - extracted_info[i][0].start for i in range(n))
+            primary_clusters = []
+            outlier_clusters = []
 
-            cluster_f0s = [np.mean([extracted_info[idx][1].fundamental_frequency_hz for idx in c]) for c in clusters]
-            max_f0, min_f0 = max(cluster_f0s), min(cluster_f0s)
-            semitone_span = abs(12.0 * math.log2(max(60.0, max_f0) / max(60.0, min_f0)))
+            for c in clusters:
+                c_dur = sum(extracted_info[i][0].end - extracted_info[i][0].start for i in c)
+                if c_dur >= max(3.0, 0.03 * total_dur):
+                    primary_clusters.append(c)
+                else:
+                    outlier_clusters.append(c)
 
-            min_inter_cos = 1.0
-            for a in range(len(clusters)):
-                for b in range(a + 1, len(clusters)):
-                    vecs_a = [extracted_info[idx][2] for idx in clusters[a]]
-                    vecs_b = [extracted_info[idx][2] for idx in clusters[b]]
-                    m_a, m_b = np.mean(vecs_a, axis=0), np.mean(vecs_b, axis=0)
-                    na, nb = np.linalg.norm(m_a), np.linalg.norm(m_b)
-                    cos = float(np.dot(m_a, m_b) / (na * nb)) if na > 1e-6 and nb > 1e-6 else 0.5
-                    if cos < min_inter_cos:
-                        min_inter_cos = cos
+            if primary_clusters:
+                # Calculate normalized centroid embedding for each primary cluster
+                primary_centroids = []
+                for c in primary_clusters:
+                    c_embs = [extracted_info[i][2] for i in c if extracted_info[i][2] is not None]
+                    if c_embs:
+                        mean_vec = np.mean(c_embs, axis=0)
+                        norm = np.linalg.norm(mean_vec)
+                        centroid = (mean_vec / norm) if norm > 1e-6 else mean_vec
+                    else:
+                        centroid = np.zeros(192 if is_neural else 16, dtype=np.float32)
+                    primary_centroids.append(centroid)
 
-            threshold_cos = 0.60 if is_neural else 0.88
-            if all_gender_match and semitone_span <= 4.5 and min_inter_cos >= threshold_cos:
-                merged_cluster = []
-                for c in clusters:
-                    merged_cluster.extend(c)
-                clusters = [merged_cluster]
+                # Reassign outlier turns to nearest primary cluster
+                for oc in outlier_clusters:
+                    for idx in oc:
+                        v = extracted_info[idx][2]
+                        if v is not None and primary_centroids:
+                            sims = [float(np.dot(v, pc)) for pc in primary_centroids]
+                            best_p = int(np.argmax(sims))
+                            primary_clusters[best_p].append(idx)
+                        else:
+                            primary_clusters[0].append(idx)
+
+                clusters = primary_clusters
 
         # Map clusters to chronological speaker IDs (Speaker_1, Speaker_2, ...)
         clusters.sort(key=lambda c: min(c))
@@ -828,7 +867,8 @@ class AcousticDiarizer:
     def group_consecutive_speaker_segments(
         self,
         segments: List[AudioSegment],
-        max_pause_sec: float = 30.0,
+        max_pause_sec: float = 2.0,
+        max_chars: int = 350,
     ) -> List[AudioSegment]:
         """Merges consecutive sentences by the same speaker into cohesive natural paragraphs."""
         if not segments:
@@ -838,13 +878,16 @@ class AcousticDiarizer:
         current: Optional[AudioSegment] = None
 
         for seg in segments:
+            if seg.end <= seg.start or not seg.text.strip():
+                continue
+
             if current is None:
                 current = AudioSegment(
                     id=seg.id,
                     seek=seg.seek,
                     start=seg.start,
                     end=seg.end,
-                    text=seg.text,
+                    text=self.polish_english(seg.text),
                     tokens=list(seg.tokens) if seg.tokens else [],
                     temperature=seg.temperature,
                     avg_logprob=seg.avg_logprob,
@@ -859,8 +902,10 @@ class AcousticDiarizer:
                 cur_spk_norm = (current.speaker or "Speaker_1").replace(" ", "_")
                 seg_spk_norm = (seg.speaker or "Speaker_1").replace(" ", "_")
                 is_same_speaker = (seg_spk_norm == cur_spk_norm)
+                ends_question = current.text.rstrip().endswith("?")
+                is_too_long = (len(current.text) + len(seg.text) > max_chars)
 
-                if is_same_speaker and pause_dur <= max_pause_sec:
+                if is_same_speaker and pause_dur <= max_pause_sec and not ends_question and not is_too_long:
                     # Merge into ongoing speech block of the same speaker
                     current.end = seg.end
                     # Clean punctuation joining
@@ -885,11 +930,11 @@ class AcousticDiarizer:
                     # Finalize current speaker block and begin new one
                     grouped.append(current)
                     current = AudioSegment(
-                        id=len(grouped),
+                        id=seg.id,
                         seek=seg.seek,
                         start=seg.start,
                         end=seg.end,
-                        text=seg.text,
+                        text=self.polish_english(seg.text),
                         tokens=list(seg.tokens) if seg.tokens else [],
                         temperature=seg.temperature,
                         avg_logprob=seg.avg_logprob,
@@ -903,7 +948,6 @@ class AcousticDiarizer:
         if current is not None:
             grouped.append(current)
 
-        # Re-index ids
         for idx, g in enumerate(grouped):
             g.id = idx
 
