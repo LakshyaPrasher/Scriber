@@ -51,3 +51,4 @@ scriber_output/
 test_scratch/
 *.onnx
 .antigravity/
+.agents/

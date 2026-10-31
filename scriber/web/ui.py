@@ -295,13 +295,13 @@ def get_embedded_html() -> str:
     box-sizing: border-box;
     background: #0E121A;
     border: 1px solid rgba(255, 255, 255, 0.10);
-    border-radius: 9px;
-    padding: 8px 14px;
-    min-height: 40px;
+    border-radius: 10px;
+    padding: 10px 16px;
+    min-height: 52px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 14px;
     cursor: pointer;
     user-select: none;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -324,17 +324,23 @@ def get_embedded_html() -> str:
   .dropdown-trigger-main {
     display: flex;
     align-items: center;
-    gap: 10px;
-    flex-wrap: nowrap;
-    white-space: nowrap;
+    gap: 12px;
+    min-width: 0;
+  }
+  .dropdown-trigger-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
     min-width: 0;
   }
   .dropdown-selected-name {
     font-family: var(--font-display);
-    font-size: 13.5px;
+    font-size: 14px;
     font-weight: 700;
     color: #FFFFFF;
     letter-spacing: -0.01em;
+    line-height: 1.2;
     white-space: nowrap;
   }
   .dropdown-chevron {
@@ -458,8 +464,8 @@ def get_embedded_html() -> str:
     font-family: var(--font-sans);
     font-size: 11px;
     font-weight: 500;
-    padding: 2.5px 9px;
-    border-radius: 9999px;
+    padding: 2.5px 8px;
+    border-radius: 6px;
     letter-spacing: 0.01em;
     display: inline-flex;
     align-items: center;
@@ -2370,6 +2376,7 @@ def get_embedded_html() -> str:
       <div class="logo-title">
         <div style="display:flex; align-items:center; gap:8px;">
           <h1>Scriber</h1>
+          <span class="app-version-badge" style="font-family:var(--font-mono); font-size:11px; padding:2px 7px; border-radius:6px; background:rgba(255,94,0,0.12); border:1px solid rgba(255,94,0,0.3); color:var(--tangerine); font-weight:600; letter-spacing:0.04em;">v2.0</span>
         </div>
         <p class="subtitle">Autonomous Speech Intelligence & Voice Synthesis Studio</p>
       </div>
@@ -2416,8 +2423,10 @@ def get_embedded_html() -> str:
           <button type="button" class="model-dropdown-trigger" id="transcribe-dropdown-trigger" onclick="toggleModelDropdown('transcribe-dropdown-menu', event)" aria-haspopup="true" aria-expanded="false" aria-controls="transcribe-dropdown-menu">
             <div class="dropdown-trigger-main">
               <span class="status-dot-pulse"></span>
-              <span class="dropdown-selected-name" id="active-transcribe-tag">Whisper Turbo</span>
-              <span class="model-tier-badge tier-recommended" id="active-transcribe-badge">Best Accuracy · Recommended</span>
+              <div class="dropdown-trigger-text">
+                <span class="dropdown-selected-name" id="active-transcribe-tag">Whisper Turbo</span>
+                <span class="model-tier-badge tier-recommended" id="active-transcribe-badge">Best Accuracy · Recommended</span>
+              </div>
             </div>
             <svg class="dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="6 9 12 15 18 9"></polyline>
@@ -2855,8 +2864,10 @@ def get_embedded_html() -> str:
             <button type="button" class="model-dropdown-trigger" id="voice-dropdown-trigger" onclick="toggleModelDropdown('voice-dropdown-menu', event)" aria-haspopup="true" aria-expanded="false" aria-controls="voice-dropdown-menu">
               <div class="dropdown-trigger-main">
                 <span class="status-dot-pulse"></span>
-                <span class="dropdown-selected-name" id="active-voice-tag">Edge-Neural Studio</span>
-                <span class="model-tier-badge tier-recommended" id="active-voice-badge">Studio Quality · Recommended</span>
+                <div class="dropdown-trigger-text">
+                  <span class="dropdown-selected-name" id="active-voice-tag">Edge-Neural Studio</span>
+                  <span class="model-tier-badge tier-recommended" id="active-voice-badge">Studio Quality · Recommended</span>
+                </div>
               </div>
               <svg class="dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="6 9 12 15 18 9"></polyline>
@@ -2875,27 +2886,7 @@ def get_embedded_html() -> str:
                 <p class="dropdown-item-desc">Local zero-shot speech flow-matching diffusion transformer (DiT) with 48kHz Vocos neural vocoder on dedicated RTX GPU.</p>
               </div>
 
-              <div class="dropdown-item" id="voice-opt-voicemaker" role="option" aria-selected="false" tabindex="0" onclick="selectVoiceModel('voicemaker')" onkeydown="if(event.key==='Enter'||event.key===' '){selectVoiceModel('voicemaker');event.preventDefault();}">
-                <div class="dropdown-item-header">
-                  <div class="dropdown-item-title-wrap">
-                    <span class="dropdown-item-radio" aria-hidden="true"></span>
-                    <span class="dropdown-item-title">Voicemaker.in Cloud Studio (48kHz)</span>
-                  </div>
-                  <span class="model-tier-badge tier-inversion">Cloud Studio · Neural HD</span>
-                </div>
-                <p class="dropdown-item-desc">Commercial studio voice generation with 48,000 Hz broadcast quality and natural inflection via Voicemaker.in API bridge.</p>
-              </div>
 
-              <div class="dropdown-item" id="voice-opt-elevenlabs" role="option" aria-selected="false" tabindex="0" onclick="selectVoiceModel('elevenlabs')" onkeydown="if(event.key==='Enter'||event.key===' '){selectVoiceModel('elevenlabs');event.preventDefault();}">
-                <div class="dropdown-item-header">
-                  <div class="dropdown-item-title-wrap">
-                    <span class="dropdown-item-radio" aria-hidden="true"></span>
-                    <span class="dropdown-item-title">ElevenLabs Studio (48kHz)</span>
-                  </div>
-                  <span class="model-tier-badge tier-formant">Instant Clone · 48kHz PCM</span>
-                </div>
-                <p class="dropdown-item-desc">Instant Voice Clone (IVC) with biometric prompt hashing and real-time 48,000 Hz 16-bit linear PCM audio streaming.</p>
-              </div>
 
               <div class="dropdown-item active" id="voice-opt-edge-neural" role="option" aria-selected="true" tabindex="0" onclick="selectVoiceModel('edge-neural')" onkeydown="if(event.key==='Enter'||event.key===' '){selectVoiceModel('edge-neural');event.preventDefault();}">
                 <div class="dropdown-item-header">
@@ -2934,12 +2925,7 @@ def get_embedded_html() -> str:
         </div>
       </div>
 
-      <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
-        <button type="button" onclick="openVoiceCredentialsModal()" style="font-size:12px; display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:8px; border:1px solid var(--border-glass); background:rgba(255,255,255,0.03); color:var(--text-secondary); cursor:pointer; transition:all 0.2s;" onmouseover="this.style.borderColor='var(--tangerine)'" onmouseout="this.style.borderColor='var(--border-glass)'">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--tangerine)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-          Cloud API Credentials (Voicemaker / ElevenLabs)
-        </button>
-      </div>
+
 
       <!-- Dropzone for New Reference Audio File -->
       <label class="voice-ref-dropzone" id="voice-ref-dropzone" for="voice-ref-input">
@@ -4288,7 +4274,7 @@ def get_embedded_html() -> str:
       badgeEl.className = 'model-tier-badge ' + (badgeClasses[modelId] || '');
     }
 
-    ['local-gpu', 'voicemaker', 'elevenlabs', 'edge-neural', 'whisperspeech', 'gpt-sovits'].forEach(function(m) {
+    ['local-gpu', 'edge-neural', 'whisperspeech', 'gpt-sovits'].forEach(function(m) {
       const el = document.getElementById('voice-opt-' + m);
       if (el) {
         const isActive = (m === modelId);
@@ -4960,8 +4946,6 @@ def get_embedded_html() -> str:
           sample_rate: 48000,
           reference_audio: (audioEditorState.m2 && audioEditorState.m2.originalVoiceRefBase64) || (audioEditorState.m2 && audioEditorState.m2.referenceAudioBase64) || null,
           backend: selectedVoiceModel || 'auto',
-          voicemaker_api_key: localStorage.getItem('voicemaker_api_key') || undefined,
-          elevenlabs_api_key: localStorage.getItem('elevenlabs_api_key') || undefined,
         }),
       });
       const data = await res.json();
@@ -5877,35 +5861,7 @@ def get_embedded_html() -> str:
   window.saveVoiceCredentials = saveVoiceCredentials;
 </script>
 
-<!-- Voice Credentials Modal -->
-<div id="voice-cred-modal" style="display:none; position:fixed; z-index:99999; left:0; top:0; width:100%; height:100%; background:rgba(8,9,12,0.85); backdrop-filter:blur(10px); align-items:center; justify-content:center;">
-  <div style="background:var(--canvas-elevated); border:1px solid var(--border-glass-hover); border-radius:16px; width:92%; max-width:480px; padding:28px; box-shadow:0 24px 64px rgba(0,0,0,0.6); position:relative;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-      <h3 style="font-family:var(--font-display); font-size:18px; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--tangerine)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-        Cloud Voice Credentials
-      </h3>
-      <button type="button" onclick="closeVoiceCredentialsModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:22px; line-height:1;">&times;</button>
-    </div>
-    <p style="font-size:13px; color:var(--text-secondary); margin-bottom:20px; line-height:1.5;">
-      Configure API keys for 48,000 Hz studio voice generation via Voicemaker.in and ElevenLabs Cloud Connectors.
-    </p>
-    <div style="margin-bottom:16px;">
-      <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Voicemaker.in API Key</label>
-      <input type="password" id="voicemaker-api-key-input" placeholder="Enter Voicemaker API Key" style="width:100%; padding:10px 14px; background:var(--canvas-dark); border:1px solid var(--border-glass); border-radius:8px; color:var(--text-primary); font-family:var(--font-mono); font-size:13px; outline:none;" />
-      <span id="voicemaker-status-badge" style="font-size:11px; color:var(--text-muted); display:inline-block; margin-top:4px;">Checking status...</span>
-    </div>
-    <div style="margin-bottom:24px;">
-      <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">ElevenLabs API Key</label>
-      <input type="password" id="elevenlabs-api-key-input" placeholder="Enter ElevenLabs API Key" style="width:100%; padding:10px 14px; background:var(--canvas-dark); border:1px solid var(--border-glass); border-radius:8px; color:var(--text-primary); font-family:var(--font-mono); font-size:13px; outline:none;" />
-      <span id="elevenlabs-status-badge" style="font-size:11px; color:var(--text-muted); display:inline-block; margin-top:4px;">Checking status...</span>
-    </div>
-    <div style="display:flex; justify-content:flex-end; gap:10px;">
-      <button type="button" onclick="closeVoiceCredentialsModal()" style="padding:8px 16px; border-radius:8px; background:transparent; border:1px solid var(--border-glass); color:var(--text-secondary); cursor:pointer;">Cancel</button>
-      <button type="button" onclick="saveVoiceCredentials()" style="padding:8px 20px; border-radius:8px; background:var(--tangerine); border:none; color:#fff; font-weight:600; cursor:pointer;">Save Credentials</button>
-    </div>
-  </div>
-</div>
+
 </body>
 </html>
 '''

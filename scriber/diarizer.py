@@ -328,7 +328,8 @@ class AcousticDiarizer:
                 turn_words.append(w)
                 if idx < len(seg.words) - 1:
                     gap = seg.words[idx + 1].start - w.end
-                    if gap >= 0.50:
+                    # Only split on substantial conversational pauses (>= 1.80s), avoiding shattering monologues across breath pauses
+                    if gap >= 1.80:
                         turn_text = " ".join(tw.word.strip() for tw in turn_words).strip()
                         turn_seg = AudioSegment(
                             id=len(refined_segments),
@@ -379,6 +380,19 @@ class AcousticDiarizer:
             start_byte -= (start_byte % 2)
             end_byte = min(total_pcm_len, int(seg.end * bytes_per_sec))
             end_byte -= (end_byte % 2)
+
+            seg_dur = max(0.05, seg.end - seg.start)
+            # Short turns (< 1.5s) are padded symmetrically with surrounding context audio
+            # so CAM++ neural speaker embeddings receive adequate temporal context
+            target_context_sec = 1.5
+            if seg_dur < target_context_sec:
+                needed = target_context_sec - seg_dur
+                pad_start_sec = max(0.0, seg.start - needed / 2.0)
+                pad_end_sec = min(total_pcm_len / float(bytes_per_sec), seg.end + needed / 2.0)
+                start_byte = max(0, int(pad_start_sec * bytes_per_sec))
+                start_byte -= (start_byte % 2)
+                end_byte = min(total_pcm_len, int(pad_end_sec * bytes_per_sec))
+                end_byte -= (end_byte % 2)
 
             seg_pcm = pcm16_data[start_byte:end_byte]
             if len(seg_pcm) < min_bytes:
@@ -490,8 +504,18 @@ class AcousticDiarizer:
 
                     should_merge = False
                     inter_d = float("inf")
+                    dur_a = sum(extracted_info[idx][0].end - extracted_info[idx][0].start for idx in clusters[a])
+                    dur_b = sum(extracted_info[idx][0].end - extracted_info[idx][0].start for idx in clusters[b])
+                    min_cluster_dur = min(dur_a, dur_b)
+
                     if is_neural:
-                        if inter_cos >= 0.75:
+                        if inter_cos >= 0.55 and semitone_diff <= 3.5:
+                            should_merge = True
+                            inter_d = 1.0 - inter_cos
+                        elif min_cluster_dur < 2.5 and semitone_diff <= 4.0 and inter_cos >= 0.45:
+                            should_merge = True
+                            inter_d = 1.0 - inter_cos
+                        elif inter_cos >= 0.70:
                             should_merge = True
                             inter_d = 1.0 - inter_cos
                     else:
@@ -511,6 +535,36 @@ class AcousticDiarizer:
                 clusters[a].extend(clusters[b])
                 clusters.pop(b)
                 merged = True
+
+        # Monologue Cohesion: If all remaining clusters exhibit uniform gender, consistent pitch (<= 3.0 semitones),
+        # AND high centroid cosine similarity (>= 0.65 neural / >= 0.88 DSP), consolidate into a single speaker.
+        # This protects distinct speakers of the same gender/pitch (e.g. Jenny vs Emma at cos ~0.53) while binding true monologues.
+        if len(clusters) > 1:
+            all_genders = [extracted_info[i][1].gender_estimate for i in range(n) if extracted_info[i][1].gender_estimate != "androgynous"]
+            primary_gender = max(set(all_genders), key=all_genders.count) if all_genders else "androgynous"
+            all_gender_match = all(g == primary_gender for g in all_genders) if all_genders else True
+
+            cluster_f0s = [np.mean([extracted_info[idx][1].fundamental_frequency_hz for idx in c]) for c in clusters]
+            max_f0, min_f0 = max(cluster_f0s), min(cluster_f0s)
+            semitone_span = abs(12.0 * math.log2(max(60.0, max_f0) / max(60.0, min_f0)))
+
+            min_inter_cos = 1.0
+            for a in range(len(clusters)):
+                for b in range(a + 1, len(clusters)):
+                    vecs_a = [extracted_info[idx][2] for idx in clusters[a]]
+                    vecs_b = [extracted_info[idx][2] for idx in clusters[b]]
+                    m_a, m_b = np.mean(vecs_a, axis=0), np.mean(vecs_b, axis=0)
+                    na, nb = np.linalg.norm(m_a), np.linalg.norm(m_b)
+                    cos = float(np.dot(m_a, m_b) / (na * nb)) if na > 1e-6 and nb > 1e-6 else 0.5
+                    if cos < min_inter_cos:
+                        min_inter_cos = cos
+
+            threshold_cos = 0.60 if is_neural else 0.88
+            if all_gender_match and semitone_span <= 4.5 and min_inter_cos >= threshold_cos:
+                merged_cluster = []
+                for c in clusters:
+                    merged_cluster.extend(c)
+                clusters = [merged_cluster]
 
         # Map clusters to chronological speaker IDs (Speaker_1, Speaker_2, ...)
         clusters.sort(key=lambda c: min(c))
@@ -580,9 +634,14 @@ class AcousticDiarizer:
 
             composite = cos_dist + gender_penalty + pitch_penalty
 
-            # Conversational continuity discount (0.60x) for adjacent turns
-            if is_adjacent and pause_sec <= 2.5 and gender_penalty == 0.0:
-                if cos_sim >= 0.70 or (semitone_diff <= 2.5 and cos_sim >= 0.60):
+            # Conversational continuity discount (0.40x) for adjacent turns across pauses.
+            # Distinct full turns (dur >= 1.5s, e.g. Jenny vs Emma at cos ~0.53) require cos >= 0.60 to merge.
+            # Micro-phrases (dur < 1.5s, e.g. "Remember," or "Hello everyone!") allow continuity binding at cos >= 0.45.
+            min_turn_dur = min(p1.sample_duration, p2.sample_duration)
+            if is_adjacent and pause_sec <= 3.5 and gender_penalty == 0.0:
+                if cos_sim >= 0.60:
+                    composite *= 0.60
+                elif min_turn_dur < 1.5 and (semitone_diff <= 3.0 and cos_sim >= 0.45):
                     composite *= 0.60
 
             return composite

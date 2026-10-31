@@ -972,20 +972,6 @@ TOP_VOICE_MODELS = [
         "architecture": "Flow-Matching DiT + Vocos 48kHz",
     },
     {
-        "id": "voicemaker",
-        "name": "Voicemaker.in Cloud Studio (48kHz)",
-        "tag": "Cloud Studio · Neural HD",
-        "description": "Commercial studio voice generation with 48,000 Hz broadcast quality and natural inflection via Voicemaker.in API bridge.",
-        "architecture": "Voicemaker Neural 48kHz REST",
-    },
-    {
-        "id": "elevenlabs",
-        "name": "ElevenLabs Studio (48kHz)",
-        "tag": "Instant Clone · 48kHz PCM",
-        "description": "Instant Voice Clone (IVC) with biometric prompt hashing and real-time 48,000 Hz 16-bit linear PCM audio streaming.",
-        "architecture": "ElevenLabs Turbo v2.5 48kHz",
-    },
-    {
         "id": "edge-neural",
         "name": "Edge-Neural Studio",
         "tag": "Instant · High-Fidelity",
@@ -1107,47 +1093,9 @@ class VoiceCloner:
                 fallback_chain.append("Tier 1 (Local GPU): skipped - no eligible GPU available")
 
         # ------------------------------------------------------------------
-        # Tier 2: Cloud Studio Connectors (Voicemaker.in & ElevenLabs 48kHz)
+        # Zero Financial Exposure: Paid Cloud APIs (Voicemaker/ElevenLabs) removed.
+        # All voice synthesis runs 100% locally and free on host hardware.
         # ------------------------------------------------------------------
-        if pcm_bytes is None and model_choice in ("auto", "voicemaker", "elevenlabs", "cloud-studio"):
-            vm_key = kwargs.get("voicemaker_api_key") or self.voicemaker_conn.api_key
-            el_key = kwargs.get("elevenlabs_api_key") or self.elevenlabs_conn.api_key
-
-            # Direct Voicemaker invocation
-            if model_choice == "voicemaker" or (vm_key and model_choice in ("auto", "cloud-studio")):
-                try:
-                    vm_pcm, vm_sr = self.voicemaker_conn.synthesize(
-                        text=prompt_text,
-                        voice_id=kwargs.get("voice_id", "ai3-Jony"),
-                        api_key=vm_key,
-                    )
-                    if vm_pcm and len(vm_pcm) > 320:
-                        pcm_bytes = vm_pcm
-                        backend_used = "voicemaker-neural"
-                        provider = "voicemaker"
-                        fallback_chain.append(f"Tier 2 (Voicemaker.in Cloud Studio): success ({vm_sr}Hz)")
-                except Exception as e:
-                    fallback_chain.append(f"Tier 2 (Voicemaker.in): failed ({e})")
-
-            # Direct ElevenLabs invocation
-            if pcm_bytes is None and (model_choice == "elevenlabs" or (el_key and model_choice in ("auto", "cloud-studio"))):
-                try:
-                    el_pcm, el_sr = self.elevenlabs_conn.synthesize(
-                        text=prompt_text,
-                        voice_id=kwargs.get("voice_id"),
-                        ref_audio_pcm=ref_audio,
-                        api_key=el_key,
-                    )
-                    if el_pcm and len(el_pcm) > 320:
-                        pcm_bytes = el_pcm
-                        backend_used = "elevenlabs-studio"
-                        provider = "elevenlabs"
-                        fallback_chain.append(f"Tier 2 (ElevenLabs Studio): success ({el_sr}Hz)")
-                except Exception as e:
-                    fallback_chain.append(f"Tier 2 (ElevenLabs): failed ({e})")
-
-            if pcm_bytes is None and not vm_key and not el_key:
-                fallback_chain.append("Tier 2 (Cloud Studio): skipped - API keys not configured")
 
         # ------------------------------------------------------------------
         # Tier 3: Edge-TTS Neural Studio with Mel-filterbank Timbre Transfer

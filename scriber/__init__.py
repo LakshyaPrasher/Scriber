@@ -6,7 +6,7 @@ import os
 # Disable unsigned C-extensions globally to guarantee zero Smart App Control / WDAC alerts
 os.environ.setdefault("AIOHTTP_NO_EXTENSIONS", "1")
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
 from scriber.audio_extractor import AudioExtractor
 from scriber.audio_editor import AudioEditor

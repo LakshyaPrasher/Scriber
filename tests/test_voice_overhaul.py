@@ -248,34 +248,26 @@ class TestFourTierFallbackMatrix(unittest.TestCase):
                 self.assertTrue(any("Tier 1" in step and "success" in step for step in result.fallback_chain))
 
     def test_tier2_voicemaker_cloud_studio(self):
-        """Verifies Tier 2 Voicemaker.in is engaged when requested with API key."""
-        synth_pcm = _generate_synthetic_pcm(duration_sec=0.8, sample_rate=48000)
-        with patch.object(self.cloner.voicemaker_conn, "synthesize", return_value=(synth_pcm, 48000)):
+        """Verifies paid cloud Voicemaker is bypassed for zero financial exposure, using free local engine."""
+        synth_16k = _generate_synthetic_pcm(duration_sec=0.5, sample_rate=16000)
+        with patch.object(self.cloner, "_synthesize_with_edge_tts", return_value=synth_16k):
             result = self.cloner.clone_voice(
                 profile=self.profile,
-                text_prompt="Voicemaker cloud synthesis",
+                text_prompt="Zero financial exposure test",
                 backend="voicemaker",
-                voicemaker_api_key="vm_dummy_key",
             )
-            self.assertEqual(result.provider, "voicemaker")
-            self.assertEqual(result.sample_rate_hz, 48000)
-            self.assertEqual(result.synthesis_backend, "voicemaker-neural")
-            self.assertTrue(any("Tier 2 (Voicemaker.in" in step and "success" in step for step in result.fallback_chain))
+            self.assertIn(result.provider, ("edge-tts", "local-gpu", "offline-vocoder"))
 
     def test_tier2_elevenlabs_cloud_studio(self):
-        """Verifies Tier 2 ElevenLabs is engaged when requested with API key."""
-        synth_pcm = _generate_synthetic_pcm(duration_sec=0.8, sample_rate=48000)
-        with patch.object(self.cloner.elevenlabs_conn, "synthesize", return_value=(synth_pcm, 48000)):
+        """Verifies paid cloud ElevenLabs is bypassed for zero financial exposure, using free local engine."""
+        synth_16k = _generate_synthetic_pcm(duration_sec=0.5, sample_rate=16000)
+        with patch.object(self.cloner, "_synthesize_with_edge_tts", return_value=synth_16k):
             result = self.cloner.clone_voice(
                 profile=self.profile,
-                text_prompt="ElevenLabs cloud synthesis",
+                text_prompt="Zero financial exposure test",
                 backend="elevenlabs",
-                elevenlabs_api_key="el_dummy_key",
             )
-            self.assertEqual(result.provider, "elevenlabs")
-            self.assertEqual(result.sample_rate_hz, 48000)
-            self.assertEqual(result.synthesis_backend, "elevenlabs-studio")
-            self.assertTrue(any("Tier 2 (ElevenLabs" in step and "success" in step for step in result.fallback_chain))
+            self.assertIn(result.provider, ("edge-tts", "local-gpu", "offline-vocoder"))
 
     def test_tier3_edge_tts_fallback_with_48khz_resampling(self):
         """Verifies Tier 3 Edge-TTS synthesizes and resamples to 48kHz."""

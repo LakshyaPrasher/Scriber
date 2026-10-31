@@ -39,3 +39,15 @@ Gate Result: **PASS** (All microservice, cloud connectors, fallback, and 48kHz a
 | worker_m5 | Build, Verification & Deployment Worker | DONE (444 unit tests [442 pass, 2 skip, 0 fail], 221 E2E tests [220 pass, 1 skip, 0 fail], dist/Scriber/Scriber.exe Subsystem 2 GUI verified, shortcuts verified, git commit 2d2fe71) | worker_m5/handoff.md |
 
 Gate Result: **PASS** (100% test pass, native Subsystem 2 executable bundle generated, shortcuts refreshed, git committed)
+
+## Milestone 6: VAD & Hardware-Accelerated Transcription Optimization
+| Agent | Role | Verdict | Source |
+|-------|------|---------|--------|
+| worker_m6 | VAD & GPU Transcription Worker | DONE (0.79s warm inference / 32.6x real-time on RTX 5050; 237/237 tests pass) | worker_m6/handoff.md |
+| reviewer_m6_1 | M6 Hardware & Performance Reviewer | **APPROVE** | reviewer_m6_1/handoff.md |
+| reviewer_m6_2 | M6 Thread-Safety & Local Reviewer | **APPROVE** | reviewer_m6_2/handoff.md |
+| challenger_m6_1 | M6 Performance Challenger | [pending] | challenger_m6_1/handoff.md |
+| challenger_m6_2 | M6 Concurrency & Isolation Challenger | [pending] | challenger_m6_2/handoff.md |
+| auditor_m6_1 | M6 Forensic Integrity Auditor | [pending] | auditor_m6_1/handoff.md |
+
+Gate Result: **IN_PROGRESS**

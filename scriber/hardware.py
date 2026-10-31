@@ -13,11 +13,78 @@ import logging
 import os
 import sys
 import threading
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from scriber.models import HardwareCapabilities
 
 logger = logging.getLogger(__name__)
+
+
+def register_cuda_dll_directories() -> None:
+    """Ensures nvidia-cublas, nvidia-cudnn, and other CUDA runtime DLL directories are registered on Windows."""
+    if sys.platform != "win32":
+        return
+    import site
+
+    search_dirs: List[str] = []
+
+    # 1. Search site-packages/nvidia/*/bin across all site packages
+    try:
+        for sp in site.getsitepackages():
+            nvidia_dir = os.path.join(sp, "nvidia")
+            if os.path.isdir(nvidia_dir):
+                for sub in os.listdir(nvidia_dir):
+                    bin_dir = os.path.join(nvidia_dir, sub, "bin")
+                    if os.path.isdir(bin_dir) and bin_dir not in search_dirs:
+                        search_dirs.append(bin_dir)
+    except Exception:
+        pass
+
+    # Also check sys.prefix and executable dirname Lib/site-packages
+    prefixes = [sys.prefix, os.path.dirname(sys.executable)]
+    for prefix in prefixes:
+        nvidia_dir = os.path.join(prefix, "Lib", "site-packages", "nvidia")
+        if os.path.isdir(nvidia_dir):
+            for sub in os.listdir(nvidia_dir):
+                bin_dir = os.path.join(nvidia_dir, sub, "bin")
+                if os.path.isdir(bin_dir) and bin_dir not in search_dirs:
+                    search_dirs.append(bin_dir)
+
+    # 2. Check common CUDA toolkit and Miniforge/Conda candidates
+    extra_candidates = [
+        r"C:\pinokio\bin\miniforge\Library\bin",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\bin",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4\bin",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.2\bin",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0\bin",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\bin",
+    ]
+    for p in extra_candidates:
+        if os.path.isdir(p) and p not in search_dirs:
+            search_dirs.append(p)
+
+    # Register with os.add_dll_directory and prepend to PATH
+    for bdir in search_dirs:
+        try:
+            os.add_dll_directory(bdir)
+        except Exception:
+            pass
+        if bdir not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = bdir + ";" + os.environ.get("PATH", "")
+
+    # Preload essential CUDA/cuBLAS/cuDNN DLLs into process space if present
+    for bdir in search_dirs:
+        for dll_name in ["cublasLt64_12.dll", "cublas64_12.dll", "cudnn64_9.dll", "cudnn64_8.dll"]:
+            dll_path = os.path.join(bdir, dll_name)
+            if os.path.isfile(dll_path):
+                try:
+                    ctypes.CDLL(dll_path)
+                except Exception:
+                    pass
+
+
+# Automatically register on module import
+register_cuda_dll_directories()
 
 # Direct3D Feature Level constants
 D3D_FEATURE_LEVEL_12_2 = 0xc200
@@ -221,6 +288,7 @@ def _query_d3d12() -> Tuple[bool, str]:
 
 def _query_ctranslate2_cuda() -> int:
     """Returns the count of CUDA devices available to CTranslate2."""
+    register_cuda_dll_directories()
     try:
         import ctranslate2
         return int(ctranslate2.get_cuda_device_count())

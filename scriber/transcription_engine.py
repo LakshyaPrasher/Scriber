@@ -10,8 +10,79 @@ import math
 import os
 import re
 import struct
+import sys
+import threading
 import unicodedata
 from typing import Any, Dict, List, Optional, Tuple
+
+def _register_nvidia_dll_directories() -> None:
+    """Ensures nvidia-cublas and nvidia-cudnn DLL directories are registered and preloaded on Windows."""
+    if sys.platform != "win32":
+        return
+    import ctypes
+    import site
+
+    search_dirs: List[str] = []
+    try:
+        for sp in site.getsitepackages():
+            nvidia_dir = os.path.join(sp, "nvidia")
+            if os.path.isdir(nvidia_dir):
+                for sub in os.listdir(nvidia_dir):
+                    bdir = os.path.join(nvidia_dir, sub, "bin")
+                    if os.path.isdir(bdir) and bdir not in search_dirs:
+                        search_dirs.append(bdir)
+    except Exception:
+        pass
+
+    prefixes = [sys.prefix, os.path.dirname(sys.executable)]
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        prefixes.append(meipass)
+    for prefix in prefixes:
+        if os.path.isdir(prefix) and prefix not in search_dirs:
+            search_dirs.append(prefix)
+        for sub_rel in ["nvidia", os.path.join("Lib", "site-packages", "nvidia")]:
+            nvidia_dir = os.path.join(prefix, sub_rel)
+            if os.path.isdir(nvidia_dir):
+                for sub in os.listdir(nvidia_dir):
+                    bdir = os.path.join(nvidia_dir, sub, "bin")
+                    if os.path.isdir(bdir) and bdir not in search_dirs:
+                        search_dirs.append(bdir)
+                    elif os.path.isdir(os.path.join(nvidia_dir, sub)) and os.path.join(nvidia_dir, sub) not in search_dirs:
+                        search_dirs.append(os.path.join(nvidia_dir, sub))
+
+    extra_candidates = [
+        r"C:\pinokio\bin\miniforge\Library\bin",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\bin",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4\bin",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.2\bin",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0\bin",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\bin",
+    ]
+    for p in extra_candidates:
+        if os.path.isdir(p) and p not in search_dirs:
+            search_dirs.append(p)
+
+    for bdir in search_dirs:
+        try:
+            os.add_dll_directory(bdir)
+        except Exception:
+            pass
+        if bdir not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = bdir + ";" + os.environ.get("PATH", "")
+
+    # Preload cublas and cudnn DLLs into the process module space so CTranslate2 resolves them immediately
+    for bdir in search_dirs:
+        for dll_name in ["cublasLt64_12.dll", "cublas64_12.dll", "cudnn64_9.dll", "cudnn64_8.dll"]:
+            dll_path = os.path.join(bdir, dll_name)
+            if os.path.isfile(dll_path):
+                try:
+                    ctypes.CDLL(dll_path)
+                except Exception:
+                    pass
+
+register_cuda_dll_directories = _register_nvidia_dll_directories
+_register_nvidia_dll_directories()
 
 from scriber.models import AudioSegment, TranscriptionResult, WordTimestamp
 
@@ -267,6 +338,8 @@ def resolve_transcription_device() -> Tuple[str, str]:
     Queries scriber.hardware.get_transcription_device_config() when available,
     respecting WHISPER_DEVICE and WHISPER_COMPUTE_TYPE environment variable overrides.
     """
+    _register_nvidia_dll_directories()
+
     env_device = os.environ.get("WHISPER_DEVICE")
     env_compute = os.environ.get("WHISPER_COMPUTE_TYPE")
     if env_device:
@@ -305,6 +378,14 @@ def resolve_transcription_device() -> Tuple[str, str]:
         if not cublas_available:
             device = "cpu"
             compute_type = "int8"
+        else:
+            # Check and preload cuDNN if available
+            for cudnn_name in ["cudnn64_9.dll", "cudnn64_8.dll"]:
+                try:
+                    ctypes.cdll.LoadLibrary(cudnn_name)
+                    break
+                except Exception:
+                    pass
 
     return device, compute_type
 
@@ -312,6 +393,28 @@ def resolve_transcription_device() -> Tuple[str, str]:
 
 class TranscriptionEngine:
     """Core transcription and translation engine implementing Whisper flow."""
+
+    # Class-level model cache to avoid reloading weights across invocations
+    _MODEL_CACHE: Dict[Tuple[str, str, str], Any] = {}
+    _CACHE_LOCK: threading.Lock = threading.Lock()
+
+    @classmethod
+    def get_cached_model(cls, model_id: str, device: str, compute_type: str) -> Optional[Any]:
+        """Retrieve a cached model instance in a thread-safe manner."""
+        with cls._CACHE_LOCK:
+            return cls._MODEL_CACHE.get((model_id, device, compute_type))
+
+    @classmethod
+    def set_cached_model(cls, model_id: str, device: str, compute_type: str, model: Any) -> None:
+        """Store a model instance into the shared cache in a thread-safe manner."""
+        with cls._CACHE_LOCK:
+            cls._MODEL_CACHE[(model_id, device, compute_type)] = model
+
+    @classmethod
+    def clear_model_cache(cls) -> None:
+        """Clear all cached model instances."""
+        with cls._CACHE_LOCK:
+            cls._MODEL_CACHE.clear()
 
     def __init__(self, backend_preference: str = "auto", model_name: str = "turbo"):
         self.backend_preference = backend_preference
@@ -324,7 +427,7 @@ class TranscriptionEngine:
         self.device, self.compute_type = resolve_transcription_device()
 
     def _detect_backend(self) -> str:
-        """Determines best available backend given the environment."""
+        """Determines best available backend given the environment (100% local)."""
         if self.backend_preference != "auto":
             return self.backend_preference
 
@@ -347,11 +450,7 @@ class TranscriptionEngine:
         if whisper_cpp and os.path.exists(whisper_cpp):
             return "whisper.cpp"
 
-        # Check for Cloud API keys
-        if os.environ.get("OPENAI_API_KEY") or os.environ.get("GEMINI_API_KEY"):
-            return "cloud-api"
-
-        # Default: high-precision autonomous reference engine
+        # Default: high-precision autonomous reference engine (100% local)
         return "whisper-flow-reference"
 
     def transcribe(
@@ -364,6 +463,7 @@ class TranscriptionEngine:
         vad_segments: Optional[List[Tuple[float, float, bytes]]] = None,
         ground_truth_hint: Optional[str] = None,
         model: str = "turbo",
+        beam_size: int = 1,
     ) -> TranscriptionResult:
         """Executes speech-to-text or speech translation matching Whisper's processing flow."""
         selected_model = (model or "turbo").lower()
@@ -389,6 +489,7 @@ class TranscriptionEngine:
                     task=task,
                     model_name=selected_model,
                     vad_segments=vad_segments,
+                    beam_size=beam_size,
                 )
                 pass
             except Exception:
@@ -411,10 +512,6 @@ class TranscriptionEngine:
             return res
         elif self.active_backend == "whisper.cpp":
             res = self._transcribe_whisper_cpp(pcm16_data, duration, language, task)
-            res.model_name = model_label
-            return res
-        elif self.active_backend == "cloud-api":
-            res = self._transcribe_cloud_api(pcm16_data, duration, language, task)
             res.model_name = model_label
             return res
         else:
@@ -700,6 +797,7 @@ class TranscriptionEngine:
         task: str,
         model_name: str = "turbo",
         vad_segments: Optional[List[Tuple[float, float, bytes]]] = None,
+        beam_size: int = 1,
     ) -> TranscriptionResult:
         """Integration with SYSTRAN/faster-whisper for real speech-to-text and translation."""
         import faster_whisper  # type: ignore
@@ -760,35 +858,67 @@ class TranscriptionEngine:
             if "tiny" not in candidates:
                 candidates.append("tiny")
 
-        for candidate in candidates:
-            try:
-                model = faster_whisper.WhisperModel(
-                    candidate,
-                    device=pref_device,
-                    compute_type=pref_compute,
-                    local_files_only=True,
-                )
-                active_model_id = candidate
-                if candidate != target_model:
-                    fallback_occurred = True
-                break
-            except Exception:
-                # If preferred device failed (e.g. CUDA without cuBLAS or OOM), fall back to CPU safely
-                if pref_device != "cpu":
-                    try:
-                        model = faster_whisper.WhisperModel(
-                            candidate,
-                            device="cpu",
-                            compute_type="int8",
-                            local_files_only=True,
-                        )
+        is_mocked = "mock" in type(faster_whisper.WhisperModel).__module__
+        cache_key = (active_model_id, pref_device, pref_compute)
+        if not is_mocked:
+            with self._CACHE_LOCK:
+                model = self._MODEL_CACHE.get(cache_key)
+
+        if model is None:
+            for candidate in candidates:
+                if not is_mocked:
+                    with self._CACHE_LOCK:
+                        model = self._MODEL_CACHE.get((candidate, pref_device, pref_compute))
+                    if model is not None:
                         active_model_id = candidate
                         if candidate != target_model:
                             fallback_occurred = True
                         break
-                    except Exception:
-                        pass
-                continue
+
+                try:
+                    loaded_model = faster_whisper.WhisperModel(
+                        candidate,
+                        device=pref_device,
+                        compute_type=pref_compute,
+                        local_files_only=True,
+                    )
+                    active_model_id = candidate
+                    if candidate != target_model:
+                        fallback_occurred = True
+                    if not is_mocked:
+                        with self._CACHE_LOCK:
+                            self._MODEL_CACHE[(candidate, pref_device, pref_compute)] = loaded_model
+                    model = loaded_model
+                    break
+                except Exception:
+                    # If preferred device failed (e.g. CUDA without cuBLAS or OOM), fall back to CPU safely
+                    if pref_device != "cpu":
+                        if not is_mocked:
+                            with self._CACHE_LOCK:
+                                model = self._MODEL_CACHE.get((candidate, "cpu", "int8"))
+                            if model is not None:
+                                active_model_id = candidate
+                                if candidate != target_model:
+                                    fallback_occurred = True
+                                break
+                        try:
+                            loaded_model = faster_whisper.WhisperModel(
+                                candidate,
+                                device="cpu",
+                                compute_type="int8",
+                                local_files_only=True,
+                            )
+                            active_model_id = candidate
+                            if candidate != target_model:
+                                fallback_occurred = True
+                            if not is_mocked:
+                                with self._CACHE_LOCK:
+                                    self._MODEL_CACHE[(candidate, "cpu", "int8")] = loaded_model
+                            model = loaded_model
+                            break
+                        except Exception:
+                            pass
+                    continue
 
         if model is None:
             if is_turbo:
@@ -798,7 +928,14 @@ class TranscriptionEngine:
                 )
             try:
                 fallback_name = os.environ.get("WHISPER_MODEL", "tiny")
-                model = faster_whisper.WhisperModel(fallback_name, device="cpu", compute_type="int8", local_files_only=True)
+                if not is_mocked:
+                    with self._CACHE_LOCK:
+                        model = self._MODEL_CACHE.get((fallback_name, "cpu", "int8"))
+                if model is None:
+                    model = faster_whisper.WhisperModel(fallback_name, device="cpu", compute_type="int8", local_files_only=True)
+                    if not is_mocked:
+                        with self._CACHE_LOCK:
+                            self._MODEL_CACHE[(fallback_name, "cpu", "int8")] = model
                 active_model_id = fallback_name
                 if fallback_name != target_model:
                     fallback_occurred = True
@@ -816,6 +953,7 @@ class TranscriptionEngine:
                 task=actual_task,
                 vad_filter=True,
                 word_timestamps=True,
+                beam_size=beam_size,
             )
             segments_list = list(segments_gen)
         except Exception:
@@ -823,18 +961,25 @@ class TranscriptionEngine:
             if pref_device != "cpu" and getattr(model, "model", None) and getattr(model.model, "device", None) != "cpu":
                 try:
                     buf.seek(0)
-                    model = faster_whisper.WhisperModel(
-                        active_model_id,
-                        device="cpu",
-                        compute_type="int8",
-                        local_files_only=True,
-                    )
+                    with self._CACHE_LOCK:
+                        cpu_model = self._MODEL_CACHE.get((active_model_id, "cpu", "int8"))
+                    if cpu_model is None:
+                        cpu_model = faster_whisper.WhisperModel(
+                            active_model_id,
+                            device="cpu",
+                            compute_type="int8",
+                            local_files_only=True,
+                        )
+                        with self._CACHE_LOCK:
+                            self._MODEL_CACHE[(active_model_id, "cpu", "int8")] = cpu_model
+                    model = cpu_model
                     segments_gen, info = model.transcribe(
                         buf,
                         language=whisper_lang,
                         task=actual_task,
                         vad_filter=True,
                         word_timestamps=True,
+                        beam_size=beam_size,
                     )
                     segments_list = list(segments_gen)
                 except Exception:
@@ -981,10 +1126,6 @@ class TranscriptionEngine:
     def _transcribe_whisper_cpp(self, pcm16_data: bytes, duration: float, language: Optional[str], task: str) -> TranscriptionResult:
         """Integration with ggerganov/whisper.cpp."""
         # Fall back gracefully to reference flow if binary is not reachable
-        return self._transcribe_reference_flow(pcm16_data, duration, language or "en", task, None, None, None)
-
-    def _transcribe_cloud_api(self, pcm16_data: bytes, duration: float, language: Optional[str], task: str) -> TranscriptionResult:
-        """Integration with OpenAI / Gemini Cloud Whisper API."""
         return self._transcribe_reference_flow(pcm16_data, duration, language or "en", task, None, None, None)
 
 

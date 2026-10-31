@@ -64,6 +64,18 @@ hidden_imports.extend(collect_submodules("onnxruntime"))
 
 binaries = []
 
+# Collect NVIDIA CUDA/cuBLAS/cuDNN runtime DLLs from site-packages
+for pfx in [sys.prefix, os.path.join(project_root, ".venv")]:
+    sp = os.path.join(pfx, "Lib", "site-packages")
+    nv = os.path.join(sp, "nvidia")
+    if os.path.isdir(nv):
+        for root, dirs, files in os.walk(nv):
+            for file in files:
+                if file.lower().endswith(".dll"):
+                    rel_dest = os.path.relpath(root, sp)
+                    binaries.append((os.path.join(root, file), rel_dest))
+        break
+
 excludes = [
     "tkinter",
     "matplotlib.tests",

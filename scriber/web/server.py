@@ -88,21 +88,13 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 "evaluation_matrix": get_model_evaluation_matrix(),
             })
         elif path == "/api/voice/credentials":
-            vm_key = os.environ.get("VOICEMAKER_API_KEY", "")
-            if not vm_key and hasattr(self, "pipeline") and hasattr(self.pipeline, "voice_cloner") and hasattr(self.pipeline.voice_cloner, "voicemaker_conn"):
-                vm_key = getattr(self.pipeline.voice_cloner.voicemaker_conn, "api_key", "")
-            el_key = os.environ.get("ELEVENLABS_API_KEY", "")
-            if not el_key and hasattr(self, "pipeline") and hasattr(self.pipeline, "voice_cloner") and hasattr(self.pipeline.voice_cloner, "elevenlabs_conn"):
-                el_key = getattr(self.pipeline.voice_cloner.elevenlabs_conn, "api_key", "")
-
-            def _mask(k: str) -> str:
-                return (k[:4] + "..." + k[-4:]) if len(k) > 8 else ("***" if k else "")
-
+            # Paid cloud APIs removed for zero financial exposure
             self._send_json_response(200, {
-                "voicemaker_configured": bool(vm_key),
-                "elevenlabs_configured": bool(el_key),
-                "voicemaker_masked_key": _mask(vm_key),
-                "elevenlabs_masked_key": _mask(el_key),
+                "voicemaker_configured": False,
+                "elevenlabs_configured": False,
+                "voicemaker_masked_key": "",
+                "elevenlabs_masked_key": "",
+                "zero_financial_exposure": True,
             })
         elif path == "/api/agents":
             from scriber.agent_swarm import CouncilAgentSwarm
@@ -134,11 +126,12 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             else:
                 self._send_json_response(404, {"error": "Plugin manifest not found"})
         elif path == "/api/info":
+            from scriber import __version__
             from scriber.agent_swarm import CouncilAgentSwarm
             swarm = CouncilAgentSwarm()
             self._send_json_response(200, {
                 "name": "Scriber",
-                "version": "1.1.0",
+                "version": __version__,
                 "description": "Autonomous Video Intelligence, Whisper Flow Transcription, and Voice Cloning Pipeline",
                 "repos": TOP_LEVERAGED_REPOS,
                 "agent_swarm_count": len(swarm.get_registered_agents()),
@@ -568,9 +561,6 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             output_format = req_data.get("output_format") or req_data.get("format") or "mp3"
             sample_rate = int(req_data.get("sample_rate", 48000))
             voice_id = req_data.get("voice_id")
-            vm_key = req_data.get("voicemaker_api_key")
-            el_key = req_data.get("elevenlabs_api_key")
-
             result = self.pipeline.clone_voice(
                 profile=profile,
                 text_prompt=text_prompt,
@@ -581,8 +571,6 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 backend=backend,
                 sample_rate=sample_rate,
                 voice_id=voice_id,
-                voicemaker_api_key=vm_key,
-                elevenlabs_api_key=el_key,
             )
             if result.audio_pcm16:
                 self.pipeline.last_pcm_data = result.audio_pcm16

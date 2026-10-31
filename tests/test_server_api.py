@@ -365,7 +365,7 @@ class TestServerAPI(unittest.TestCase):
         self.assertIn("transcribe_models", written)
         self.assertIn("voice_models", written)
         self.assertEqual(len(written["transcribe_models"]), 4)
-        self.assertEqual(len(written["voice_models"]), 6)
+        self.assertEqual(len(written["voice_models"]), 4)
 
         transcribe_ids = [m["id"] for m in written["transcribe_models"]]
         self.assertIn("turbo", transcribe_ids)
@@ -375,11 +375,11 @@ class TestServerAPI(unittest.TestCase):
 
         voice_ids = [m["id"] for m in written["voice_models"]]
         self.assertIn("local-gpu", voice_ids)
-        self.assertIn("voicemaker", voice_ids)
-        self.assertIn("elevenlabs", voice_ids)
         self.assertIn("edge-neural", voice_ids)
         self.assertIn("whisperspeech", voice_ids)
         self.assertIn("gpt-sovits", voice_ids)
+        self.assertNotIn("voicemaker", voice_ids)
+        self.assertNotIn("elevenlabs", voice_ids)
 
     def test_do_post_clone_voice_all_backends(self):
         """Verifies POST /api/clone-voice functions stably across all 3 top models."""
