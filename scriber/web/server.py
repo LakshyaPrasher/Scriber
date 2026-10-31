@@ -9,6 +9,7 @@ import email
 import http.server
 import json
 import os
+import re
 import socket
 import socketserver
 import sys
@@ -109,6 +110,13 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self._send_json_response(404, {"error": "Asset not found"})
         elif path == "/api/health":
             self._send_json_response(200, {"status": "ok", "app": "Scriber"})
+        elif path == "/api/media":
+            query = urllib.parse.parse_qs(parsed.query)
+            media_path = query.get("path", [""])[0]
+            if media_path and os.path.isfile(media_path):
+                self._serve_static_file(media_path)
+            else:
+                self._send_json_response(404, {"error": "Media file not found"})
         elif path == "/api/progress":
             with _PROGRESS_LOCK:
                 resp = dict(_ACTIVE_PROGRESS)
@@ -230,19 +238,21 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 mime = "application/octet-stream"
 
         try:
-            with open(filepath, "rb") as f:
-                content = f.read()
+            file_size = os.path.getsize(filepath)
             self.send_response(200)
             self.send_header("Content-Type", mime)
-            self.send_header("Content-Length", str(len(content)))
+            self.send_header("Content-Length", str(file_size))
+            self.send_header("Accept-Ranges", "bytes")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Connection", "close")
             self.end_headers()
-            try:
-                self.wfile.write(content)
-                self.wfile.flush()
-            except Exception:
-                pass
+            with open(filepath, "rb") as f:
+                while True:
+                    chunk = f.read(65536)
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+            self.wfile.flush()
             self.close_connection = True
         except Exception as e:
             self._send_json_response(500, {"error": str(e)})
@@ -406,9 +416,13 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self._send_json_response(400, {"error": "Content-Type must be multipart/form-data or application/json"})
                 return
 
-            # Standard library email parser for multipart boundaries (PEP 594 compliant, no cgi)
-            msg_bytes = f"Content-Type: {content_type}\r\n\r\n".encode("latin-1") + body_bytes
-            msg = email.message_from_bytes(msg_bytes)
+            # High-performance multipart boundary parsing with zero memory duplication
+            boundary = None
+            for param in content_type.split(";"):
+                param = param.strip()
+                if param.lower().startswith("boundary="):
+                    boundary = param.split("=", 1)[1].strip().strip('"').encode("latin-1")
+                    break
 
             file_data = None
             filename = "uploaded_media.mp4"
@@ -419,43 +433,82 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             model = "turbo"
             redact_pii = False
 
-            for part in msg.walk():
-                if part.is_multipart():
-                    continue
-                name = part.get_param("name", header="content-disposition")
-                if not name:
-                    continue
+            if boundary and (b"--" + boundary) in body_bytes:
+                marker = b"--" + boundary
+                parts = body_bytes.split(marker)
+                for p in parts:
+                    if not p or p == b"--\r\n" or p == b"--":
+                        continue
+                    header_blob, sep, body_part = p.partition(b"\r\n\r\n")
+                    if not sep:
+                        continue
+                    if body_part.endswith(b"\r\n"):
+                        body_part = body_part[:-2]
 
-                if name == "file":
-                    file_data = part.get_payload(decode=True)
-                    fname = part.get_filename()
-                    if fname:
-                        filename = fname
-                elif name == "file_path":
-                    payload = part.get_payload(decode=True)
-                    if payload:
-                        file_path_param = payload.decode("utf-8", errors="replace").strip()
-                elif name == "task":
-                    payload = part.get_payload(decode=True)
-                    if payload:
-                        task = payload.decode("utf-8", errors="replace").strip() or "translate"
-                elif name == "language":
-                    payload = part.get_payload(decode=True)
-                    if payload:
-                        language = payload.decode("utf-8", errors="replace").strip() or "auto"
-                elif name == "model":
-                    payload = part.get_payload(decode=True)
-                    if payload:
-                        model = payload.decode("utf-8", errors="replace").strip() or "turbo"
-                elif name == "reference_text":
-                    payload = part.get_payload(decode=True)
-                    if payload:
-                        ref_text = payload.decode("utf-8", errors="replace").strip() or None
-                elif name == "redact_pii":
-                    payload = part.get_payload(decode=True)
-                    if payload:
-                        val = payload.decode("utf-8", errors="replace").strip().lower()
+                    header_str = header_blob.decode("latin-1", errors="replace")
+                    cd_match = re.search(r'Content-Disposition:\s*form-data;\s*name="([^"]+)"(?:;\s*filename="([^"]+)")?', header_str, re.IGNORECASE)
+                    if not cd_match:
+                        continue
+                    part_name = cd_match.group(1)
+                    part_filename = cd_match.group(2)
+
+                    if part_name == "file":
+                        file_data = body_part
+                        if part_filename:
+                            filename = part_filename
+                    elif part_name == "file_path":
+                        file_path_param = body_part.decode("utf-8", errors="replace").strip()
+                    elif part_name == "task":
+                        task = body_part.decode("utf-8", errors="replace").strip() or "translate"
+                    elif part_name == "language":
+                        language = body_part.decode("utf-8", errors="replace").strip() or "auto"
+                    elif part_name == "model":
+                        model = body_part.decode("utf-8", errors="replace").strip() or "turbo"
+                    elif part_name == "reference_text":
+                        ref_text = body_part.decode("utf-8", errors="replace").strip() or None
+                    elif part_name == "redact_pii":
+                        val = body_part.decode("utf-8", errors="replace").strip().lower()
                         redact_pii = val in ("1", "true", "yes", "on")
+            else:
+                msg_bytes = f"Content-Type: {content_type}\r\n\r\n".encode("latin-1") + body_bytes
+                msg = email.message_from_bytes(msg_bytes)
+                for part in msg.walk():
+                    if part.is_multipart():
+                        continue
+                    name = part.get_param("name", header="content-disposition")
+                    if not name:
+                        continue
+
+                    if name == "file":
+                        file_data = part.get_payload(decode=True)
+                        fname = part.get_filename()
+                        if fname:
+                            filename = fname
+                    elif name == "file_path":
+                        payload = part.get_payload(decode=True)
+                        if payload:
+                            file_path_param = payload.decode("utf-8", errors="replace").strip()
+                    elif name == "task":
+                        payload = part.get_payload(decode=True)
+                        if payload:
+                            task = payload.decode("utf-8", errors="replace").strip() or "translate"
+                    elif name == "language":
+                        payload = part.get_payload(decode=True)
+                        if payload:
+                            language = payload.decode("utf-8", errors="replace").strip() or "auto"
+                    elif name == "model":
+                        payload = part.get_payload(decode=True)
+                        if payload:
+                            model = payload.decode("utf-8", errors="replace").strip() or "turbo"
+                    elif name == "reference_text":
+                        payload = part.get_payload(decode=True)
+                        if payload:
+                            ref_text = payload.decode("utf-8", errors="replace").strip() or None
+                    elif name == "redact_pii":
+                        payload = part.get_payload(decode=True)
+                        if payload:
+                            val = payload.decode("utf-8", errors="replace").strip().lower()
+                            redact_pii = val in ("1", "true", "yes", "on")
 
             # Handle file_path parameter if provided and valid
             if file_path_param and os.path.isfile(file_path_param):
@@ -484,13 +537,15 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     "srt": ScriberExporter.to_srt(output),
                     "vtt": ScriberExporter.to_vtt(output),
                 }
-                if self.pipeline.last_pcm_data:
+                if self.pipeline.last_pcm_data and len(self.pipeline.last_pcm_data) <= 16000 * 2 * 180:
                     try:
                         from scriber.audio_editor import AudioEditor
                         mp3_b = AudioEditor.encode_mp3(self.pipeline.last_pcm_data, sr=16000, channels=1, bit_rate=192000)
                         resp_data["audio_base64"] = f"data:audio/mp3;base64,{base64.b64encode(mp3_b).decode('ascii')}"
                     except Exception:
                         pass
+                if file_path_param:
+                    resp_data["media_url"] = f"/api/media?path={urllib.parse.quote(file_path_param)}"
                 self._send_json_response(200, resp_data)
                 return
 
@@ -528,7 +583,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 "srt": ScriberExporter.to_srt(output),
                 "vtt": ScriberExporter.to_vtt(output),
             }
-            if self.pipeline.last_pcm_data:
+            if self.pipeline.last_pcm_data and len(self.pipeline.last_pcm_data) <= 16000 * 2 * 180:
                 try:
                     from scriber.audio_editor import AudioEditor
                     mp3_b = AudioEditor.encode_mp3(self.pipeline.last_pcm_data, sr=16000, channels=1, bit_rate=192000)

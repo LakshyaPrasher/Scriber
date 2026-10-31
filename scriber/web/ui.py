@@ -3476,6 +3476,20 @@ def get_embedded_html() -> str:
     }
     isFileDialogOpening = true;
 
+    // Direct native desktop file dialog integration (zero upload overhead, instant start)
+    if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.open_file_dialog === 'function') {
+      try {
+        const filePath = await window.pywebview.api.open_file_dialog();
+        isFileDialogOpening = false;
+        if (filePath) {
+          startProcessingPath(filePath);
+          return;
+        }
+      } catch (err) {
+        console.warn('Native open_file_dialog fallback:', err);
+      }
+    }
+
     var releaseLock = function() {
       setTimeout(function() { isFileDialogOpening = false; }, 300);
       window.removeEventListener('focus', releaseLock);
@@ -3510,7 +3524,13 @@ def get_embedded_html() -> str:
     dropzone.addEventListener('drop', (e) => {
       const dt = e.dataTransfer;
       if (dt && dt.files && dt.files.length > 0) {
-        startProcessing(dt.files[0]);
+        const file = dt.files[0];
+        const nativePath = file.path || '';
+        if (nativePath && (nativePath.indexOf('\\') !== -1 || nativePath.indexOf('/') !== -1)) {
+          startProcessingPath(nativePath);
+        } else {
+          startProcessing(file);
+        }
       }
     }, false);
   }
@@ -3530,7 +3550,13 @@ def get_embedded_html() -> str:
       } else {
         const outView = document.getElementById('output-viewport');
         if (!outView || outView.style.display === 'none') {
-          startProcessing(dt.files[0]);
+          const file = dt.files[0];
+          const nativePath = file.path || '';
+          if (nativePath && (nativePath.indexOf('\\') !== -1 || nativePath.indexOf('/') !== -1)) {
+            startProcessingPath(nativePath);
+          } else {
+            startProcessing(file);
+          }
         }
       }
     }
@@ -3539,7 +3565,13 @@ def get_embedded_html() -> str:
 
   function handleFileSelected(e) {
     if (e.target.files && e.target.files.length > 0) {
-      startProcessing(e.target.files[0]);
+      const file = e.target.files[0];
+      const nativePath = file.path || '';
+      if (nativePath && (nativePath.indexOf('\\') !== -1 || nativePath.indexOf('/') !== -1)) {
+        startProcessingPath(nativePath);
+      } else {
+        startProcessing(file);
+      }
     }
   }
 
@@ -3647,6 +3679,73 @@ def get_embedded_html() -> str:
     if (progressPollInterval) {
       clearInterval(progressPollInterval);
       progressPollInterval = null;
+    }
+  }
+
+  async function startProcessingPath(filePath) {
+    if (!filePath) return;
+    const fileName = filePath.split(/[\\/]/).pop() || filePath;
+
+    // Transition into Liquid Morphing Orb & Genuine Progress Viewport
+    document.getElementById('dropzone').style.display = 'none';
+    const procCard = document.getElementById('processing-card');
+    procCard.style.display = 'block';
+    document.getElementById('processing-file-name').innerText = fileName;
+    document.getElementById('output-viewport').style.display = 'none';
+
+    // Start minimalist organic liquid light animation and live backend progress polling
+    startLiquidOrbAnimation();
+    startLiveProgressTracker();
+
+    if (loadedMediaUrl && loadedMediaUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(loadedMediaUrl);
+    }
+    loadedMediaName = fileName;
+    loadedMediaUrl = '/api/media?path=' + encodeURIComponent(filePath);
+    const audioPlayer = document.getElementById('audio-player');
+    if (audioPlayer) {
+      audioPlayer.src = loadedMediaUrl;
+    }
+
+    try {
+      const res = await fetch('/api/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file_path: filePath,
+          task: 'translate',
+          language: 'auto',
+          model: selectedTranscribeModel || 'turbo',
+          redact_pii: window.isPIIRedacted ? 'true' : 'false'
+        })
+      });
+      const data = await res.json();
+
+      stopLiveProgressTracker();
+      stopLiquidOrbAnimation();
+
+      if (data.error) {
+        showToast('Processing error: ' + data.error, 'error');
+        resetToUpload();
+        return;
+      }
+
+      updateProgressUI({
+        percent: 100,
+        phase: 'Phase 4/4 · Complete',
+        title: 'Transcription & Translation Complete',
+        subtitle: 'All speaker segments verified and ready',
+        eta_sec: 0
+      });
+
+      currentResult = data;
+      showToast('Transcription & Translation complete! Ready for review.', 'success');
+      renderTranscription(data);
+    } catch (err) {
+      stopLiveProgressTracker();
+      stopLiquidOrbAnimation();
+      showToast('Processing error: ' + err, 'error');
+      resetToUpload();
     }
   }
 
@@ -3787,6 +3886,11 @@ def get_embedded_html() -> str:
   /* Web Audio API Real Peak Extraction */
   function decodeAudioFileForWaveform(file) {
     try {
+      if (!file) return;
+      if (file.size && file.size > 25 * 1024 * 1024) {
+        // Prevent browser out-of-memory crash on large files (> 25MB)
+        return;
+      }
       if (!window.AudioContext && !window.webkitAudioContext) return;
       var AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!audioContext) audioContext = new AudioCtx();
@@ -3934,8 +4038,10 @@ def get_embedded_html() -> str:
 
     const audioPlayer = document.getElementById('audio-player');
     if (audioPlayer) {
-      if (data && data.audio_base64 && (!audioPlayer.src || audioPlayer.src.startsWith('blob:'))) {
+      if (data && data.audio_base64 && !audioPlayer.src) {
         audioPlayer.src = data.audio_base64;
+      } else if (data && data.media_url && !audioPlayer.src) {
+        audioPlayer.src = data.media_url;
       }
       audioPlayer.addEventListener('loadedmetadata', () => {
         if (audioPlayer.duration && isFinite(audioPlayer.duration)) {
