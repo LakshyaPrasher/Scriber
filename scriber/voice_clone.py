@@ -1131,7 +1131,7 @@ class VoiceCloner:
         # ------------------------------------------------------------------
         # Tier 1: Local GPU Flow-Matching Companion Microservice
         # ------------------------------------------------------------------
-        if model_choice in ("auto", "local-gpu", "f5-tts", "flow-matching"):
+        if model_choice in ("local-gpu", "f5-tts", "flow-matching"):
             can_run_gpu = False
             try:
                 from scriber.hardware import get_hardware_capabilities
@@ -1165,7 +1165,7 @@ class VoiceCloner:
         # ------------------------------------------------------------------
         # Tier 3: Edge-TTS Neural Studio with Mel-filterbank Timbre Transfer
         # ------------------------------------------------------------------
-        if pcm_bytes is None and model_choice not in ("offline-formant", "formant-harmonic-engine", "gpt-sovits", "sovits"):
+        if pcm_bytes is None and model_choice not in ("offline-formant", "formant-harmonic-engine"):
             try:
                 edge_pcm = self._synthesize_with_edge_tts(target_profile, prompt_text, pitch_shift_hz, rate_shift_pct)
                 if edge_pcm and len(edge_pcm) > 320:
@@ -1176,7 +1176,7 @@ class VoiceCloner:
 
                     # Upsample 16kHz -> 48kHz via sinc filter
                     pcm_bytes = AudioEditor.resample_pcm(edge_pcm, src_sr=self.SAMPLE_RATE, dst_sr=sample_rate)
-                    backend_used = "whisperspeech-inversion" if "whisper" in model_choice else "edge-tts-neural"
+                    backend_used = "whisperspeech-inversion" if "whisper" in model_choice else ("gpt-sovits-timbre" if "sovits" in model_choice else "edge-tts-neural")
                     provider = "edge-tts"
                     fallback_chain.append(f"Tier 3 (Edge-TTS Neural Studio): success (resampled to {sample_rate}Hz)")
             except Exception as e:
@@ -1403,7 +1403,7 @@ class VoiceCloner:
         syn_norm = syn_band_energies / (np.max(syn_band_energies) + 1e-6)
         band_ratios = (ref_norm + 0.05) / (syn_norm + 0.05)
         # Gentle spectral formant scaling preventing comb filtering and harsh metallic distortion
-        band_gains = np.clip(band_ratios ** 0.25, 0.82, 1.22)
+        band_gains = np.clip(band_ratios ** 0.45, 0.65, 1.55)
 
         # Smooth frequency domain interpolation anchored across full spectrum [0, Nyquist]
         interp_f = np.concatenate(([0.0], hz_pts[1:-1], [sr / 2.0]))

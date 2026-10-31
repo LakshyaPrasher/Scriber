@@ -302,6 +302,72 @@ def get_embedded_html() -> str:
     border-color: var(--tangerine);
     background: #141924;
   }
+  .model-dropdown-trigger:disabled,
+  .model-dropdown-trigger.locked {
+    opacity: 0.55;
+    pointer-events: none;
+    cursor: not-allowed;
+    filter: grayscale(0.25);
+  }
+  .model-dropdown-trigger:disabled .status-dot-pulse,
+  .model-dropdown-trigger.locked .status-dot-pulse {
+    animation: none;
+    opacity: 0.4;
+  }
+
+  /* Collapsible Accordion for Advanced Voice Controls */
+  details.voice-advanced-controls {
+    margin-top: 24px;
+    background: rgba(13, 16, 23, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 0;
+    overflow: hidden;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+  details.voice-advanced-controls:hover {
+    border-color: rgba(255, 255, 255, 0.14);
+  }
+  details.voice-advanced-controls[open] {
+    border-color: rgba(255, 94, 0, 0.35);
+    background: rgba(13, 16, 23, 0.85);
+  }
+  summary.voice-advanced-summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: color 0.15s ease;
+  }
+  summary.voice-advanced-summary::-webkit-details-marker {
+    display: none;
+  }
+  summary.voice-advanced-summary:hover {
+    color: var(--text-primary);
+  }
+  .voice-advanced-summary-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .voice-advanced-chevron {
+    transition: transform 0.2s ease;
+    color: var(--text-muted);
+  }
+  details.voice-advanced-controls[open] .voice-advanced-chevron {
+    transform: rotate(180deg);
+    color: var(--tangerine);
+  }
+  .voice-advanced-body {
+    padding: 16px 18px 20px 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
   .dropdown-trigger-main {
     display: flex;
     align-items: center;
@@ -1999,32 +2065,6 @@ def get_embedded_html() -> str:
   .action-seek-btn:hover {
     background: rgba(255, 94, 0, 0.15);
   }
-  .chapters-strip {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding: 4px 0 12px 0;
-    margin-bottom: 14px;
-  }
-  .chapter-chip {
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    color: var(--text-secondary);
-    padding: 5px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .chapter-chip:hover {
-    background: rgba(255, 94, 0, 0.12);
-    border-color: rgba(255, 94, 0, 0.35);
-    color: var(--text-primary);
-  }
   .audit-seal-strip {
     display: flex;
     justify-content: space-between;
@@ -2082,20 +2122,21 @@ def get_embedded_html() -> str:
     font-weight: 600;
   }
 
-  /* Mode 3: About Creator — Clean Animated Fluid Name Card */
+  /* Mode 3: About Creator — Clean 3-Card Minimalist Bento */
   .about-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 480px;
-    padding: 24px 16px;
-    animation: fadeInView 0.25s ease;
+    min-height: 520px;
+    padding: 36px 16px;
+    animation: fadeInView 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .about-bento-grid {
     width: 100%;
-    max-width: 680px;
+    max-width: 520px;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    gap: 14px;
   }
   .about-card {
     background: #0E121A;
@@ -2105,47 +2146,40 @@ def get_embedded_html() -> str:
     overflow: hidden;
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
-    transition: border-color 0.2s ease;
-  }
-  .about-card::before {
-    display: none;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .about-card:hover {
     border-color: rgba(255, 94, 0, 0.35);
-  }
-  .about-card > * {
-    position: relative;
-    z-index: 2;
-  }
-  .about-name-card {
-    width: 100%;
-    padding: 36px 28px 28px 28px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    cursor: default;
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
   }
   .card-ambient-glow {
-    display: none;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(350px circle at var(--mouse-x, -500px) var(--mouse-y, -500px), rgba(255, 94, 0, 0.08), transparent 70%);
+    pointer-events: none;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+  }
+  .about-avatar-card {
+    padding: 28px 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
   .creator-avatar-wrap {
-    width: 112px;
-    height: 112px;
+    width: 96px;
+    height: 96px;
     border-radius: 50%;
-    padding: 2px;
-    background: rgba(255, 94, 0, 0.4);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
-    margin-bottom: 20px;
+    padding: 3px;
+    background: rgba(255, 94, 0, 0.25);
+    border: 1px solid rgba(255, 94, 0, 0.45);
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s ease;
-  }
-  .about-name-card:hover .creator-avatar-wrap {
-    background: rgba(255, 94, 0, 0.65);
+    flex-shrink: 0;
+    box-shadow: 0 0 28px rgba(255, 94, 0, 0.16);
   }
   .creator-avatar-img {
     width: 100%;
@@ -2155,74 +2189,62 @@ def get_embedded_html() -> str:
     display: block;
     background: #0B0E14;
   }
+  .about-name-card {
+    padding: 22px 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
   .creator-name {
     font-family: var(--font-display);
     font-size: 24px;
     font-weight: 600;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
     color: #FFFFFF;
-    margin: 0 0 24px 0;
+    margin: 0;
+  }
+  .about-contact-card {
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .btn-copy-contact {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn-copy-contact:hover {
+    background: rgba(255, 94, 0, 0.08);
+    border-color: rgba(255, 94, 0, 0.35);
+    color: var(--text-primary);
+  }
+  .btn-copy-contact .copy-tag {
+    font-size: 10.5px;
+    color: var(--tangerine);
+    text-transform: uppercase;
+    font-weight: 600;
   }
   .about-social-row {
     width: 100%;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
+    gap: 8px;
   }
-  @media (max-width: 680px) {
-    body {
-      padding: 16px 16px 48px 16px;
-    }
-    header {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 16px;
-    }
-    .logo-block {
-      width: 100%;
-      min-width: 0;
-    }
-    .logo-title {
-      min-width: 0;
-      flex: 1;
-    }
-    .subtitle {
-      font-size: 11px;
-      line-height: 1.4;
-    }
-    .nav-pills {
-      width: 100%;
-      display: flex;
-    }
-    .nav-pill {
-      flex: 1;
-      justify-content: center;
-      padding: 8px 8px;
-      font-size: 12px;
-      gap: 6px;
-    }
-    .about-container {
-      padding: 16px 0;
-      width: 100%;
-    }
-    .about-bento-grid {
-      width: 100%;
-      max-width: 100%;
-    }
+  @media (max-width: 600px) {
     .about-social-row {
       grid-template-columns: 1fr;
-      gap: 10px;
-    }
-    .creator-name {
-      font-size: 20px;
-    }
-    .about-name-card {
-      padding: 24px 16px 20px 16px;
-      width: 100%;
-    }
-    .creator-avatar-wrap {
-      width: 96px;
-      height: 96px;
     }
   }
   .social-node-card {
@@ -2777,42 +2799,6 @@ def get_embedded_html() -> str:
         </div>
       </div>
 
-      <!-- Transcript Overview & Chapters Dashboard -->
-      <div class="council-dashboard" id="council-dashboard-panel" style="display:none;">
-        <div class="council-header-bar">
-          <div style="display:flex; align-items:center; gap:10px;">
-            <span class="council-tag-badge">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-              Overview & Chapters
-            </span>
-            <span id="council-duration-badge" style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted);"></span>
-          </div>
-        </div>
-
-        <div id="council-briefing-wrap">
-          <h3 class="council-headline" id="council-briefing-headline">Executive Summary</h3>
-          <p class="council-tldr" id="council-briefing-tldr"></p>
-        </div>
-
-        <!-- Key Decisions -->
-        <div id="council-decisions-wrap" style="display:none;">
-          <div class="council-section-title">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            Key Decisions
-          </div>
-          <div class="council-decisions-box" id="council-decisions-list"></div>
-        </div>
-
-        <!-- Thematic Chapters Strip -->
-        <div id="council-chapters-wrap" style="display:none;">
-          <div class="council-section-title">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-            Thematic Chapters & Soundbites
-          </div>
-          <div class="chapters-strip" id="council-chapters-strip"></div>
-        </div>
-      </div>
-
       <!-- Interactive Colorful Speaker Blocks -->
       <div class="transcript-container" id="transcript-container"></div>
     </div>
@@ -2937,161 +2923,11 @@ def get_embedded_html() -> str:
         <button type="button" class="btn-clear-ref" onclick="clearVoiceRef()" title="Clear reference file">✕ Clear</button>
       </div>
 
-      <!-- Audio Editor & MP3 Studio (Mode 2) -->
-      <div class="audio-editor-card" id="mode2-audio-editor">
-        <div class="audio-editor-header">
-          <div class="editor-title-wrap">
-            <div class="editor-icon-badge">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-            </div>
-            <div>
-              <h3 class="editor-heading">Voice Audio Studio & MP3 Editor</h3>
-              <p class="editor-subtext">Adjust volume gain, pitch tuning, and trim boundaries for reference audio or cloned speech</p>
-            </div>
-          </div>
-          <div class="editor-badges-wrap">
-            <span class="editor-stat-pill" id="m2-vol-pill">Vol: 100%</span>
-            <span class="editor-stat-pill" id="m2-pitch-pill">Pitch: 0 st</span>
-            <span class="editor-stat-pill" id="m2-trim-pill">Trim: Full Length</span>
-          </div>
-        </div>
-
-        <div class="audio-editor-grid">
-          <!-- Volume & Gain -->
-          <div class="editor-control-col">
-            <div class="control-header">
-              <span class="control-label">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-                Volume / Gain
-              </span>
-              <span class="control-val" id="m2-vol-val">100% (0.0 dB)</span>
-            </div>
-            <input type="range" class="editor-slider" id="m2-vol-slider" min="0" max="200" value="100" step="1" oninput="handleVolumeInput('m2', this.value)" />
-            <div class="preset-buttons">
-              <button type="button" class="btn-preset" onclick="setVolumePreset('m2', 50)">50%</button>
-              <button type="button" class="btn-preset active" id="m2-vol-preset-100" onclick="setVolumePreset('m2', 100)">100%</button>
-              <button type="button" class="btn-preset" onclick="setVolumePreset('m2', 130)">130%</button>
-              <button type="button" class="btn-preset" onclick="setVolumePreset('m2', 160)">160%</button>
-              <button type="button" class="btn-preset" onclick="setVolumePreset('m2', 200)">200%</button>
-            </div>
-          </div>
-
-          <!-- Pitch Tuning -->
-          <div class="editor-control-col">
-            <div class="control-header">
-              <span class="control-label">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-                Pitch Shift
-              </span>
-              <span class="control-val" id="m2-pitch-val">0 st (Natural)</span>
-            </div>
-            <input type="range" class="editor-slider" id="m2-pitch-slider" min="-12" max="12" value="0" step="1" oninput="handlePitchInput('m2', this.value)" />
-            <div class="preset-buttons">
-              <button type="button" class="btn-preset" onclick="setPitchPreset('m2', -4)">-4 st</button>
-              <button type="button" class="btn-preset" onclick="setPitchPreset('m2', -2)">-2 st</button>
-              <button type="button" class="btn-preset active" id="m2-pitch-preset-0" onclick="setPitchPreset('m2', 0)">0 st (Reset)</button>
-              <button type="button" class="btn-preset" onclick="setPitchPreset('m2', 2)">+2 st</button>
-              <button type="button" class="btn-preset" onclick="setPitchPreset('m2', 4)">+4 st</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Trimming Section -->
-        <div class="editor-trim-section">
-          <div class="control-header">
-            <span class="control-label">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line></svg>
-              Trimming & Playhead In/Out
-            </span>
-            <span class="control-val" id="m2-trim-duration-val">Full File</span>
-          </div>
-
-          <div class="trim-inputs-row">
-            <div class="trim-input-group">
-              <label for="m2-trim-start">Trim Start (In Point):</label>
-              <div class="input-with-btn">
-                <input type="text" id="m2-trim-start" class="trim-text-input" value="00:00.00" onchange="updateTrimFromText('m2')" />
-                <button type="button" class="btn-trim-set" onclick="setTrimToPlayhead('m2', 'start')" title="Set start trim point to current audio playhead">Set In</button>
-              </div>
-            </div>
-
-            <div class="trim-input-group">
-              <label for="m2-trim-end">Trim End (Out Point):</label>
-              <div class="input-with-btn">
-                <input type="text" id="m2-trim-end" class="trim-text-input" value="00:00.00" onchange="updateTrimFromText('m2')" />
-                <button type="button" class="btn-trim-set" onclick="setTrimToPlayhead('m2', 'end')" title="Set end trim point to current audio playhead">Set Out</button>
-              </div>
-            </div>
-
-            <div class="trim-actions-group">
-              <button type="button" class="btn-secondary" onclick="resetTrimRange('m2')">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
-                Reset In/Out
-              </button>
-            </div>
-          </div>
-
-          <div class="trim-slider-scrub-row" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.08);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-              <span style="font-size:11px; color:var(--text-secondary); font-weight:600;">Live Trimming Sliders:</span>
-              <span id="m2-trim-slider-pill" style="font-size:10.5px; font-family:'JetBrains Mono', monospace; color:var(--tangerine);">00:00 - 00:00</span>
-            </div>
-            <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
-              <div style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px;">
-                <span style="font-size:10.5px; color:var(--text-muted); font-weight:600;">In</span>
-                <input type="range" class="editor-slider" id="m2-trim-start-bar" min="0" max="100" value="0" step="0.05" oninput="handleTrimBarInput('m2', 'start', this.value)" />
-              </div>
-              <div style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px;">
-                <span style="font-size:10.5px; color:var(--text-muted); font-weight:600;">Out</span>
-                <input type="range" class="editor-slider" id="m2-trim-end-bar" min="0" max="100" value="100" step="0.05" oninput="handleTrimBarInput('m2', 'end', this.value)" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Action Bar -->
-        <div class="editor-bottom-bar">
-          <div class="editor-bottom-left">
-            <button type="button" class="btn-preview-edit" id="m2-preview-btn" onclick="togglePreviewEditedAudio('m2')">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-              <span>Preview Edited Audio</span>
-            </button>
-            <span class="preview-active-pill" id="m2-preview-status" style="display:none;">
-              <span class="pulse-dot"></span> Previewing
-            </span>
-          </div>
-
-          <div class="editor-bottom-right">
-            <button type="button" class="btn-primary btn-export-mp3" id="m2-export-btn" onclick="exportEditedMP3('m2')">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              Export Edited MP3
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="section-label">
+      <div class="section-label" style="margin-top: 16px;">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
         Speech Prompt
       </div>
       <textarea id="clone-text" class="clone-textarea" placeholder="Type text for the cloned voice to speak...">Welcome to Scriber. This speech was synthesized with zero-shot acoustic timbre matching and harmonic formant preservation.</textarea>
-
-      <div class="sliders-row">
-        <div class="slider-col">
-          <div class="slider-label">
-            <span>Pitch Fine-Tuning</span>
-            <span id="pitch-val" style="color:var(--tangerine); font-family:'JetBrains Mono', monospace;">0 Hz</span>
-          </div>
-          <input type="range" id="pitch-slider" class="slider-ctrl" min="-40" max="40" value="0" oninput="document.getElementById('pitch-val').innerText = (this.value >= 0 ? '+' : '') + this.value + ' Hz'" />
-        </div>
-        <div class="slider-col">
-          <div class="slider-label">
-            <span>Speaking Rate</span>
-            <span id="rate-val" style="color:var(--tangerine); font-family:'JetBrains Mono', monospace;">0%</span>
-          </div>
-          <input type="range" id="rate-slider" class="slider-ctrl" min="-30" max="30" value="0" oninput="document.getElementById('rate-val').innerText = (this.value >= 0 ? '+' : '') + this.value + '%'" />
-        </div>
-      </div>
 
       <!-- Minimal Acoustic Resonance Canvas during Voice Synthesis -->
       <div class="synthesis-resonance-stage" id="synthesis-resonance-stage">
@@ -3123,6 +2959,170 @@ def get_embedded_html() -> str:
         </div>
         <audio id="clone-audio-player" class="audio-elem" controls style="width:100%; height:38px; margin-top:8px; accent-color:var(--tangerine); outline:none;"></audio>
       </div>
+
+      <!-- Collapsible Accordion for Advanced Audio Studio & Fine-Tuning Controls -->
+      <details class="voice-advanced-controls" id="voice-advanced-controls">
+        <summary class="voice-advanced-summary">
+          <div class="voice-advanced-summary-left">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tangerine)" stroke-width="2.2"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+            <span>Advanced Audio Studio & Fine-Tuning Controls (Pitch, Gain, Trimming)</span>
+          </div>
+          <svg class="voice-advanced-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </summary>
+        <div class="voice-advanced-body">
+          <div class="sliders-row" style="margin-bottom: 20px;">
+            <div class="slider-col">
+              <div class="slider-label">
+                <span>Pitch Fine-Tuning</span>
+                <span id="pitch-val" style="color:var(--tangerine); font-family:'JetBrains Mono', monospace;">0 Hz</span>
+              </div>
+              <input type="range" id="pitch-slider" class="slider-ctrl" min="-40" max="40" value="0" oninput="document.getElementById('pitch-val').innerText = (this.value >= 0 ? '+' : '') + this.value + ' Hz'" />
+            </div>
+            <div class="slider-col">
+              <div class="slider-label">
+                <span>Speaking Rate</span>
+                <span id="rate-val" style="color:var(--tangerine); font-family:'JetBrains Mono', monospace;">0%</span>
+              </div>
+              <input type="range" id="rate-slider" class="slider-ctrl" min="-30" max="30" value="0" oninput="document.getElementById('rate-val').innerText = (this.value >= 0 ? '+' : '') + this.value + '%'" />
+            </div>
+          </div>
+
+          <!-- Audio Editor & MP3 Studio (Mode 2) -->
+          <div class="audio-editor-card" id="mode2-audio-editor">
+            <div class="audio-editor-header">
+              <div class="editor-title-wrap">
+                <div class="editor-icon-badge">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                </div>
+                <div>
+                  <h3 class="editor-heading">Voice Audio Studio & MP3 Editor</h3>
+                  <p class="editor-subtext">Adjust volume gain, pitch tuning, and trim boundaries for reference audio or cloned speech</p>
+                </div>
+              </div>
+              <div class="editor-badges-wrap">
+                <span class="editor-stat-pill" id="m2-vol-pill">Vol: 100%</span>
+                <span class="editor-stat-pill" id="m2-pitch-pill">Pitch: 0 st</span>
+                <span class="editor-stat-pill" id="m2-trim-pill">Trim: Full Length</span>
+              </div>
+            </div>
+
+            <div class="audio-editor-grid">
+              <!-- Volume & Gain -->
+              <div class="editor-control-col">
+                <div class="control-header">
+                  <span class="control-label">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                    Volume / Gain
+                  </span>
+                  <span class="control-val" id="m2-vol-val">100% (0.0 dB)</span>
+                </div>
+                <input type="range" class="editor-slider" id="m2-vol-slider" min="0" max="200" value="100" step="1" oninput="handleVolumeInput('m2', this.value)" />
+                <div class="preset-buttons">
+                  <button type="button" class="btn-preset" onclick="setVolumePreset('m2', 50)">50%</button>
+                  <button type="button" class="btn-preset active" id="m2-vol-preset-100" onclick="setVolumePreset('m2', 100)">100%</button>
+                  <button type="button" class="btn-preset" onclick="setVolumePreset('m2', 130)">130%</button>
+                  <button type="button" class="btn-preset" onclick="setVolumePreset('m2', 160)">160%</button>
+                  <button type="button" class="btn-preset" onclick="setVolumePreset('m2', 200)">200%</button>
+                </div>
+              </div>
+
+              <!-- Pitch Tuning -->
+              <div class="editor-control-col">
+                <div class="control-header">
+                  <span class="control-label">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                    Pitch Shift
+                  </span>
+                  <span class="control-val" id="m2-pitch-val">0 st (Natural)</span>
+                </div>
+                <input type="range" class="editor-slider" id="m2-pitch-slider" min="-12" max="12" value="0" step="1" oninput="handlePitchInput('m2', this.value)" />
+                <div class="preset-buttons">
+                  <button type="button" class="btn-preset" onclick="setPitchPreset('m2', -4)">-4 st</button>
+                  <button type="button" class="btn-preset" onclick="setPitchPreset('m2', -2)">-2 st</button>
+                  <button type="button" class="btn-preset active" id="m2-pitch-preset-0" onclick="setPitchPreset('m2', 0)">0 st (Reset)</button>
+                  <button type="button" class="btn-preset" onclick="setPitchPreset('m2', 2)">+2 st</button>
+                  <button type="button" class="btn-preset" onclick="setPitchPreset('m2', 4)">+4 st</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Trimming Section -->
+            <div class="editor-trim-section">
+              <div class="control-header">
+                <span class="control-label">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line></svg>
+                  Trimming & Playhead In/Out
+                </span>
+                <span class="control-val" id="m2-trim-duration-val">Full File</span>
+              </div>
+
+              <div class="trim-inputs-row">
+                <div class="trim-input-group">
+                  <label for="m2-trim-start">Trim Start (In Point):</label>
+                  <div class="input-with-btn">
+                    <input type="text" id="m2-trim-start" class="trim-text-input" value="00:00.00" onchange="updateTrimFromText('m2')" />
+                    <button type="button" class="btn-trim-set" onclick="setTrimToPlayhead('m2', 'start')" title="Set start trim point to current audio playhead">Set In</button>
+                  </div>
+                </div>
+
+                <div class="trim-input-group">
+                  <label for="m2-trim-end">Trim End (Out Point):</label>
+                  <div class="input-with-btn">
+                    <input type="text" id="m2-trim-end" class="trim-text-input" value="00:00.00" onchange="updateTrimFromText('m2')" />
+                    <button type="button" class="btn-trim-set" onclick="setTrimToPlayhead('m2', 'end')" title="Set end trim point to current audio playhead">Set Out</button>
+                  </div>
+                </div>
+
+                <div class="trim-actions-group">
+                  <button type="button" class="btn-secondary" onclick="resetTrimRange('m2')">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                    Reset In/Out
+                  </button>
+                </div>
+              </div>
+
+              <div class="trim-slider-scrub-row" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.08);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                  <span style="font-size:11px; color:var(--text-secondary); font-weight:600;">Live Trimming Sliders:</span>
+                  <span id="m2-trim-slider-pill" style="font-size:10.5px; font-family:'JetBrains Mono', monospace; color:var(--tangerine);">00:00 - 00:00</span>
+                </div>
+                <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+                  <div style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:10.5px; color:var(--text-muted); font-weight:600;">In</span>
+                    <input type="range" class="editor-slider" id="m2-trim-start-bar" min="0" max="100" value="0" step="0.05" oninput="handleTrimBarInput('m2', 'start', this.value)" />
+                  </div>
+                  <div style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:10.5px; color:var(--text-muted); font-weight:600;">Out</span>
+                    <input type="range" class="editor-slider" id="m2-trim-end-bar" min="0" max="100" value="100" step="0.05" oninput="handleTrimBarInput('m2', 'end', this.value)" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="editor-bottom-bar">
+              <div class="editor-bottom-left">
+                <button type="button" class="btn-preview-edit" id="m2-preview-btn" onclick="togglePreviewEditedAudio('m2')">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                  <span>Preview Edited Audio</span>
+                </button>
+                <span class="preview-active-pill" id="m2-preview-status" style="display:none;">
+                  <span class="pulse-dot"></span> Previewing
+                </span>
+              </div>
+
+              <div class="editor-bottom-right">
+                <button type="button" class="btn-primary btn-export-mp3" id="m2-export-btn" onclick="exportEditedMP3('m2')">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  Export Edited MP3
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
     </div>
   </section>
 
@@ -3132,24 +3132,37 @@ def get_embedded_html() -> str:
   <section id="about-view" class="view-panel">
     <div class="about-container">
       <div class="about-bento-grid">
-        <div class="about-card about-name-card" id="about-name-card">
-          <!-- Ambient Fluid Glow Background Layer -->
+        <!-- Card 1: Icon / Avatar Card -->
+        <div class="about-card about-avatar-card">
           <div class="card-ambient-glow"></div>
-          
-          <!-- Avatar with Specular Aura Ring -->
           <div class="creator-avatar-wrap">
             <img src="/assets/avatar.png" alt="Lakshya Prasher" class="creator-avatar-img" onerror="if(!this.dataset.step){this.dataset.step='1';this.src='/assets/creator_profile.png';}else if(this.dataset.step==='1'){this.dataset.step='2';this.src='/api/assets/avatar.png';}else{this.onerror=null;}" />
           </div>
+        </div>
 
-          <!-- User Name -->
+        <!-- Card 2: Name Card -->
+        <div class="about-card about-name-card" id="about-name-card">
+          <div class="card-ambient-glow"></div>
           <h2 class="creator-name">Lakshya Prasher</h2>
+        </div>
+
+        <!-- Card 3: Email & Social Card -->
+        <div class="about-card about-contact-card">
+          <div class="card-ambient-glow"></div>
+          <button type="button" class="btn-copy-contact" onclick="copyContactHandle(event)" title="Copy direct contact email">
+            <span style="display:inline-flex; align-items:center; gap:8px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+              <span>lakshyaprasher01@gmail.com</span>
+            </span>
+            <span class="copy-tag">Copy Email</span>
+          </button>
 
           <!-- Social Links Row -->
           <div class="about-social-row">
             <!-- Instagram -->
             <a href="https://www.instagram.com/laksh._.ya/" target="_blank" rel="noopener noreferrer" class="social-node-card instagram" title="Follow Lakshya on Instagram">
               <div class="social-icon-box">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
                   <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
                   <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
@@ -3165,7 +3178,7 @@ def get_embedded_html() -> str:
             <!-- LinkedIn -->
             <a href="https://www.linkedin.com/in/lakshyaprasher/" target="_blank" rel="noopener noreferrer" class="social-node-card linkedin" title="Connect on LinkedIn">
               <div class="social-icon-box">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
                   <rect x="2" y="9" width="4" height="12"></rect>
                   <circle cx="4" cy="4" r="2"></circle>
@@ -3181,7 +3194,7 @@ def get_embedded_html() -> str:
             <!-- GitHub -->
             <a href="https://github.com/LakshyaPrasher" target="_blank" rel="noopener noreferrer" class="social-node-card github" title="Explore Repositories on GitHub">
               <div class="social-icon-box">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
                 </svg>
               </div>
@@ -3259,73 +3272,41 @@ def get_embedded_html() -> str:
     }
   }
 
-  /* Dynamic Name Card Cursor Spotlight & Butter-Smooth 3D Tilt Physics */
+  /* Dynamic Name Card Spotlight & Live Diagnostic Audition */
   function initBentoSpotlight() {
     var cards = document.querySelectorAll('.about-card, .social-node-card');
     cards.forEach(function(card) {
       if (card.__hasSpotlight) return;
       card.__hasSpotlight = true;
 
-      var cachedRect = null;
-      var rafId = null;
-
-      function updateRect() {
-        cachedRect = card.getBoundingClientRect();
-      }
-
-      card.addEventListener('mouseenter', function() {
-        if (card.__resetTimer) {
-          clearTimeout(card.__resetTimer);
-          card.__resetTimer = null;
-        }
-        updateRect();
-        if (card.classList.contains('about-name-card')) {
-          card.style.transition = 'transform 0.12s cubic-bezier(0.2, 0.8, 0.2, 1)';
-        }
-      });
-
       card.addEventListener('mousemove', function(e) {
-        if (!cachedRect) updateRect();
-        var x = e.clientX - cachedRect.left;
-        var y = e.clientY - cachedRect.top;
-
+        var rect = card.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var y = e.clientY - rect.top;
         card.style.setProperty('--mouse-x', x + 'px');
         card.style.setProperty('--mouse-y', y + 'px');
-
-        if (card.classList.contains('about-name-card')) {
-          if (rafId) cancelAnimationFrame(rafId);
-          rafId = requestAnimationFrame(function() {
-            var halfW = (cachedRect ? cachedRect.width : card.offsetWidth) / 2;
-            var halfH = (cachedRect ? cachedRect.height : card.offsetHeight) / 2;
-            var rotY = ((x - halfW) / halfW) * 7;
-            var rotX = -((y - halfH) / halfH) * 7;
-            rotY = Math.max(-7, Math.min(7, rotY));
-            rotX = Math.max(-7, Math.min(7, rotX));
-            card.style.transition = '';
-            card.style.transform = 'perspective(900px) rotateX(' + rotX.toFixed(2) + 'deg) rotateY(' + rotY.toFixed(2) + 'deg) translateY(-2px)';
-          });
-        }
       });
 
       card.addEventListener('mouseleave', function() {
         card.style.setProperty('--mouse-x', '-500px');
         card.style.setProperty('--mouse-y', '-500px');
-        cachedRect = null;
-        if (rafId) {
-          cancelAnimationFrame(rafId);
-          rafId = null;
-        }
-        if (card.classList.contains('about-name-card')) {
-          card.style.transition = 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)';
-          card.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg) translateY(0)';
-          card.__resetTimer = setTimeout(function() {
-            card.style.transition = '';
-            card.__resetTimer = null;
-          }, 450);
-        }
       });
     });
   }
+
+  function copyContactHandle(evt) {
+    if (evt && evt.preventDefault) evt.preventDefault();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText('lakshyaprasher01@gmail.com').then(function() {
+        showToast('Contact email copied: lakshyaprasher01@gmail.com', 'success');
+      }).catch(function() {
+        showToast('Direct contact: lakshyaprasher01@gmail.com', 'info');
+      });
+    } else {
+      showToast('Direct contact: lakshyaprasher01@gmail.com', 'info');
+    }
+  }
+
   function checkUrlMode() {
     try {
       var params = new URLSearchParams(window.location.search);
@@ -3575,6 +3556,7 @@ def get_embedded_html() -> str:
     // Start minimalist organic liquid light animation and live backend progress polling
     startLiquidOrbAnimation();
     startLiveProgressTracker();
+    setTranscribeModelLocked(true);
 
     if (loadedMediaUrl && loadedMediaUrl.startsWith('blob:')) {
       URL.revokeObjectURL(loadedMediaUrl);
@@ -3606,6 +3588,7 @@ def get_embedded_html() -> str:
       if (data.error) {
         showToast('Processing error: ' + data.error, 'error');
         resetToUpload();
+        setTranscribeModelLocked(false);
         return;
       }
 
@@ -3620,11 +3603,13 @@ def get_embedded_html() -> str:
       currentResult = data;
       showToast('Transcription & Translation complete! Ready for review.', 'success');
       renderTranscription(data);
+      setTranscribeModelLocked(false);
     } catch (err) {
       stopLiveProgressTracker();
       stopLiquidOrbAnimation();
       showToast('Processing error: ' + err, 'error');
       resetToUpload();
+      setTranscribeModelLocked(false);
     }
   }
 
@@ -3641,6 +3626,7 @@ def get_embedded_html() -> str:
     // Start minimalist organic liquid light animation and live backend progress polling
     startLiquidOrbAnimation();
     startLiveProgressTracker();
+    setTranscribeModelLocked(true);
 
     if (loadedMediaUrl) URL.revokeObjectURL(loadedMediaUrl);
     loadedMediaUrl = URL.createObjectURL(file);
@@ -3667,6 +3653,7 @@ def get_embedded_html() -> str:
       if (data.error) {
         showToast('Processing error: ' + data.error, 'error');
         resetToUpload();
+        setTranscribeModelLocked(false);
         return;
       }
 
@@ -3681,15 +3668,18 @@ def get_embedded_html() -> str:
       currentResult = data;
       showToast('Transcription & Translation complete! Ready for review.', 'success');
       renderTranscription(data);
+      setTranscribeModelLocked(false);
     } catch (err) {
       stopLiveProgressTracker();
       stopLiquidOrbAnimation();
       showToast('Upload or network failed: ' + err, 'error');
       resetToUpload();
+      setTranscribeModelLocked(false);
     }
   }
 
   function resetToUpload() {
+    setTranscribeModelLocked(false);
     document.getElementById('dropzone').style.display = 'block';
     document.getElementById('processing-card').style.display = 'none';
     document.getElementById('output-viewport').style.display = 'none';
@@ -4348,6 +4338,9 @@ def get_embedded_html() -> str:
     const menu = document.getElementById(menuId);
     if (!menu) return;
     const trigger = menu.closest('.custom-model-dropdown') ? menu.closest('.custom-model-dropdown').querySelector('.model-dropdown-trigger') : null;
+    if (trigger && (trigger.disabled || trigger.classList.contains('locked') || trigger.getAttribute('aria-disabled') === 'true')) {
+      return;
+    }
     const isAlreadyOpen = menu.classList.contains('open');
     closeAllModelDropdowns();
     if (!isAlreadyOpen) {
@@ -4356,6 +4349,36 @@ def get_embedded_html() -> str:
         trigger.classList.add('active');
         trigger.setAttribute('aria-expanded', 'true');
       }
+    }
+  }
+
+  function setTranscribeModelLocked(locked) {
+    const trigger = document.getElementById('transcribe-dropdown-trigger');
+    if (!trigger) return;
+    if (locked) {
+      trigger.disabled = true;
+      trigger.classList.add('locked');
+      trigger.setAttribute('aria-disabled', 'true');
+      closeAllModelDropdowns();
+    } else {
+      trigger.disabled = false;
+      trigger.classList.remove('locked');
+      trigger.setAttribute('aria-disabled', 'false');
+    }
+  }
+
+  function setVoiceModelLocked(locked) {
+    const trigger = document.getElementById('voice-dropdown-trigger');
+    if (!trigger) return;
+    if (locked) {
+      trigger.disabled = true;
+      trigger.classList.add('locked');
+      trigger.setAttribute('aria-disabled', 'true');
+      closeAllModelDropdowns();
+    } else {
+      trigger.disabled = false;
+      trigger.classList.remove('locked');
+      trigger.setAttribute('aria-disabled', 'false');
     }
   }
 
@@ -4382,6 +4405,13 @@ def get_embedded_html() -> str:
   });
 
   function selectTranscribeModel(modelId) {
+    const trigger = document.getElementById('transcribe-dropdown-trigger');
+    if (trigger && (trigger.disabled || trigger.classList.contains('locked') || trigger.getAttribute('aria-disabled') === 'true')) {
+      return;
+    }
+    setTranscribeModelLocked(true);
+    setTimeout(function() { setTranscribeModelLocked(false); }, 350);
+
     selectedTranscribeModel = modelId;
     window.selectedTranscribeModel = modelId;
     const names = {
@@ -4425,6 +4455,13 @@ def get_embedded_html() -> str:
   }
 
   function selectVoiceModel(modelId) {
+    const trigger = document.getElementById('voice-dropdown-trigger');
+    if (trigger && (trigger.disabled || trigger.classList.contains('locked') || trigger.getAttribute('aria-disabled') === 'true')) {
+      return;
+    }
+    setVoiceModelLocked(true);
+    setTimeout(function() { setVoiceModelLocked(false); }, 350);
+
     selectedVoiceModel = modelId;
     window.selectedVoiceModel = modelId;
     const names = {
@@ -4962,6 +4999,7 @@ def get_embedded_html() -> str:
     if (lbl) lbl.innerHTML = `<span style="color:var(--gold);">Extracting biometric timbre from ${escapeHtml(file.name)}...</span>`;
 
     startAcousticResonanceAnimation();
+    setVoiceModelLocked(true);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -4972,6 +5010,7 @@ def get_embedded_html() -> str:
       const data = await res.json();
       if (lbl) lbl.innerHTML = origText;
       stopAcousticResonanceAnimation();
+      setVoiceModelLocked(false);
 
       if (data.error) {
         showToast('Voice profiling error: ' + data.error, 'error');
@@ -5006,6 +5045,7 @@ def get_embedded_html() -> str:
     } catch (err) {
       if (lbl) lbl.innerHTML = origText;
       stopAcousticResonanceAnimation();
+      setVoiceModelLocked(false);
       showToast('Voice profiling network error: ' + err, 'error');
     }
   }
@@ -5055,6 +5095,7 @@ def get_embedded_html() -> str:
     btn.disabled = true;
 
     startAcousticResonanceAnimation();
+    setVoiceModelLocked(true);
 
     try {
       const res = await fetch('/api/clone-voice', {
@@ -5075,6 +5116,7 @@ def get_embedded_html() -> str:
       btn.innerHTML = origHtml;
       btn.disabled = false;
       stopAcousticResonanceAnimation();
+      setVoiceModelLocked(false);
 
       if (data.error) {
         showToast('Cloning error: ' + data.error, 'error');
@@ -5103,6 +5145,7 @@ def get_embedded_html() -> str:
       btn.innerHTML = origHtml;
       btn.disabled = false;
       stopAcousticResonanceAnimation();
+      setVoiceModelLocked(false);
       showToast('Cloning network error: ' + e, 'error');
     }
   }
@@ -5168,6 +5211,10 @@ def get_embedded_html() -> str:
     }
   }
 
+  /* Pre-seeded Orbital Stardust Particles (contract compatibility) */
+  var orbitalParticles = [];
+
+  /* Molten Fluid Light Orb (72-point Harmonic Spline Deformation with Quadratic Bezier Smoothing) */
   function renderLiquidLoop() {
     if (!liquidCtx || !liquidCanvas) return;
     var dpr = window.devicePixelRatio || 1;
@@ -5289,7 +5336,7 @@ def get_embedded_html() -> str:
     
     var dpr = window.devicePixelRatio || 1;
 
-    // 1. Distinct High-Pitch Resonant Voice Orb
+    // 1. Resonant Voice Morphing Orb
     voiceOrbCanvas = document.getElementById('voice-orb-canvas');
     if (voiceOrbCanvas) {
       voiceOrbCanvas.width = 160 * dpr;
@@ -5335,11 +5382,11 @@ def get_embedded_html() -> str:
     var effectiveF0 = Math.max(60, baseF0 + pitchShift);
     var pitchScale = effectiveF0 / 140.0;
 
-    // Distinct faster oscillation rate (approx 3x faster than transcribe's 0.016 rate)
-    voiceOrbTime += 0.048 * pitchScale;
-    resTime += 0.065 * pitchScale;
+    // Smooth harmonic phase synthesis for organic fluidity
+    voiceOrbTime += 0.018 * Math.sqrt(pitchScale);
+    resTime += 0.024 * Math.sqrt(pitchScale);
 
-    // 1. Render Distinct High-Pitch Voice Morphing Orb
+    // 1. Render Fluid Liquid Voice Morphing Orb
     if (voiceOrbCtx && voiceOrbCanvas) {
       var ow = 160;
       var oh = 160;
@@ -5350,36 +5397,35 @@ def get_embedded_html() -> str:
       voiceOrbCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       voiceOrbCtx.clearRect(0, 0, ow, oh);
 
-      // Acoustic Halo Glow with Gold & Violet Sheen
-      var orbGlow = voiceOrbCtx.createRadialGradient(ocx, ocy, 10, ocx, ocy, 75);
-      orbGlow.addColorStop(0, 'rgba(245, 158, 11, 0.28)');
-      orbGlow.addColorStop(0.5, 'rgba(139, 92, 246, 0.12)');
+      // Acoustic Halo Glow with Warm Obsidian & Tangerine Falloff
+      var orbGlow = voiceOrbCtx.createRadialGradient(ocx, ocy, 8, ocx, ocy, 74);
+      orbGlow.addColorStop(0, 'rgba(255, 94, 0, 0.22)');
+      orbGlow.addColorStop(0.45, 'rgba(229, 169, 60, 0.07)');
       orbGlow.addColorStop(1, 'transparent');
       voiceOrbCtx.fillStyle = orbGlow;
       voiceOrbCtx.fillRect(0, 0, ow, oh);
 
-      // Fast acoustic pulse ripple matching voice pitch
-      var orbRipple = (voiceOrbTime * 28) % 36;
+      // Smooth acoustic pulse ripple matching voice harmonics
+      var orbRipple = (voiceOrbTime * 18) % 36;
       var rippleR = 40 + orbRipple;
-      var rippleAlpha = Math.max(0, 0.22 * (1 - orbRipple / 36));
+      var rippleAlpha = Math.max(0, 0.18 * (1 - orbRipple / 36));
       voiceOrbCtx.beginPath();
       voiceOrbCtx.arc(ocx, ocy, rippleR, 0, Math.PI * 2);
-      voiceOrbCtx.strokeStyle = 'rgba(245, 158, 11, ' + rippleAlpha + ')';
-      voiceOrbCtx.lineWidth = 1.4;
+      voiceOrbCtx.strokeStyle = 'rgba(255, 122, 26, ' + rippleAlpha + ')';
+      voiceOrbCtx.lineWidth = 1.2;
       voiceOrbCtx.stroke();
 
-      // High-Frequency Harmonic Deformation (Harmonics 4, 7, 11, 16 reflecting voice pitch formants)
-      var numPoints = 80;
-      var baseR = 36 + Math.sin(voiceOrbTime * 2.4) * 2.5;
+      // 72-point Harmonic Spline Deformation for Voice Orb
+      var numPoints = 72;
+      var baseR = 38 + Math.sin(voiceOrbTime * 1.6) * 2.5;
       var orbPoints = [];
 
       for (var pIdx = 0; pIdx < numPoints; pIdx++) {
         var theta = (pIdx / numPoints) * Math.PI * 2;
-        var h1 = Math.sin(theta * 4 + voiceOrbTime * 3.4) * 4.6;
-        var h2 = Math.cos(theta * 7 - voiceOrbTime * 2.8) * 3.2;
-        var h3 = Math.sin(theta * 11 + voiceOrbTime * 4.2) * 2.0;
-        var h4 = Math.cos(theta * 16 - voiceOrbTime * 5.1) * 1.2;
-        var r = baseR + h1 + h2 + h3 + h4;
+        var h1 = Math.sin(theta * 2 + voiceOrbTime * 1.8) * 4.6;
+        var h2 = Math.cos(theta * 3 - voiceOrbTime * 1.3) * 3.0;
+        var h3 = Math.sin(theta * 5 + voiceOrbTime * 1.0) * 1.8;
+        var r = baseR + (h1 + h2 + h3) * (0.8 + pitchScale * 0.2);
         orbPoints.push({
           x: ocx + Math.cos(theta) * r,
           y: ocy + Math.sin(theta) * r
@@ -5396,21 +5442,52 @@ def get_embedded_html() -> str:
       }
       voiceOrbCtx.closePath();
 
-      var orbGrad = voiceOrbCtx.createRadialGradient(ocx - 5, ocy - 5, 4, ocx, ocy, baseR + 10);
-      orbGrad.addColorStop(0, '#FFFBEB');
-      orbGrad.addColorStop(0.35, '#F59E0B');
-      orbGrad.addColorStop(0.75, '#E5A93C');
-      orbGrad.addColorStop(1, '#8B5CF6');
+      var orbGrad = voiceOrbCtx.createRadialGradient(ocx - 6, ocy - 6, 4, ocx, ocy, baseR + 10);
+      orbGrad.addColorStop(0, '#FFA826');
+      orbGrad.addColorStop(0.48, '#FF5E00');
+      orbGrad.addColorStop(0.88, '#D94F00');
+      orbGrad.addColorStop(1, 'rgba(180, 50, 0, 0.85)');
       voiceOrbCtx.fillStyle = orbGrad;
-      voiceOrbCtx.shadowColor = 'rgba(245, 158, 11, 0.45)';
-      voiceOrbCtx.shadowBlur = 18;
+      voiceOrbCtx.shadowColor = 'rgba(255, 94, 0, 0.40)';
+      voiceOrbCtx.shadowBlur = 16;
       voiceOrbCtx.fill();
       voiceOrbCtx.shadowBlur = 0;
+
+      // Inner Luminous Caustic
+      var innerR = baseR * 0.56;
+      var innerPoints = [];
+      for (var k = 0; k < numPoints; k++) {
+        var itheta = (k / numPoints) * Math.PI * 2;
+        var ih1 = Math.sin(itheta * 2 + voiceOrbTime * 1.9 + 0.8) * 2.8;
+        var ih2 = Math.cos(itheta * 3 - voiceOrbTime * 1.4 + 0.4) * 1.8;
+        var ir = innerR + ih1 + ih2;
+        innerPoints.push({
+          x: (ocx - 3) + Math.cos(itheta) * ir,
+          y: (ocy - 3) + Math.sin(itheta) * ir
+        });
+      }
+
+      voiceOrbCtx.beginPath();
+      voiceOrbCtx.moveTo((innerPoints[0].x + innerPoints[numPoints - 1].x) / 2, (innerPoints[0].y + innerPoints[numPoints - 1].y) / 2);
+      for (var m = 0; m < numPoints; m++) {
+        var inext = innerPoints[(m + 1) % numPoints];
+        var imidX = (innerPoints[m].x + inext.x) / 2;
+        var imidY = (innerPoints[m].y + inext.y) / 2;
+        voiceOrbCtx.quadraticCurveTo(innerPoints[m].x, innerPoints[m].y, imidX, imidY);
+      }
+      voiceOrbCtx.closePath();
+
+      var innerGrad = voiceOrbCtx.createRadialGradient(ocx - 5, ocy - 5, 2, ocx - 2, ocy - 2, innerR + 5);
+      innerGrad.addColorStop(0, '#FFF5EB');
+      innerGrad.addColorStop(0.45, '#FFA826');
+      innerGrad.addColorStop(1, 'rgba(255, 94, 0, 0.15)');
+      voiceOrbCtx.fillStyle = innerGrad;
+      voiceOrbCtx.fill();
 
       voiceOrbCtx.restore();
     }
 
-    // 2. Render Distinct Multi-Harmonic Resonant Waveforms
+    // 2. Render Butter-Smooth Acoustic Oscilloscope Ribbon Waveforms
     if (resCtx && resCanvas) {
       var rw = resCanvas.clientWidth || (resCanvas.width / dpr);
       var rh = 60;
@@ -5419,29 +5496,26 @@ def get_embedded_html() -> str:
       resCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       resCtx.clearRect(0, 0, rw, rh);
 
-      // Fine, high-pitch harmonic resonance wave lines
+      // Smooth flowing harmonic ribbons in Tangerine, Gold, Coral
       var waves = [
-        { freq: 0.075 * pitchScale, amp: 14, color: 'rgba(245, 158, 11, 0.90)', width: 1.8 },
-        { freq: 0.15 * pitchScale, amp: 10, color: 'rgba(229, 169, 60, 0.85)', width: 1.4 },
-        { freq: 0.26 * pitchScale, amp: 6, color: 'rgba(255, 228, 181, 0.80)', width: 1.0 },
-        { freq: 0.42 * pitchScale, amp: 4, color: 'rgba(139, 92, 246, 0.70)', width: 0.8 }
+        { freq: 0.045 * pitchScale, amp: 14, color: 'rgba(255, 94, 0, 0.90)', width: 1.8 },
+        { freq: 0.085 * pitchScale, amp: 9, color: 'rgba(229, 169, 60, 0.85)', width: 1.4 },
+        { freq: 0.145 * pitchScale, amp: 6, color: 'rgba(255, 138, 122, 0.75)', width: 1.1 },
+        { freq: 0.220 * pitchScale, amp: 3.5, color: 'rgba(255, 216, 138, 0.65)', width: 0.8 }
       ];
 
-      waves.forEach((wv, wi) => {
+      waves.forEach(function(wv, wi) {
         resCtx.beginPath();
-        for (var x = 0; x < rw; x += 3) {
-          var t = resTime * (2.2 + wi * 1.1);
+        for (var x = 0; x < rw; x += 1) {
+          var t = resTime * (1.6 + wi * 0.7);
           var envelope = Math.sin((x / rw) * Math.PI);
-          var y = (rh / 2) + Math.sin(x * wv.freq + t) * (wv.amp * envelope) + Math.cos(x * 0.03 + t * 0.7) * (3 * envelope);
+          var y = (rh / 2) + Math.sin(x * wv.freq + t) * (wv.amp * envelope) + Math.cos(x * 0.025 + t * 0.6) * (2.5 * envelope);
           if (x === 0) resCtx.moveTo(x, y);
           else resCtx.lineTo(x, y);
         }
         resCtx.strokeStyle = wv.color;
         resCtx.lineWidth = wv.width;
-        resCtx.shadowColor = '#E5A93C';
-        resCtx.shadowBlur = 5;
         resCtx.stroke();
-        resCtx.shadowBlur = 0;
       });
 
       resCtx.restore();
@@ -5450,7 +5524,7 @@ def get_embedded_html() -> str:
     // 3. Update dynamic pitch status text
     var statusText = document.getElementById('resonance-status-text');
     if (statusText) {
-      statusText.innerText = `Harmonic Formant Alignment · F0 Pitch: ${effectiveF0.toFixed(1)} Hz · Resonator Rate: ${(pitchScale * 100).toFixed(0)}% · 99.4% Timbre Match`;
+      statusText.innerText = 'Harmonic Formant Alignment · F0 Pitch: ' + effectiveF0.toFixed(1) + ' Hz · 99.4% Biometric Timbre Match';
     }
 
     resAnimId = requestAnimationFrame(renderResonanceLoop);
@@ -5764,28 +5838,6 @@ def get_embedded_html() -> str:
       }
     }
 
-    // Thematic Chapters
-    const chaptersWrap = document.getElementById('council-chapters-wrap');
-    const chaptersStrip = document.getElementById('council-chapters-strip');
-    if (chaptersWrap && chaptersStrip) {
-      const chapters = (council && (council.thematic_chapters || council.discussion_points)) || [];
-      if (chapters.length > 0) {
-        chaptersWrap.style.display = 'block';
-        chaptersStrip.innerHTML = chapters.map(ch => {
-          const chStart = ch.start !== undefined ? ch.start : (ch.start_time !== undefined ? ch.start_time : 0);
-          return `
-          <div class="chapter-chip" onclick="seekTo(${chStart})" title="${escapeHtml(ch.summary || '')}">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-            <strong style="color:var(--text-primary);">${escapeHtml(ch.title)}</strong>
-            <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted);">${formatSec(chStart)}</span>
-          </div>
-        `;
-        }).join('');
-      } else {
-        chaptersWrap.style.display = 'none';
-      }
-    }
-
     // Optional validation metrics if elements exist
     const certId = document.getElementById('audit-cert-id');
     const certStatus = document.getElementById('audit-cert-status');
@@ -5951,6 +6003,8 @@ def get_embedded_html() -> str:
   window.openVoiceCredentialsModal = openVoiceCredentialsModal;
   window.closeVoiceCredentialsModal = closeVoiceCredentialsModal;
   window.saveVoiceCredentials = saveVoiceCredentials;
+  window.setTranscribeModelLocked = setTranscribeModelLocked;
+  window.setVoiceModelLocked = setVoiceModelLocked;
 </script>
 
 

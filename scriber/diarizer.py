@@ -214,22 +214,28 @@ class SpeakerMemory:
             cos_sim = float(np.dot(u, v))
             cos_dist = max(0.0, 1.0 - max(0.0, min(1.0, cos_sim)))
 
+            f0_curr = max(60.0, profile.fundamental_frequency_hz)
+            f0_base = max(60.0, self.mean_f0)
+            semitone_diff = abs(12.0 * math.log2(f0_curr / f0_base))
+
+            # Pitch tolerance: allow natural intra-speaker vocal variation up to 5.0 semitones
+            pitch_pen = 0.0
+            if cos_sim < 0.65 and semitone_diff > 5.0:
+                pitch_pen = min(0.30, (semitone_diff - 5.0) / 8.0)
+
+            # Robust gender penalty: only penalize if pitch difference is large (> 7 semitones)
             gender_penalty = 0.0
             if (
                 profile.gender_estimate != "androgynous"
                 and self.gender != "androgynous"
                 and profile.gender_estimate != self.gender
+                and semitone_diff > 7.0
             ):
-                gender_penalty = 0.50
-
-            f0_curr = max(60.0, profile.fundamental_frequency_hz)
-            f0_base = max(60.0, self.mean_f0)
-            semitone_diff = abs(12.0 * math.log2(f0_curr / f0_base))
-            pitch_pen = min(0.40, (semitone_diff - 4.5) / 8.0) if semitone_diff > 4.5 else 0.0
+                gender_penalty = 0.40
 
             dist = cos_dist + gender_penalty + pitch_pen
-            if is_active_speaker and pause_sec <= 2.5 and gender_penalty == 0.0:
-                if cos_sim >= 0.70 or (semitone_diff <= 2.5 and cos_sim >= 0.60):
+            if is_active_speaker and pause_sec <= 3.5 and gender_penalty == 0.0:
+                if cos_sim >= 0.60 or (semitone_diff <= 3.0 and cos_sim >= 0.45):
                     dist *= 0.60
 
             score = math.exp(-0.5 * (dist / 0.45) ** 2)
@@ -647,19 +653,19 @@ class AcousticDiarizer:
                         inter_d = float("inf")
 
                         if is_neural:
-                            if inter_cos >= 0.55 and semitone_diff <= 3.5:
+                            if inter_cos >= 0.54 and semitone_diff <= 5.5:
                                 should_merge = True
                                 inter_d = 1.0 - inter_cos
-                            elif min_cluster_dur < 2.5 and semitone_diff <= 4.0 and inter_cos >= 0.45:
+                            elif min_cluster_dur < 3.0 and semitone_diff <= 5.0 and inter_cos >= 0.48:
                                 should_merge = True
                                 inter_d = 1.0 - inter_cos
-                            elif inter_cos >= 0.70:
+                            elif inter_cos >= 0.64 and semitone_diff <= 6.5:
                                 should_merge = True
                                 inter_d = 1.0 - inter_cos
                         else:
-                            if inter_cos >= 0.90 and sc_rel <= 0.18 and semitone_diff <= 3.5:
+                            if inter_cos >= 0.88 and sc_rel <= 0.20 and semitone_diff <= 4.5:
                                 should_merge = True
-                            elif semitone_diff <= 1.5 and sc_rel <= 0.12 and inter_cos >= 0.85:
+                            elif semitone_diff <= 2.5 and sc_rel <= 0.15 and inter_cos >= 0.82:
                                 should_merge = True
                             if should_merge:
                                 inter_d = (1.0 - inter_cos) * 0.4 + (sc_rel / 0.18) * 0.3 + (semitone_diff / 3.5) * 0.3
@@ -743,6 +749,68 @@ class AcousticDiarizer:
                 if m != first_idx:
                     spk_mem.update(extracted_info[m][1], extracted_info[m][2])
             speaker_registry.append(spk_mem)
+
+        # Cross-Turn Speaker Memory Re-Identification Pass:
+        # Re-evaluates clusters against earlier established SpeakerMemory profiles to re-identify
+        # returning speakers (e.g. Speaker 1 talking again after Speaker 2) rather than creating a new Speaker 3.
+        if len(speaker_registry) > 1:
+            merged_into: Dict[str, str] = {}
+            for i in range(len(speaker_registry)):
+                target_spk = speaker_registry[i].speaker_id
+                while target_spk in merged_into:
+                    target_spk = merged_into[target_spk]
+                for j in range(i + 1, len(speaker_registry)):
+                    cand_spk = speaker_registry[j].speaker_id
+                    while cand_spk in merged_into:
+                        cand_spk = merged_into[cand_spk]
+                    if target_spk == cand_spk:
+                        continue
+
+                    mem_i = speaker_registry[i]
+                    mem_j = speaker_registry[j]
+
+                    norm_i = float(np.linalg.norm(mem_i.centroid_vector))
+                    norm_j = float(np.linalg.norm(mem_j.centroid_vector))
+                    u_i = (mem_i.centroid_vector / norm_i) if norm_i > 1e-6 else mem_i.centroid_vector
+                    u_j = (mem_j.centroid_vector / norm_j) if norm_j > 1e-6 else mem_j.centroid_vector
+                    c_cos = float(np.dot(u_i, u_j))
+
+                    f0_i = max(60.0, mem_i.mean_f0)
+                    f0_j = max(60.0, mem_j.mean_f0)
+                    semitone_diff = abs(12.0 * math.log2(f0_i / f0_j))
+
+                    reidentify = False
+                    if is_neural:
+                        if c_cos >= 0.55 and semitone_diff <= 5.5:
+                            reidentify = True
+                        elif c_cos >= 0.65 and semitone_diff <= 6.5:
+                            reidentify = True
+                    else:
+                        sc_rel = abs(mem_i.mean_centroid - mem_j.mean_centroid) / max(mem_i.mean_centroid, mem_j.mean_centroid, 100.0)
+                        if c_cos >= 0.88 and semitone_diff <= 4.5 and sc_rel <= 0.20:
+                            reidentify = True
+
+                    if reidentify:
+                        merged_into[cand_spk] = target_spk
+                        for p, v in zip(mem_j.profiles, mem_j.vectors):
+                            mem_i.update(p, v)
+
+            if merged_into:
+                for idx in cluster_map:
+                    cur = cluster_map[idx]
+                    while cur in merged_into:
+                        cur = merged_into[cur]
+                    cluster_map[idx] = cur
+
+                # Renumber remaining distinct speakers chronologically
+                seen_order: List[str] = []
+                for idx in range(len(segments)):
+                    s_id = cluster_map.get(idx, "Speaker_1")
+                    if s_id not in seen_order:
+                        seen_order.append(s_id)
+                reorder_map = {old: f"Speaker_{new_i + 1}" for new_i, old in enumerate(seen_order)}
+                for idx in cluster_map:
+                    cluster_map[idx] = reorder_map.get(cluster_map[idx], cluster_map[idx])
 
         for idx, seg in enumerate(segments):
             seg.speaker = cluster_map.get(idx, "Speaker_1")

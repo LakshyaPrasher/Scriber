@@ -216,6 +216,21 @@ class TestUIContracts(unittest.TestCase):
         self.assertIn("getStudioGainNode", self.html)
         self.assertIn("triggerRealtimeAudition", self.html)
 
+    def test_voice_advanced_controls_collapsible_accordion(self):
+        """Verifies Voice Cloning UI puts advanced studio knobs into a collapsible accordion."""
+        self.assertIn("voice-advanced-controls", self.html)
+        self.assertIn("voice-advanced-summary", self.html)
+        self.assertIn("Advanced Audio Studio & Fine-Tuning Controls", self.html)
+        self.assertIn('id="voice-advanced-controls"', self.html)
+
+    def test_model_dropdown_lockout_contracts(self):
+        """Verifies model selector dropdown triggers have lockout handlers and styling to prevent race conditions."""
+        self.assertIn("setTranscribeModelLocked", self.html)
+        self.assertIn("setVoiceModelLocked", self.html)
+        self.assertIn(".model-dropdown-trigger.locked", self.html)
+        self.assertIn(".model-dropdown-trigger:disabled", self.html)
+
 
 if __name__ == "__main__":
     unittest.main()
+

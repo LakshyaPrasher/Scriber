@@ -154,6 +154,45 @@ class TestDiarizerAccuracy(unittest.TestCase):
         self.assertEqual(len(distinct_speakers), 2, f"Jenny and Emma must be segregated into 2 distinct speakers, got: {distinct_speakers}")
         self.assertNotEqual(diarized[0].speaker, diarized[1].speaker, "Jenny and Emma must receive different speaker IDs")
 
+    def test_long_gap_speaker_memory_persistence(self):
+        """Verifies Speaker 1 is remembered across long intermediate Speaker 2 turns without creating Speaker 3."""
+        sr = 16000
+        t_turn = np.linspace(0, 2.5, int(2.5 * sr), endpoint=False)
+        # Speaker A: ~122 Hz base
+        pcm_a1 = ((0.5 * np.sin(2 * np.pi * 122 * t_turn) + 0.2 * np.sin(2 * np.pi * 244 * t_turn)) * 32767).astype(np.int16).tobytes()
+        # Speaker B: ~215 Hz
+        pcm_b1 = ((0.5 * np.sin(2 * np.pi * 215 * t_turn) + 0.2 * np.sin(2 * np.pi * 430 * t_turn)) * 32767).astype(np.int16).tobytes()
+        pcm_b2 = ((0.5 * np.sin(2 * np.pi * 218 * t_turn) + 0.2 * np.sin(2 * np.pi * 436 * t_turn)) * 32767).astype(np.int16).tobytes()
+        # Speaker A returns: ~126 Hz (slight variation)
+        pcm_a2 = ((0.5 * np.sin(2 * np.pi * 126 * t_turn) + 0.2 * np.sin(2 * np.pi * 252 * t_turn)) * 32767).astype(np.int16).tobytes()
+        # Speaker B returns: ~212 Hz
+        pcm_b3 = ((0.5 * np.sin(2 * np.pi * 212 * t_turn) + 0.2 * np.sin(2 * np.pi * 424 * t_turn)) * 32767).astype(np.int16).tobytes()
+        # Speaker A asks question: ~138 Hz (natural pitch rise)
+        pcm_a3 = ((0.5 * np.sin(2 * np.pi * 138 * t_turn) + 0.2 * np.sin(2 * np.pi * 276 * t_turn)) * 32767).astype(np.int16).tobytes()
+
+        full_pcm = pcm_a1 + pcm_b1 + pcm_b2 + pcm_a2 + pcm_b3 + pcm_a3
+        segs = [
+            AudioSegment(id=0, seek=0, start=0.0, end=2.5, text="Welcome everyone to our interview today."),
+            AudioSegment(id=1, seek=2, start=2.5, end=5.0, text="Thank you for having me on the show."),
+            AudioSegment(id=2, seek=5, start=5.0, end=7.5, text="I have been looking forward to this discussion."),
+            AudioSegment(id=3, seek=7, start=7.5, end=10.0, text="Let's dive right into your career beginnings."),
+            AudioSegment(id=4, seek=10, start=10.0, end=12.5, text="It all started back when I was a teenager."),
+            AudioSegment(id=5, seek=12, start=12.5, end=15.0, text="What was the most challenging obstacle you faced?"),
+        ]
+
+        diarizer = AcousticDiarizer(similarity_threshold=0.48)
+        diarized = diarizer.diarize_segments(segs, full_pcm, sample_rate=sr)
+
+        speakers = {s.speaker for s in diarized}
+        self.assertEqual(len(speakers), 2, f"Expected exactly 2 speakers (no phantom Speaker 3), but got: {speakers}")
+        self.assertNotIn("Speaker_3", speakers, "Speaker 1's return turns must never be partitioned into Speaker 3")
+        self.assertEqual(len(diarized), 5, "Consecutive Speaker 2 turns (1 & 2) should be grouped into one cohesive turn")
+        self.assertEqual(
+            [s.speaker for s in diarized],
+            ["Speaker_1", "Speaker_2", "Speaker_1", "Speaker_2", "Speaker_1"],
+            "Alternating turns with gaps must preserve persistent SpeakerMemory without creating Speaker 3"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

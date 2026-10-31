@@ -16,6 +16,7 @@ import sys
 import tempfile
 import threading
 import urllib.parse
+from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 from scriber.exporters import ScriberExporter
@@ -708,7 +709,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             # If client provided reference audio base64, decode directly to guarantee accurate timbre match
             ref_b64 = req_data.get("reference_audio") or req_data.get("reference_base64")
-            if ref_b64 and isinstance(ref_b64, str):
+            if ref_b64 and isinstance(ref_b64, str) and len(ref_b64.strip()) > 50:
                 try:
                     if "," in ref_b64:
                         ref_b64 = ref_b64.split(",", 1)[1]
@@ -720,6 +721,10 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     try:
                         extracted_pcm, _ = self.pipeline.audio_extractor.extract_pcm16(tmp_ref_path)
                         if extracted_pcm and len(extracted_pcm) > 320:
+                            # Cap to 20s maximum to prevent buffer bloat
+                            max_bytes = 16000 * 2 * 20
+                            if len(extracted_pcm) > max_bytes:
+                                extracted_pcm = extracted_pcm[:max_bytes]
                             ref_pcm = extracted_pcm
                             self.pipeline.reference_pcm = extracted_pcm
                     finally:
@@ -805,20 +810,43 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             pcm_data, meta = self.pipeline.audio_extractor.extract_pcm16(tmp_path)
             profile = VoiceProfiler.profile_from_pcm16(pcm_data, speaker_id=speaker_name)
 
+            # Extract a representative 15s high-RMS speech slice to avoid multi-megabyte base64 payload freezes
+            preview_pcm = pcm_data
+            bytes_15s = 16000 * 2 * 15
+            if len(pcm_data) > bytes_15s:
+                try:
+                    import numpy as np
+                    window_samples = 16000 * 15
+                    hop_samples = 16000
+                    arr = np.frombuffer(pcm_data, dtype=np.int16)
+                    best_start = 0
+                    best_energy = -1.0
+                    for start in range(0, max(1, len(arr) - window_samples + 1), hop_samples):
+                        chunk = arr[start : start + window_samples].astype(np.float32)
+                        energy = float(np.mean(chunk ** 2))
+                        if energy > best_energy:
+                            best_energy = energy
+                            best_start = start
+                    preview_pcm = arr[best_start : best_start + window_samples].tobytes()
+                except Exception:
+                    preview_pcm = pcm_data[:bytes_15s]
+
             # Store in pipeline for immediate voice cloning and audio editor
-            self.pipeline.reference_pcm = pcm_data
+            self.pipeline.reference_pcm = preview_pcm
             self.pipeline.reference_filename = filename
-            self.pipeline.last_pcm_data = pcm_data
+            self.pipeline.last_pcm_data = preview_pcm
             self.pipeline.last_file_path = filename
 
             from scriber.audio_editor import AudioEditor
-            mp3_bytes = AudioEditor.encode_mp3(pcm_data, sr=16000, channels=1, bit_rate=192000)
+            mp3_bytes = AudioEditor.encode_mp3(preview_pcm, sr=16000, channels=1, bit_rate=192000)
             b64_str = base64.b64encode(mp3_bytes).decode("ascii")
 
+            preview_dur = len(preview_pcm) / (16000.0 * 2.0)
             self._send_json_response(200, {
                 "profile": profile.to_dict(),
                 "filename": filename,
-                "duration": round(meta.duration, 3),
+                "duration": round(preview_dur, 3),
+                "total_duration": round(meta.duration, 3),
                 "audio_base64": f"data:audio/mp3;base64,{b64_str}",
             })
         except Exception as e:
@@ -1017,14 +1045,37 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.close_connection = True
 
     def _serve_embedded_ui(self):
-        """Serves the standalone responsive dashboard."""
+        """Serves the standalone responsive dashboard with dynamic live source hot-reloading."""
         import importlib
+        import importlib.util
+        from pathlib import Path
         import scriber.web.ui
-        try:
-            importlib.reload(scriber.web.ui)
-            html = scriber.web.ui.get_embedded_html()
-        except Exception:
-            html = get_embedded_html()
+        html = None
+
+        # Check local source tree first for live hot-reload
+        for candidate in [
+            Path(__file__).resolve().parent / "ui.py",
+            Path.cwd() / "scriber" / "web" / "ui.py",
+        ]:
+            if candidate.is_file():
+                try:
+                    spec = importlib.util.spec_from_file_location("scriber_ui_live", str(candidate))
+                    if spec and spec.loader:
+                        mod = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(mod)
+                        if hasattr(mod, "get_embedded_html"):
+                            html = mod.get_embedded_html()
+                            break
+                except Exception:
+                    pass
+
+        if not html:
+            try:
+                importlib.reload(scriber.web.ui)
+                html = scriber.web.ui.get_embedded_html()
+            except Exception:
+                html = get_embedded_html()
+
         body = html.encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
