@@ -89,12 +89,6 @@ from scriber.models import AudioSegment, TranscriptionResult, WordTimestamp
 
 TOP_LEVERAGED_REPOS = [
     {
-        "repo": "wshobson/agents",
-        "description": "Multi-harness agentic plugin marketplace and multi-agent orchestration architecture",
-        "key_contribution": "Autonomous multi-agent swarm design, specialist subagent hierarchies, modular skill specifications, and Antigravity plugin ecosystem integration",
-        "url": "https://github.com/wshobson/agents",
-    },
-    {
         "repo": "openai/whisper",
         "description": "Robust Speech Recognition via Large-Scale Weak Supervision",
         "key_contribution": "Encoder-decoder transformer architecture, multi-task tokens (transcribe/translate), timestamp tokens",

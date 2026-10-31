@@ -11,10 +11,9 @@ class TestTranscriptionEngine(unittest.TestCase):
         self.engine = TranscriptionEngine()
 
     def test_top_leveraged_repos_documented(self):
-        """Verifies all top leveraged repositories (including wshobson/agents) are documented and present."""
-        self.assertGreaterEqual(len(TOP_LEVERAGED_REPOS), 11)
+        """Verifies all top leveraged audio/speech repositories are documented and present."""
+        self.assertGreaterEqual(len(TOP_LEVERAGED_REPOS), 10)
         repo_names = [r["repo"] for r in TOP_LEVERAGED_REPOS]
-        self.assertIn("wshobson/agents", repo_names)
         self.assertIn("openai/whisper", repo_names)
         self.assertIn("SYSTRAN/faster-whisper", repo_names)
         self.assertIn("m-bain/whisperX", repo_names)
