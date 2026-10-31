@@ -3460,7 +3460,7 @@ def get_embedded_html() -> str:
 
   /* Reliable, Thread-Safe File Dialog Opening (Guarded against double invocation & COM deadlocks) */
   var isFileDialogOpening = false;
-  function openFileDialog(evt) {
+  async function openFileDialog(evt) {
     if (evt) {
       if (typeof evt.preventDefault === 'function') evt.preventDefault();
       if (typeof evt.stopPropagation === 'function') evt.stopPropagation();
