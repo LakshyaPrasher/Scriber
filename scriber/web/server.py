@@ -162,8 +162,8 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             agents = [a.to_dict() for a in swarm.get_registered_agents()]
             self._send_json_response(200, {
                 "agents": agents,
-                "framework": "wshobson/agents",
-                "framework_url": "https://github.com/wshobson/agents",
+                "framework": "scriber-native",
+                "framework_url": "https://github.com/LakshyaPrasher/Scriber",
                 "count": len(agents),
             })
         elif path == "/api/council/swarm":
@@ -174,7 +174,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json_response(200, {
                 "agents": agents,
                 "telemetry": telemetry,
-                "framework": "wshobson/agents",
+                "framework": "scriber-native",
             })
         elif path == "/api/plugin/manifest":
             from pathlib import Path
@@ -192,10 +192,10 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json_response(200, {
                 "name": "Scriber",
                 "version": __version__,
-                "description": "Autonomous Video Intelligence, Whisper Flow Transcription, and Voice Cloning Pipeline",
+                "description": "High-Performance Speech Intelligence, Diarization, and Voice Studio",
                 "repos": TOP_LEVERAGED_REPOS,
                 "agent_swarm_count": len(swarm.get_registered_agents()),
-                "framework": "wshobson/agents",
+                "framework": "scriber-native",
             })
         else:
             # Check if file exists in current working directory / workspace

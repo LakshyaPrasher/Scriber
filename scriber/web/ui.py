@@ -2883,7 +2883,7 @@ def get_embedded_html() -> str:
         </div>
       </div>
 
-      <!-- Supreme Council Multi-Agent Swarm Intelligence Dashboard -->
+      <!-- Meeting Intelligence & Executive Summary Dashboard -->
       <div class="council-dashboard" id="council-dashboard-panel" style="display:none;">
         <div class="council-header-bar">
           <div style="display:flex; align-items:center; gap:10px;">
@@ -2892,12 +2892,6 @@ def get_embedded_html() -> str:
               Meeting Intelligence
             </span>
             <span id="council-duration-badge" style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted);"></span>
-          </div>
-          <div class="pii-shield-controls">
-            <button type="button" class="btn-pii-toggle" id="btn-pii-shield" onclick="togglePIIShield()">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              <span id="pii-shield-status-text">PII Privacy: Off</span>
-            </button>
           </div>
         </div>
 
@@ -6033,7 +6027,7 @@ def get_embedded_html() -> str:
     chain.forEach(b => {
       receipt += `[Block ${b.block_id}] ${b.stage}\n  Prev: ${b.prev_hash}\n  Hash: ${b.block_hash}\n`;
     });
-    receipt += `\nCryptographically verified by CouncilAgentSwarm & PIISecurityOfficer.\n`;
+    receipt += `\nProcessed and verified by Scriber Studio Engine.\n`;
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(receipt).then(() => {

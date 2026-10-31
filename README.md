@@ -53,8 +53,7 @@ flowchart LR
 
 ### 3. 100% Local, Private & Zero-Cost
 - **Zero Cloud API Exposure**: No OpenAI, Voicemaker, or ElevenLabs API keys required. No open financial taps or metered charges.
-- **Air-Gapped Privacy**: Audio, video, and transcripts never leave your workstation.
-- **Integrated PII Shield**: Automatically masks sensitive credentials, API keys, passwords, and personal identifiers from transcripts.
+- **Air-Gapped Privacy**: Audio, video, and transcripts never leave your workstation. All models run entirely on your local GPU/CPU.
 
 ### 4. Meeting Intelligence & Summary Engine
 - **Automated Action Items**: Detects actionable commitments, task assignees, deadlines, and priority rankings directly from conversational context.
@@ -117,8 +116,8 @@ python run_desktop.py
 # Transcribe media file with automatic speaker diarization
 python -m scriber.cli process "interview.mp4"
 
-# Transcribe with PII redaction and Spanish-to-English translation
-python -m scriber.cli process "meeting.mp4" --task translate --redact-pii
+# Transcribe and translate non-English media to English
+python -m scriber.cli process "meeting.mp4" --task translate
 
 # Start the local web studio server on port 8080
 python -m scriber.cli serve --port 8080

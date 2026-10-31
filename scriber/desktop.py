@@ -373,6 +373,11 @@ class ScriberDesktopApp:
             except Exception as e:
                 logger.debug("Error stopping server: %s", e)
             self.server = None
+        try:
+            from scriber.single_instance import release_single_instance
+            release_single_instance()
+        except Exception:
+            pass
 
     def run(self) -> int:
         """Launches the desktop application window with native system integration."""
@@ -586,6 +591,11 @@ def launch_desktop(
     debug: bool = False,
 ) -> int:
     """Convenience entry point for launching Scriber desktop window."""
+    from scriber.single_instance import ensure_single_instance
+    if not ensure_single_instance():
+        print("[*] Scriber Studio is already running. Focus switched to existing window.")
+        return 0
+
     app = ScriberDesktopApp(
         host=host,
         port=port,

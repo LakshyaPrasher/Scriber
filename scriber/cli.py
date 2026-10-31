@@ -190,7 +190,7 @@ def run_swarm():
 
     print(f"\n================================================================================")
     print(f"  🤖 Scriber Supreme Council: Multi-Agent Swarm Registry")
-    print(f"  Architecture: wshobson/agents (https://github.com/wshobson/agents)")
+    print(f"  Architecture: Scriber Local Intelligence Core")
     print(f"================================================================================")
     print(f"{'Agent ID':<24} {'Specialist Role':<42} {'Model Tier':<12}")
     print(f"{'-'*24} {'-'*42} {'-'*12}")
