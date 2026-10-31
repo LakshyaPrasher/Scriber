@@ -200,6 +200,7 @@ class ScriberPipeline:
                 reference_text=reference_text,
                 test_case_id=os.path.basename(file_path),
                 extracted_actions=council_analysis.action_items,
+                is_ground_truth=True,
             )
         else:
             # Generate self-consistency validation report
@@ -208,6 +209,7 @@ class ScriberPipeline:
                 reference_text=cleaned_transcription.text,
                 test_case_id=os.path.basename(file_path),
                 extracted_actions=council_analysis.action_items,
+                is_ground_truth=False,
             )
 
         # Step 8: Speaker Voice Profiling (Biometric Extraction for Voice Cloning)

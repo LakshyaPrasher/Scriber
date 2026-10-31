@@ -5811,7 +5811,7 @@ def get_embedded_html() -> str:
   /* Supreme Council Multi-Agent Swarm Intelligence Dashboard Renderer */
   function renderSupremeCouncil(data) {
     const council = data && (data.council || data.council_analysis);
-    const validation = data && data.validation;
+    const validation = data && (data.validation || data.validation_report);
     const panel = document.getElementById('council-dashboard-panel');
     if (!panel) return;
 
@@ -5865,7 +5865,7 @@ def get_embedded_html() -> str:
     const decisionsWrap = document.getElementById('council-decisions-wrap');
     const decisionsList = document.getElementById('council-decisions-list');
     if (decisionsWrap && decisionsList) {
-      const decisions = (council && council.key_decisions) || [];
+      const decisions = (council && (council.key_decisions || (council.executive_summary && council.executive_summary.decisions_reached))) || [];
       if (decisions.length > 0) {
         decisionsWrap.style.display = 'block';
         decisionsList.innerHTML = decisions.map(d => `
@@ -5883,16 +5883,19 @@ def get_embedded_html() -> str:
     const chaptersWrap = document.getElementById('council-chapters-wrap');
     const chaptersStrip = document.getElementById('council-chapters-strip');
     if (chaptersWrap && chaptersStrip) {
-      const chapters = (council && council.thematic_chapters) || [];
+      const chapters = (council && (council.thematic_chapters || council.discussion_points)) || [];
       if (chapters.length > 0) {
         chaptersWrap.style.display = 'block';
-        chaptersStrip.innerHTML = chapters.map(ch => `
-          <div class="chapter-chip" onclick="seekTo(${ch.start})" title="${escapeHtml(ch.summary || '')}">
+        chaptersStrip.innerHTML = chapters.map(ch => {
+          const chStart = ch.start !== undefined ? ch.start : (ch.start_time !== undefined ? ch.start_time : 0);
+          return `
+          <div class="chapter-chip" onclick="seekTo(${chStart})" title="${escapeHtml(ch.summary || '')}">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
             <strong style="color:var(--text-primary);">${escapeHtml(ch.title)}</strong>
-            <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted);">${formatSec(ch.start)}</span>
+            <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted);">${formatSec(chStart)}</span>
           </div>
-        `).join('');
+        `;
+        }).join('');
       } else {
         chaptersWrap.style.display = 'none';
       }
@@ -5908,7 +5911,7 @@ def get_embedded_html() -> str:
         actionsGrid.innerHTML = actions.map((a, i) => {
           const prio = (a.priority || 'medium').toLowerCase();
           const prioClass = `prio-${prio}`;
-          const seekTime = a.seek_start !== undefined && a.seek_start !== null ? a.seek_start : 0;
+          const seekTime = (a.seek_start !== undefined && a.seek_start !== null) ? a.seek_start : ((a.start_time !== undefined && a.start_time !== null) ? a.start_time : 0);
           return `
             <div class="action-card">
               <div class="action-card-header">
@@ -5940,9 +5943,10 @@ def get_embedded_html() -> str:
     if (validation) {
       if (certId) certId.innerText = validation.certificate_id || 'CERT-CSCR-CHAIN';
       if (certStatus) {
-        certStatus.innerText = validation.passed ? 'VALIDATED' : 'PROCESSED';
-        certStatus.style.background = validation.passed ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 94, 0, 0.15)';
-        certStatus.style.color = validation.passed ? 'var(--emerald)' : 'var(--tangerine)';
+        const isPassed = validation.passed !== undefined ? validation.passed : validation.passed_99_percent;
+        certStatus.innerText = isPassed ? 'VALIDATED' : 'PROCESSED';
+        certStatus.style.background = isPassed ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 94, 0, 0.15)';
+        certStatus.style.color = isPassed ? 'var(--emerald)' : 'var(--tangerine)';
       }
       if (rootHash) {
         const fullHash = validation.root_hash || 'SHA256-AUTHENTICATED';

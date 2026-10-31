@@ -35,7 +35,27 @@ def focus_existing_window() -> bool:
                     buffer = ctypes.create_unicode_buffer(length + 1)
                     user32.GetWindowTextW(hwnd, buffer, length + 1)
                     title = buffer.value
-                    if "Scriber" in title and "Visual Studio" not in title and "Code" not in title:
+                    is_candidate = (
+                        ("Scriber — Studio" in title)
+                        or ("Scriber" in title and "Studio" in title)
+                        or (title.strip() == "Scriber")
+                    )
+                    is_excluded = any(
+                        x in title
+                        for x in [
+                            "Visual Studio",
+                            "Code",
+                            "File Explorer",
+                            "Notepad",
+                            ".txt",
+                            ".py",
+                            ".md",
+                            "Chrome",
+                            "Edge",
+                            "Firefox",
+                        ]
+                    )
+                    if is_candidate and not is_excluded:
                         found_hwnd = hwnd
                         return False  # Stop enumeration
             return True
@@ -45,7 +65,11 @@ def focus_existing_window() -> bool:
 
         if found_hwnd:
             # SW_RESTORE = 9, SW_SHOW = 5
-            user32.ShowWindow(found_hwnd, 9)
+            # Only un-minimize if iconic to preserve user's maximized state
+            if user32.IsIconic(found_hwnd):
+                user32.ShowWindow(found_hwnd, 9)
+            else:
+                user32.ShowWindow(found_hwnd, 5)
             user32.SetForegroundWindow(found_hwnd)
             return True
     except Exception as e:

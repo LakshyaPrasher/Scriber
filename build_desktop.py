@@ -213,6 +213,7 @@ def build_executable(onefile: bool = False, console: bool = False, clean: bool =
             "--collect-data=tokenizers",
             "--hidden-import=scriber",
             "--hidden-import=scriber.desktop",
+            "--hidden-import=scriber.single_instance",
             "--hidden-import=scriber.web",
             "--hidden-import=scriber.web.server",
             "--hidden-import=scriber.web.ui",

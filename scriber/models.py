@@ -150,6 +150,7 @@ class ActionItem:
             "context_quote": self.context_quote,
             "timestamp": f"{self._format_ts(self.start_time)} - {self._format_ts(self.end_time)}",
             "start_time": round(self.start_time, 2),
+            "seek_start": round(self.start_time, 2),
             "end_time": round(self.end_time, 2),
             "confidence": round(self.confidence, 3),
         }
@@ -181,6 +182,7 @@ class DiscussionPoint:
             "key_quotes": self.key_quotes,
             "timestamp_range": f"{self._format_ts(self.start_time)} - {self._format_ts(self.end_time)}",
             "start_time": round(self.start_time, 2),
+            "start": round(self.start_time, 2),
             "end_time": round(self.end_time, 2),
             "speakers": self.speakers,
             "sentiment": self.sentiment,
@@ -344,6 +346,7 @@ class ValidationReport:
             "recall": round(self.recall, 4),
             "f1_score": round(self.f1_score, 4),
             "passed_99_percent": self.passed_99_percent,
+            "passed": self.passed_99_percent,
             "test_case_id": self.test_case_id,
             "evaluated_tokens": self.evaluated_tokens,
             "matched_tokens": self.matched_tokens,
@@ -366,10 +369,13 @@ class CouncilAnalysis:
     pii_report: Optional[PIIRedactionReport] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        disc_points = [d.to_dict() for d in self.discussion_points]
         return {
             "executive_summary": self.executive_summary.to_dict(),
             "action_items": [a.to_dict() for a in self.action_items],
-            "discussion_points": [d.to_dict() for d in self.discussion_points],
+            "discussion_points": disc_points,
+            "thematic_chapters": disc_points,
+            "key_decisions": self.executive_summary.decisions_reached,
             "topics": self.topics,
             "speaker_diarization": self.speaker_diarization,
             "agent_telemetry": [t.to_dict() for t in self.agent_telemetry],
@@ -483,6 +489,7 @@ class ScriberOutput:
     pii_report: Optional[PIIRedactionReport] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        val_dict = self.validation_report.to_dict()
         return {
             "session_id": self.session_id,
             "video_source": self.video_source,
@@ -491,7 +498,8 @@ class ScriberOutput:
             "translation": self.translation.to_dict() if self.translation else None,
             "council_analysis": self.council_analysis.to_dict(),
             "quality_report": self.quality_report.to_dict(),
-            "validation_report": self.validation_report.to_dict(),
+            "validation_report": val_dict,
+            "validation": val_dict,
             "processing_time_seconds": round(self.processing_time_seconds, 3),
             "repos_leveraged": self.repos_leveraged,
             "voice_profiles": [vp.to_dict() for vp in self.voice_profiles],

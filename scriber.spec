@@ -24,6 +24,7 @@ datas.extend(collect_data_files("tokenizers"))
 hidden_imports = [
     "scriber",
     "scriber.desktop",
+    "scriber.single_instance",
     "scriber.web",
     "scriber.web.server",
     "scriber.web.ui",

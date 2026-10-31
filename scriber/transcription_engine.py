@@ -863,60 +863,85 @@ class TranscriptionEngine:
                 model = self._MODEL_CACHE.get(cache_key)
 
         if model is None:
-            for candidate in candidates:
-                if not is_mocked:
-                    with self._CACHE_LOCK:
-                        model = self._MODEL_CACHE.get((candidate, pref_device, pref_compute))
-                    if model is not None:
-                        active_model_id = candidate
-                        if candidate != target_model:
-                            fallback_occurred = True
-                        break
-
-                try:
-                    loaded_model = faster_whisper.WhisperModel(
-                        candidate,
-                        device=pref_device,
-                        compute_type=pref_compute,
-                        local_files_only=True,
-                    )
-                    active_model_id = candidate
-                    if candidate != target_model:
-                        fallback_occurred = True
-                    if not is_mocked:
-                        with self._CACHE_LOCK:
-                            self._MODEL_CACHE[(candidate, pref_device, pref_compute)] = loaded_model
-                    model = loaded_model
-                    break
-                except Exception:
-                    # If preferred device failed (e.g. CUDA without cuBLAS or OOM), fall back to CPU safely
-                    if pref_device != "cpu":
-                        if not is_mocked:
-                            with self._CACHE_LOCK:
-                                model = self._MODEL_CACHE.get((candidate, "cpu", "int8"))
+            if not is_mocked:
+                with self._CACHE_LOCK:
+                    model = self._MODEL_CACHE.get(cache_key)
+                    if model is None:
+                        for candidate in candidates:
+                            model = self._MODEL_CACHE.get((candidate, pref_device, pref_compute))
                             if model is not None:
                                 active_model_id = candidate
                                 if candidate != target_model:
                                     fallback_occurred = True
                                 break
-                        try:
-                            loaded_model = faster_whisper.WhisperModel(
-                                candidate,
-                                device="cpu",
-                                compute_type="int8",
-                                local_files_only=True,
-                            )
-                            active_model_id = candidate
-                            if candidate != target_model:
-                                fallback_occurred = True
-                            if not is_mocked:
-                                with self._CACHE_LOCK:
-                                    self._MODEL_CACHE[(candidate, "cpu", "int8")] = loaded_model
-                            model = loaded_model
-                            break
-                        except Exception:
-                            pass
-                    continue
+
+                            try:
+                                loaded_model = faster_whisper.WhisperModel(
+                                    candidate,
+                                    device=pref_device,
+                                    compute_type=pref_compute,
+                                    local_files_only=True,
+                                )
+                                active_model_id = candidate
+                                if candidate != target_model:
+                                    fallback_occurred = True
+                                self._MODEL_CACHE[(candidate, pref_device, pref_compute)] = loaded_model
+                                model = loaded_model
+                                break
+                            except Exception:
+                                if pref_device != "cpu":
+                                    model = self._MODEL_CACHE.get((candidate, "cpu", "int8"))
+                                    if model is not None:
+                                        active_model_id = candidate
+                                        if candidate != target_model:
+                                            fallback_occurred = True
+                                        break
+                                    try:
+                                        loaded_model = faster_whisper.WhisperModel(
+                                            candidate,
+                                            device="cpu",
+                                            compute_type="int8",
+                                            local_files_only=True,
+                                        )
+                                        active_model_id = candidate
+                                        if candidate != target_model:
+                                            fallback_occurred = True
+                                        self._MODEL_CACHE[(candidate, "cpu", "int8")] = loaded_model
+                                        model = loaded_model
+                                        break
+                                    except Exception:
+                                        pass
+                                continue
+            else:
+                for candidate in candidates:
+                    try:
+                        loaded_model = faster_whisper.WhisperModel(
+                            candidate,
+                            device=pref_device,
+                            compute_type=pref_compute,
+                            local_files_only=True,
+                        )
+                        active_model_id = candidate
+                        if candidate != target_model:
+                            fallback_occurred = True
+                        model = loaded_model
+                        break
+                    except Exception:
+                        if pref_device != "cpu":
+                            try:
+                                loaded_model = faster_whisper.WhisperModel(
+                                    candidate,
+                                    device="cpu",
+                                    compute_type="int8",
+                                    local_files_only=True,
+                                )
+                                active_model_id = candidate
+                                if candidate != target_model:
+                                    fallback_occurred = True
+                                model = loaded_model
+                                break
+                            except Exception:
+                                pass
 
         if model is None:
             if is_turbo:

@@ -222,7 +222,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.close_connection = True
 
     def _serve_static_file(self, filepath: str):
-        """Serves static audio, video, image, or document files from the workspace."""
+        """Serves static audio, video, image, or document files with full HTTP Range (206) seeking support."""
         import mimetypes
         mime, _ = mimetypes.guess_type(filepath)
         if not mime:
@@ -239,19 +239,53 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         try:
             file_size = os.path.getsize(filepath)
-            self.send_response(200)
+            range_header = self.headers.get("Range")
+
+            start = 0
+            end = file_size - 1
+            status_code = 200
+
+            if range_header and range_header.strip().startswith("bytes="):
+                range_val = range_header.strip()[6:]
+                parts = range_val.split("-", 1)
+                try:
+                    if parts[0]:
+                        start = int(parts[0])
+                    if len(parts) > 1 and parts[1]:
+                        end = int(parts[1])
+                    end = min(end, file_size - 1)
+                    if start <= end and start < file_size:
+                        status_code = 206
+                    else:
+                        start = 0
+                        end = file_size - 1
+                except ValueError:
+                    start = 0
+                    end = file_size - 1
+
+            content_length = (end - start) + 1
+
+            self.send_response(status_code)
             self.send_header("Content-Type", mime)
-            self.send_header("Content-Length", str(file_size))
+            self.send_header("Content-Length", str(content_length))
             self.send_header("Accept-Ranges", "bytes")
+            if status_code == 206:
+                self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Connection", "close")
             self.end_headers()
+
             with open(filepath, "rb") as f:
-                while True:
-                    chunk = f.read(65536)
+                if start > 0:
+                    f.seek(start)
+                bytes_left = content_length
+                while bytes_left > 0:
+                    read_amount = min(65536, bytes_left)
+                    chunk = f.read(read_amount)
                     if not chunk:
                         break
                     self.wfile.write(chunk)
+                    bytes_left -= len(chunk)
             self.wfile.flush()
             self.close_connection = True
         except Exception as e:
@@ -409,6 +443,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     "srt": ScriberExporter.to_srt(output),
                     "vtt": ScriberExporter.to_vtt(output),
                 }
+                resp_data["media_url"] = f"/api/media?path={urllib.parse.quote(file_path_arg)}"
                 self._send_json_response(200, resp_data)
                 return
 
@@ -583,6 +618,17 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 "srt": ScriberExporter.to_srt(output),
                 "vtt": ScriberExporter.to_vtt(output),
             }
+            # Save uploaded media file to persistent scriber_output directory
+            try:
+                export_dir = os.path.abspath("./scriber_output")
+                os.makedirs(export_dir, exist_ok=True)
+                clean_fname = re.sub(r"[^\w\.-]", "_", os.path.basename(filename))
+                persistent_path = os.path.join(export_dir, f"{output.session_id}_{clean_fname}")
+                shutil.copy2(tmp_path, persistent_path)
+                resp_data["media_url"] = f"/api/media?path={urllib.parse.quote(persistent_path)}"
+            except Exception:
+                pass
+
             if self.pipeline.last_pcm_data and len(self.pipeline.last_pcm_data) <= 16000 * 2 * 180:
                 try:
                     from scriber.audio_editor import AudioEditor
@@ -947,7 +993,8 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json_response(500, {"error": str(e)})
 
     def _send_json_response(self, status: int, data: Dict[str, Any]):
-        body = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
+        """Encodes and transmits JSON response with chunked socket writes to prevent buffer stalls."""
+        body = json.dumps(data, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -955,7 +1002,9 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Connection", "close")
         self.end_headers()
         try:
-            self.wfile.write(body)
+            chunk_size = 65536
+            for offset in range(0, len(body), chunk_size):
+                self.wfile.write(body[offset : offset + chunk_size])
             self.wfile.flush()
         except Exception:
             pass
