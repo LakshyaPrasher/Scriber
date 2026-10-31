@@ -1390,6 +1390,41 @@ def get_embedded_html() -> str:
     background: rgba(255, 94, 0, 0.05);
   }
 
+  .transcribed-speakers-pill-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+  }
+  .speaker-select-pill {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
+    padding: 5px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .speaker-select-pill:hover {
+    background: rgba(255, 94, 0, 0.12);
+    border-color: rgba(255, 94, 0, 0.4);
+    color: var(--text-primary);
+  }
+  .speaker-select-pill.active {
+    background: rgba(255, 94, 0, 0.2);
+    border-color: var(--tangerine);
+    color: var(--tangerine);
+    font-weight: 600;
+    box-shadow: 0 0 10px rgba(255, 94, 0, 0.25);
+  }
+
   .section-label {
     font-size: 11px;
     font-family: var(--font-mono);
@@ -2902,11 +2937,14 @@ def get_embedded_html() -> str:
 
 
 
+      <!-- Transcribed Multi-Speaker Quick Selector Pills -->
+      <div id="transcribed-speakers-pill-wrap" class="transcribed-speakers-pill-wrap" style="display:none;"></div>
+
       <!-- Dropzone for New Reference Audio File -->
-      <label class="voice-ref-dropzone" id="voice-ref-dropzone" for="voice-ref-input">
+      <div class="voice-ref-dropzone" id="voice-ref-dropzone" onclick="triggerVoiceRefFileDialog(event)" role="button" tabindex="0">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--tangerine)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
         <span id="voice-ref-label-text">Drop a custom audio/video clip or <strong style="color:var(--tangerine); text-decoration:underline;">browse</strong> to extract speaker biometric timbre</span>
-      </label>
+      </div>
       <input type="file" id="voice-ref-input" accept="audio/*,video/*,.mp4,.mp3,.wav,.m4a,.mov,.webm,.flac,.ogg,.aac,.mkv,.avi,.flv,.wmv,.opus,.wma,.3gp,.ts,.m4v" style="display:none;" onchange="handleVoiceRefSelected(event)" onclick="event.stopPropagation();" />
 
       <!-- Active Reference Audio Status Badge (replaces raw profile box) -->
@@ -4353,33 +4391,26 @@ def get_embedded_html() -> str:
   }
 
   function setTranscribeModelLocked(locked) {
-    const trigger = document.getElementById('transcribe-dropdown-trigger');
-    if (!trigger) return;
-    if (locked) {
-      trigger.disabled = true;
-      trigger.classList.add('locked');
-      trigger.setAttribute('aria-disabled', 'true');
-      closeAllModelDropdowns();
-    } else {
-      trigger.disabled = false;
-      trigger.classList.remove('locked');
-      trigger.setAttribute('aria-disabled', 'false');
-    }
+    ['transcribe-dropdown-trigger', 'voice-dropdown-trigger'].forEach(function(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (locked) {
+        el.disabled = true;
+        el.classList.add('locked');
+        el.setAttribute('aria-disabled', 'true');
+      } else {
+        el.disabled = false;
+        el.classList.remove('locked');
+        el.setAttribute('aria-disabled', 'false');
+      }
+    });
+    const copySelect = document.getElementById('copy-format-select');
+    if (copySelect) copySelect.disabled = !!locked;
+    if (locked) closeAllModelDropdowns();
   }
 
   function setVoiceModelLocked(locked) {
-    const trigger = document.getElementById('voice-dropdown-trigger');
-    if (!trigger) return;
-    if (locked) {
-      trigger.disabled = true;
-      trigger.classList.add('locked');
-      trigger.setAttribute('aria-disabled', 'true');
-      closeAllModelDropdowns();
-    } else {
-      trigger.disabled = false;
-      trigger.classList.remove('locked');
-      trigger.setAttribute('aria-disabled', 'false');
-    }
+    setTranscribeModelLocked(locked);
   }
 
   function closeAllModelDropdowns() {
@@ -4958,21 +4989,57 @@ def get_embedded_html() -> str:
   /* Voice Reference Management (Clean Replacement for Raw Profile Box) */
   function populateVoiceProfiles(profiles) {
     if (!profiles || profiles.length === 0) return;
+    window.transcribedVoiceProfiles = profiles;
     selectedVoiceProfile = profiles[0];
     window.selectedVoiceProfile = profiles[0];
 
-    const refBadge = document.getElementById('voice-ref-badge');
-    const refTitle = document.getElementById('voice-ref-title');
-    const refSub = document.getElementById('voice-ref-sub');
-    if (refBadge && refTitle && refSub) {
-      refTitle.innerText = `Transcribed Voice: ${profiles[0].speaker_id.replace(/_/g, ' ')}`;
-      refSub.innerText = `Biometric Timbre Locked · Ready for Cloning & MP3 Editing`;
-      refBadge.style.display = 'flex';
+    const pillWrap = document.getElementById('transcribed-speakers-pill-wrap');
+    if (pillWrap) {
+      pillWrap.innerHTML = '<span style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-secondary); margin-right:4px;">Transcribed Speakers:</span>';
+      profiles.forEach(function(p, idx) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'speaker-select-pill' + (idx === 0 ? ' active' : '');
+        btn.id = 'speaker-pill-' + idx;
+        const f0 = p.fundamental_frequency_hz ? `${Math.round(p.fundamental_frequency_hz)}Hz` : '';
+        btn.innerText = `${p.speaker_id.replace(/_/g, ' ')}${f0 ? ' (' + f0 + ')' : ''}`;
+        btn.onclick = function() { selectVoiceProfileByIndex(idx); };
+        pillWrap.appendChild(btn);
+      });
+      pillWrap.style.display = 'flex';
     }
+
+    updateVoiceRefBadge(profiles[0]);
 
     const dur = getAccurateDuration();
     if (dur > 0) {
       initModeAudioEditor('m2', dur, (currentResult && currentResult.video_source) || 'transcribed_voice.mp3');
+    }
+  }
+
+  function selectVoiceProfileByIndex(idx) {
+    const profiles = window.transcribedVoiceProfiles;
+    if (!profiles || !profiles[idx]) return;
+    selectedVoiceProfile = profiles[idx];
+    window.selectedVoiceProfile = profiles[idx];
+
+    document.querySelectorAll('.speaker-select-pill').forEach(function(el, i) {
+      el.classList.toggle('active', i === idx);
+    });
+    updateVoiceRefBadge(profiles[idx]);
+    showToast(`Selected ${profiles[idx].speaker_id.replace(/_/g, ' ')} for voice cloning`, 'info');
+  }
+
+  function updateVoiceRefBadge(p) {
+    const refBadge = document.getElementById('voice-ref-badge');
+    const refTitle = document.getElementById('voice-ref-title');
+    const refSub = document.getElementById('voice-ref-sub');
+    if (refBadge && refTitle && refSub) {
+      refTitle.innerText = `Transcribed Voice: ${p.speaker_id.replace(/_/g, ' ')}`;
+      const f0 = p.fundamental_frequency_hz ? `${Math.round(p.fundamental_frequency_hz)}Hz` : '';
+      const wpm = p.estimated_wpm ? `${Math.round(p.estimated_wpm)} WPM` : '';
+      refSub.innerText = `Biometric Timbre Locked · ${f0} · ${wpm} · Ready for Cloning & MP3 Editing`;
+      refBadge.style.display = 'flex';
     }
   }
 
@@ -4984,6 +5051,8 @@ def get_embedded_html() -> str:
     audioEditorState.m2.customFileName = null;
     const refBadge = document.getElementById('voice-ref-badge');
     if (refBadge) refBadge.style.display = 'none';
+    const pillWrap = document.getElementById('transcribed-speakers-pill-wrap');
+    if (pillWrap) pillWrap.style.display = 'none';
     const lbl = document.getElementById('voice-ref-label-text');
     if (lbl) lbl.innerHTML = 'Drop a custom audio/video clip or <strong style="color:var(--tangerine); text-decoration:underline;">browse</strong> to extract speaker biometric timbre';
     const input = document.getElementById('voice-ref-input');
@@ -4991,9 +5060,110 @@ def get_embedded_html() -> str:
     showToast('Reference voice removed', 'info');
   }
 
+  var isVoiceFileDialogOpening = false;
+  async function triggerVoiceRefFileDialog(evt) {
+    if (evt) {
+      if (typeof evt.preventDefault === 'function') evt.preventDefault();
+      if (typeof evt.stopPropagation === 'function') evt.stopPropagation();
+    }
+    if (isVoiceFileDialogOpening) return;
+    isVoiceFileDialogOpening = true;
+
+    if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.open_file_dialog === 'function') {
+      try {
+        const filePath = await window.pywebview.api.open_file_dialog();
+        isVoiceFileDialogOpening = false;
+        if (filePath) {
+          handleVoiceRefPath(filePath);
+          return;
+        }
+      } catch (err) {
+        console.warn('Native open_file_dialog voice ref fallback:', err);
+      }
+    }
+
+    var releaseLock = function() {
+      setTimeout(function() { isVoiceFileDialogOpening = false; }, 300);
+      window.removeEventListener('focus', releaseLock);
+    };
+    window.addEventListener('focus', releaseLock);
+    setTimeout(releaseLock, 1500);
+
+    const input = document.getElementById('voice-ref-input');
+    if (input) {
+      input.value = '';
+      input.click();
+    }
+  }
+
+  async function handleVoiceRefPath(filePath) {
+    if (!filePath) return;
+    const fileName = filePath.split(/[/\\]/).pop() || 'reference_audio';
+    const speakerName = fileName.replace(/\.[^/.]+$/, "");
+    const lbl = document.getElementById('voice-ref-label-text');
+    const origText = lbl ? lbl.innerHTML : '';
+    if (lbl) lbl.innerHTML = `<span style="color:var(--gold);">Extracting biometric timbre from ${escapeHtml(fileName)}...</span>`;
+
+    startAcousticResonanceAnimation();
+    setVoiceModelLocked(true);
+
+    try {
+      const res = await fetch('/api/profile-voice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file_path: filePath, speaker: speakerName }),
+      });
+      const data = await res.json();
+      if (lbl) lbl.innerHTML = origText;
+      stopAcousticResonanceAnimation();
+      setVoiceModelLocked(false);
+
+      if (data.error) {
+        showToast('Voice profiling error: ' + data.error, 'error');
+        return;
+      }
+
+      if (data.profile) {
+        data.profile.file_path = filePath;
+        selectedVoiceProfile = data.profile;
+        window.selectedVoiceProfile = data.profile;
+
+        const refBadge = document.getElementById('voice-ref-badge');
+        const refTitle = document.getElementById('voice-ref-title');
+        const refSub = document.getElementById('voice-ref-sub');
+        if (refBadge && refTitle && refSub) {
+          refTitle.innerText = `Custom Audio: ${fileName}`;
+          refSub.innerText = `${formatSec(data.duration || 10)} · Biometric Timbre Locked`;
+          refBadge.style.display = 'flex';
+        }
+
+        if (lbl) {
+          lbl.innerHTML = `Custom Voice: <strong style="color:var(--tangerine);">${escapeHtml(fileName)}</strong> (${formatSec(data.duration || 0)}) · Drop/Click to replace`;
+        }
+
+        const dur = data.duration || 10;
+        audioEditorState.m2.originalVoiceRefBase64 = data.audio_base64;
+        audioEditorState.m2.referenceAudioBase64 = data.audio_base64;
+        audioEditorState.m2.customFileName = fileName;
+        initModeAudioEditor('m2', dur, fileName);
+
+        showToast(`✓ Locked custom voice timbre from ${fileName}! Ready to clone & edit.`, 'success');
+      }
+    } catch (err) {
+      if (lbl) lbl.innerHTML = origText;
+      stopAcousticResonanceAnimation();
+      setVoiceModelLocked(false);
+      showToast('Voice profiling network error: ' + err, 'error');
+    }
+  }
+
   async function handleVoiceRefSelected(e) {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
+    if (file.path) {
+      await handleVoiceRefPath(file.path);
+      return;
+    }
     const lbl = document.getElementById('voice-ref-label-text');
     const origText = lbl ? lbl.innerHTML : '';
     if (lbl) lbl.innerHTML = `<span style="color:var(--gold);">Extracting biometric timbre from ${escapeHtml(file.name)}...</span>`;
@@ -5108,6 +5278,7 @@ def get_embedded_html() -> str:
           profile: selectedVoiceProfile,
           output_format: 'mp3',
           sample_rate: 48000,
+          file_path: (selectedVoiceProfile && selectedVoiceProfile.file_path) || null,
           reference_audio: (audioEditorState.m2 && audioEditorState.m2.originalVoiceRefBase64) || (audioEditorState.m2 && audioEditorState.m2.referenceAudioBase64) || null,
           backend: selectedVoiceModel || 'auto',
         }),
@@ -6005,6 +6176,9 @@ def get_embedded_html() -> str:
   window.saveVoiceCredentials = saveVoiceCredentials;
   window.setTranscribeModelLocked = setTranscribeModelLocked;
   window.setVoiceModelLocked = setVoiceModelLocked;
+  window.triggerVoiceRefFileDialog = triggerVoiceRefFileDialog;
+  window.selectVoiceProfileByIndex = selectVoiceProfileByIndex;
+  window.handleVoiceRefPath = handleVoiceRefPath;
 </script>
 
 

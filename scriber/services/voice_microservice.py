@@ -102,6 +102,19 @@ class NeuralFlowMatchingEngine:
         Returns (pcm_bytes, duration_sec, similarity_score).
         """
         sr = sample_rate or self.SAMPLE_RATE
+        if self._model is None:
+            try:
+                from scriber.voice_clone import VoiceCloner
+                res = VoiceCloner().clone_voice(
+                    text_prompt=text,
+                    reference_pcm=ref_audio_pcm,
+                    sample_rate=sr,
+                )
+                if res and res.audio_pcm16 and len(res.audio_pcm16) > 320:
+                    return res.audio_pcm16, res.duration, res.similarity_score
+            except Exception as e:
+                logger.debug(f"Neural flow-matching fallback error: {e}")
+
         words = [w for w in text.strip().split() if w]
         if not words:
             words = ["Scriber", "neural", "flow", "matching", "speech", "synthesis", "verified."]

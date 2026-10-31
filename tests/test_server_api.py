@@ -421,6 +421,74 @@ class TestServerAPI(unittest.TestCase):
             self.assertIn("audio_base64", written)
             self.assertGreater(written["similarity_score"], 0.85)
 
+    def test_do_post_profile_voice_json_file_path(self):
+        """Verifies POST /api/profile-voice accepts direct JSON file_path."""
+        import tempfile, os
+        sample_wav = AudioExtractor.create_synthetic_wav("Local file path profiling test", duration_sec=1.5)
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            tmp.write(sample_wav)
+            tmp_path = tmp.name
+
+        try:
+            req_body = json.dumps({
+                "file_path": tmp_path,
+                "speaker": "DirectPathSpeaker",
+            }).encode("utf-8")
+
+            self.handler.wfile = io.BytesIO()
+            self.handler.path = "/api/profile-voice"
+            self.handler.headers = {
+                "Content-Type": "application/json",
+                "Content-Length": str(len(req_body)),
+            }
+            self.handler.rfile = io.BytesIO(req_body)
+
+            self.handler.do_POST()
+            self.handler.send_response.assert_called_with(200)
+            written = json.loads(self.handler.wfile.getvalue().decode("utf-8"))
+            self.assertIn("profile", written)
+            self.assertEqual(written["profile"]["speaker_id"], "DirectPathSpeaker")
+            self.assertIn("audio_base64", written)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
+    def test_do_post_clone_voice_file_path(self):
+        """Verifies POST /api/clone-voice directly extracts timbre from file_path without base64 overhead."""
+        import tempfile, os
+        sample_wav = AudioExtractor.create_synthetic_wav("Local file path cloning test", duration_sec=1.5)
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            tmp.write(sample_wav)
+            tmp_path = tmp.name
+
+        try:
+            req_body = json.dumps({
+                "text": "Direct path cloning synthesis test.",
+                "file_path": tmp_path,
+                "profile": {
+                    "speaker_id": "PathSpeaker",
+                    "fundamental_frequency_hz": 135.0,
+                    "gender_estimate": "masculine",
+                },
+            }).encode("utf-8")
+
+            self.handler.wfile = io.BytesIO()
+            self.handler.path = "/api/clone-voice"
+            self.handler.headers = {
+                "Content-Type": "application/json",
+                "Content-Length": str(len(req_body)),
+            }
+            self.handler.rfile = io.BytesIO(req_body)
+
+            self.handler.do_POST()
+            self.handler.send_response.assert_called_with(200)
+            written = json.loads(self.handler.wfile.getvalue().decode("utf-8"))
+            self.assertIn("audio_base64", written)
+            self.assertGreater(written["similarity_score"], 0.85)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
 
 if __name__ == "__main__":
     unittest.main()

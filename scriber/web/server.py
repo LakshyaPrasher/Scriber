@@ -707,6 +707,18 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             ref_pcm = getattr(self.pipeline, "reference_pcm", None) or getattr(self.pipeline, "last_pcm_data", None)
 
+            # Direct file_path reference support (bypasses base64 upload overhead)
+            ref_file_path = req_data.get("file_path") or req_data.get("reference_file_path")
+            if ref_file_path and os.path.isfile(ref_file_path):
+                try:
+                    extracted_pcm, _ = self.pipeline.audio_extractor.extract_pcm16(ref_file_path, max_duration=45.0)
+                    if extracted_pcm and len(extracted_pcm) > 320:
+                        max_bytes = 16000 * 2 * 20
+                        ref_pcm = extracted_pcm[:max_bytes] if len(extracted_pcm) > max_bytes else extracted_pcm
+                        self.pipeline.reference_pcm = ref_pcm
+                except Exception as e:
+                    logger.debug(f"Direct file_path extraction for voice cloning error: {e}")
+
             # If client provided reference audio base64, decode directly to guarantee accurate timbre match
             ref_b64 = req_data.get("reference_audio") or req_data.get("reference_base64")
             if ref_b64 and isinstance(ref_b64, str) and len(ref_b64.strip()) > 50:
@@ -761,53 +773,66 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json_response(500, {"error": str(e)})
 
     def _handle_voice_profiling(self):
-        """Extracts speaker biometric VoiceProfile from an uploaded reference audio/video file."""
+        """Extracts speaker biometric VoiceProfile from an uploaded reference audio/video file or local path."""
         tmp_path = None
         try:
             content_type = self.headers.get("Content-Type", "")
-            if not content_type.startswith("multipart/form-data"):
-                self._send_json_response(400, {"error": "Content-Type must be multipart/form-data"})
-                return
-
             content_length = int(self.headers.get("Content-Length", 0))
-            if content_length <= 0:
-                self._send_json_response(400, {"error": "Content-Length header is missing or empty"})
-                return
+            body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
 
-            body_bytes = self.rfile.read(content_length)
-            msg_bytes = f"Content-Type: {content_type}\r\n\r\n".encode("latin-1") + body_bytes
-            msg = email.message_from_bytes(msg_bytes)
-
+            file_path_param = None
             file_data = None
             filename = "reference_voice.mp3"
             speaker_name = "Custom Voice"
 
-            for part in msg.walk():
-                if part.is_multipart():
-                    continue
-                name = part.get_param("name", header="content-disposition")
-                if not name:
-                    continue
-                if name == "file":
-                    file_data = part.get_payload(decode=True)
-                    fname = part.get_filename()
-                    if fname:
-                        filename = fname
-                elif name == "speaker":
-                    payload = part.get_payload(decode=True)
-                    if payload:
-                        speaker_name = payload.decode("utf-8", errors="replace").strip() or speaker_name
+            parsed_url = urllib.parse.urlparse(self.path)
+            query_params = urllib.parse.parse_qs(parsed_url.query)
+            if "file_path" in query_params:
+                file_path_param = query_params["file_path"][0]
 
-            if not file_data:
-                self._send_json_response(400, {"error": "No file uploaded under form key 'file'"})
+            if "application/json" in content_type and body_bytes:
+                req_json = json.loads(body_bytes.decode("utf-8", errors="replace"))
+                file_path_param = req_json.get("file_path") or file_path_param
+                speaker_name = req_json.get("speaker") or speaker_name
+                if file_path_param:
+                    filename = os.path.basename(file_path_param)
+            elif content_type.startswith("multipart/form-data") and body_bytes:
+                msg_bytes = f"Content-Type: {content_type}\r\n\r\n".encode("latin-1") + body_bytes
+                msg = email.message_from_bytes(msg_bytes)
+                for part in msg.walk():
+                    if part.is_multipart():
+                        continue
+                    name = part.get_param("name", header="content-disposition")
+                    if not name:
+                        continue
+                    if name == "file":
+                        file_data = part.get_payload(decode=True)
+                        fname = part.get_filename()
+                        if fname:
+                            filename = fname
+                    elif name == "file_path":
+                        payload = part.get_payload(decode=True)
+                        if payload:
+                            file_path_param = payload.decode("utf-8", errors="replace").strip()
+                    elif name == "speaker":
+                        payload = part.get_payload(decode=True)
+                        if payload:
+                            speaker_name = payload.decode("utf-8", errors="replace").strip() or speaker_name
+
+            if file_path_param and os.path.isfile(file_path_param):
+                target_file = file_path_param
+                filename = os.path.basename(file_path_param)
+            elif file_data:
+                ext = os.path.splitext(filename)[1] or ".mp3"
+                with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+                    tmp_path = tmp.name
+                    tmp.write(file_data)
+                target_file = tmp_path
+            else:
+                self._send_json_response(400, {"error": "No file or file_path provided for voice profiling"})
                 return
 
-            ext = os.path.splitext(filename)[1] or ".mp3"
-            with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
-                tmp_path = tmp.name
-                tmp.write(file_data)
-
-            pcm_data, meta = self.pipeline.audio_extractor.extract_pcm16(tmp_path)
+            pcm_data, meta = self.pipeline.audio_extractor.extract_pcm16(target_file, max_duration=45.0)
             profile = VoiceProfiler.profile_from_pcm16(pcm_data, speaker_id=speaker_name)
 
             # Extract a representative 15s high-RMS speech slice to avoid multi-megabyte base64 payload freezes

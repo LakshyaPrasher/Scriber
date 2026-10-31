@@ -230,6 +230,14 @@ class TestUIContracts(unittest.TestCase):
         self.assertIn(".model-dropdown-trigger.locked", self.html)
         self.assertIn(".model-dropdown-trigger:disabled", self.html)
 
+    def test_transcribed_speaker_pills_and_voice_dialog(self):
+        """Verifies multi-speaker selection pills and native voice file dialog contracts."""
+        self.assertIn("transcribed-speakers-pill-wrap", self.html)
+        self.assertIn(".speaker-select-pill", self.html)
+        self.assertIn("triggerVoiceRefFileDialog", self.html)
+        self.assertIn("handleVoiceRefPath", self.html)
+        self.assertIn("selectVoiceProfileByIndex", self.html)
+
 
 if __name__ == "__main__":
     unittest.main()

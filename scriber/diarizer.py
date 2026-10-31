@@ -513,13 +513,13 @@ class AcousticDiarizer:
             cos_sim = np.clip(np.dot(embs_norm, embs_norm.T), -1.0, 1.0)
             cos_dist = np.maximum(0.0, 1.0 - np.maximum(0.0, cos_sim))
 
-            genders = np.array([x[1].gender_estimate for x in extracted_info])
-            gen_diff = (genders[:, None] != genders[None, :]) & (genders[:, None] != "androgynous") & (genders[None, :] != "androgynous")
-            gender_penalty = np.where(gen_diff, 0.50, 0.0).astype(np.float32)
-
             f0s = np.array([max(60.0, x[1].fundamental_frequency_hz) for x in extracted_info], dtype=np.float32)
             semitone_diff = np.abs(12.0 * np.log2(f0s[:, None] / f0s[None, :]))
-            pitch_penalty = np.where(semitone_diff > 4.5, np.minimum(0.40, (semitone_diff - 4.5) / 8.0), 0.0).astype(np.float32)
+
+            genders = np.array([x[1].gender_estimate for x in extracted_info])
+            gen_diff = (genders[:, None] != genders[None, :]) & (genders[:, None] != "androgynous") & (genders[None, :] != "androgynous") & (semitone_diff > 6.0)
+            gender_penalty = np.where(gen_diff, 0.45, 0.0).astype(np.float32)
+            pitch_penalty = np.where(semitone_diff > 5.5, np.minimum(0.35, (semitone_diff - 5.5) / 8.0), 0.0).astype(np.float32)
 
             dist_mat = (cos_dist + gender_penalty + pitch_penalty).astype(np.float32)
 
@@ -636,8 +636,11 @@ class AcousticDiarizer:
 
                     for b in range(a + 1, num_c):
                         gen_b = c_genders[b]
-                        if gen_a != "androgynous" and gen_b != "androgynous" and gen_a != gen_b:
-                            continue
+                        f0_b = max(60.0, c_f0s[b])
+                        s_diff = abs(12.0 * math.log2(max(60.0, f0_a) / f0_b))
+                        sc_rel = abs(sc_a - c_scs[b]) / max(sc_a, c_scs[b], 100.0)
+                        min_cluster_dur = min(dur_a, c_durs[b])
+
                         v_b = c_vecs[b]
                         norm_b = np.linalg.norm(v_b)
                         if norm_b < 1e-6:
@@ -645,30 +648,31 @@ class AcousticDiarizer:
                         u_b = v_b / norm_b
 
                         inter_cos = float(np.dot(u_a, u_b))
-                        semitone_diff = abs(12.0 * math.log2(max(60.0, f0_a) / max(60.0, c_f0s[b])))
-                        sc_rel = abs(sc_a - c_scs[b]) / max(sc_a, c_scs[b], 100.0)
-                        min_cluster_dur = min(dur_a, c_durs[b])
+
+                        cross_gen = (gen_a != "androgynous" and gen_b != "androgynous" and gen_a != gen_b and s_diff > 6.0)
+                        if cross_gen:
+                            continue
 
                         should_merge = False
                         inter_d = float("inf")
 
                         if is_neural:
-                            if inter_cos >= 0.54 and semitone_diff <= 5.5:
+                            if inter_cos >= 0.54 and s_diff <= 5.0:
                                 should_merge = True
                                 inter_d = 1.0 - inter_cos
-                            elif min_cluster_dur < 3.0 and semitone_diff <= 5.0 and inter_cos >= 0.48:
+                            elif min_cluster_dur < 2.5 and s_diff <= 4.0 and inter_cos >= 0.48:
                                 should_merge = True
                                 inter_d = 1.0 - inter_cos
-                            elif inter_cos >= 0.64 and semitone_diff <= 6.5:
+                            elif inter_cos >= 0.64 and s_diff <= 6.0:
                                 should_merge = True
                                 inter_d = 1.0 - inter_cos
                         else:
-                            if inter_cos >= 0.88 and sc_rel <= 0.20 and semitone_diff <= 4.5:
+                            if inter_cos >= 0.88 and sc_rel <= 0.20 and s_diff <= 4.5:
                                 should_merge = True
-                            elif semitone_diff <= 2.5 and sc_rel <= 0.15 and inter_cos >= 0.82:
+                            elif s_diff <= 2.5 and sc_rel <= 0.15 and inter_cos >= 0.82:
                                 should_merge = True
                             if should_merge:
-                                inter_d = (1.0 - inter_cos) * 0.4 + (sc_rel / 0.18) * 0.3 + (semitone_diff / 3.5) * 0.3
+                                inter_d = (1.0 - inter_cos) * 0.4 + (sc_rel / 0.18) * 0.3 + (s_diff / 3.5) * 0.3
 
                         if should_merge and inter_d < best_inter_d:
                             best_inter_d = inter_d
@@ -755,19 +759,29 @@ class AcousticDiarizer:
         # returning speakers (e.g. Speaker 1 talking again after Speaker 2) rather than creating a new Speaker 3.
         if len(speaker_registry) > 1:
             merged_into: Dict[str, str] = {}
+            id_to_mem = {mem.speaker_id: mem for mem in speaker_registry}
+
             for i in range(len(speaker_registry)):
-                target_spk = speaker_registry[i].speaker_id
+                id_i = speaker_registry[i].speaker_id
+                target_spk = id_i
                 while target_spk in merged_into:
                     target_spk = merged_into[target_spk]
+
+                if target_spk != id_i:
+                    continue
+
+                mem_i = id_to_mem[target_spk]
+
                 for j in range(i + 1, len(speaker_registry)):
-                    cand_spk = speaker_registry[j].speaker_id
+                    id_j = speaker_registry[j].speaker_id
+                    cand_spk = id_j
                     while cand_spk in merged_into:
                         cand_spk = merged_into[cand_spk]
+
                     if target_spk == cand_spk:
                         continue
 
-                    mem_i = speaker_registry[i]
-                    mem_j = speaker_registry[j]
+                    mem_j = id_to_mem[cand_spk]
 
                     norm_i = float(np.linalg.norm(mem_i.centroid_vector))
                     norm_j = float(np.linalg.norm(mem_j.centroid_vector))
@@ -777,18 +791,25 @@ class AcousticDiarizer:
 
                     f0_i = max(60.0, mem_i.mean_f0)
                     f0_j = max(60.0, mem_j.mean_f0)
-                    semitone_diff = abs(12.0 * math.log2(f0_i / f0_j))
+                    s_diff = abs(12.0 * math.log2(f0_i / f0_j))
+
+                    gen_i = mem_i.gender
+                    gen_j = mem_j.gender
+                    cross_gender = (gen_i != "androgynous" and gen_j != "androgynous" and gen_i != gen_j and s_diff > 6.0)
 
                     reidentify = False
-                    if is_neural:
-                        if c_cos >= 0.55 and semitone_diff <= 5.5:
-                            reidentify = True
-                        elif c_cos >= 0.65 and semitone_diff <= 6.5:
-                            reidentify = True
-                    else:
-                        sc_rel = abs(mem_i.mean_centroid - mem_j.mean_centroid) / max(mem_i.mean_centroid, mem_j.mean_centroid, 100.0)
-                        if c_cos >= 0.88 and semitone_diff <= 4.5 and sc_rel <= 0.20:
-                            reidentify = True
+                    if not cross_gender:
+                        if is_neural:
+                            if c_cos >= 0.62 and s_diff <= 6.0:
+                                reidentify = True
+                            elif c_cos >= 0.54 and s_diff <= 5.0:
+                                reidentify = True
+                        else:
+                            sc_rel = abs(mem_i.mean_centroid - mem_j.mean_centroid) / max(mem_i.mean_centroid, mem_j.mean_centroid, 100.0)
+                            if c_cos >= 0.86 and s_diff <= 4.5 and sc_rel <= 0.20:
+                                reidentify = True
+                            elif c_cos >= 0.92 and s_diff <= 5.5:
+                                reidentify = True
 
                     if reidentify:
                         merged_into[cand_spk] = target_spk

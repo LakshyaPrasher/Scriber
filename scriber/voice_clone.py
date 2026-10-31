@@ -1183,6 +1183,25 @@ class VoiceCloner:
                 fallback_chain.append(f"Tier 3 (Edge-TTS): failed ({e})")
 
         # ------------------------------------------------------------------
+        # Tier 3.5: Offline Local SAPI Speech with Mel-filterbank Timbre Transfer
+        # ------------------------------------------------------------------
+        if pcm_bytes is None and model_choice not in ("offline-formant", "formant-harmonic-engine"):
+            try:
+                sapi_pcm = self._synthesize_with_local_sapi(target_profile, prompt_text, pitch_shift_hz, rate_shift_pct)
+                if sapi_pcm and len(sapi_pcm) > 320:
+                    if ref_audio and len(ref_audio) > 512:
+                        sapi_pcm = self._apply_timbre_transfer(sapi_pcm, ref_audio, self.SAMPLE_RATE)
+                    else:
+                        sapi_pcm = self._normalize_rms_energy(sapi_pcm, target_rms=target_profile.energy_rms)
+
+                    pcm_bytes = AudioEditor.resample_pcm(sapi_pcm, src_sr=self.SAMPLE_RATE, dst_sr=sample_rate)
+                    backend_used = "local-sapi-timbre"
+                    provider = "local-sapi"
+                    fallback_chain.append(f"Tier 3.5 (Local SAPI Studio): success (resampled to {sample_rate}Hz)")
+            except Exception as e:
+                fallback_chain.append(f"Tier 3.5 (Local SAPI): failed ({e})")
+
+        # ------------------------------------------------------------------
         # Tier 4: Offline Parametric Formant Vocoder (Biquad IIR Resonators)
         # ------------------------------------------------------------------
         if pcm_bytes is None:
@@ -1319,6 +1338,60 @@ class VoiceCloner:
             output_format=miniaudio.SampleFormat.SIGNED16,
         )
         return bytes(decoded.samples)
+
+    def _synthesize_with_local_sapi(
+        self,
+        profile: VoiceProfile,
+        text: str,
+        pitch_shift_hz: float = 0.0,
+        rate_shift_pct: float = 0.0,
+    ) -> Optional[bytes]:
+        """Synthesizes intelligible spoken words 100% offline using Windows Speech Synthesis (SAPI)."""
+        if sys.platform != "win32":
+            return None
+        import tempfile
+        import subprocess
+
+        gender = getattr(profile, "gender_estimate", "masculine")
+        voice_hint = "Zira" if gender == "feminine" else "David"
+        sapi_rate = int(max(-10, min(10, round(rate_shift_pct / 10.0))))
+
+        clean_text = text.replace("'", "''").replace('"', '`"').replace("\n", " ").replace("\r", " ")
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_wav:
+            tmp_wav_path = tmp_wav.name
+
+        ps_cmd = (
+            f"Add-Type -AssemblyName System.Speech; "
+            f"$s = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
+            f"$v = $s.GetInstalledVoices() | Where-Object {{ $_.VoiceInfo.Name -like '*{voice_hint}*' }} | Select-Object -First 1; "
+            f"if ($v) {{ $s.SelectVoice($v.VoiceInfo.Name) }}; "
+            f"$s.Rate = {sapi_rate}; "
+            f"$s.SetOutputToWaveFile('{tmp_wav_path}'); "
+            f"$s.Speak('{clean_text}'); "
+            f"$s.Dispose()"
+        )
+        try:
+            flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+            res = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", ps_cmd],
+                capture_output=True,
+                timeout=12,
+                creationflags=flags,
+            )
+            if os.path.exists(tmp_wav_path) and os.path.getsize(tmp_wav_path) > 44:
+                from scriber.audio_extractor import AudioExtractor
+                ext = AudioExtractor()
+                pcm, _ = ext.extract_pcm16(tmp_wav_path)
+                return pcm
+        except Exception as e:
+            logger.debug(f"Local SAPI offline synthesis error: {e}")
+        finally:
+            if os.path.exists(tmp_wav_path):
+                try:
+                    os.remove(tmp_wav_path)
+                except Exception:
+                    pass
+        return None
 
     @classmethod
     def _apply_timbre_transfer(cls, synth_pcm: bytes, ref_pcm: bytes, sr: int = 16000) -> bytes:

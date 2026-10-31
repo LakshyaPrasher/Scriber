@@ -75,6 +75,21 @@ class TestAudioExtractor(unittest.TestCase):
         self.assertEqual(len(resampled), 10)
         self.assertEqual(resampled[0], 0)
 
+    def test_extract_pcm16_max_duration(self):
+        """Verifies max_duration caps extracted PCM data and duration."""
+        wav_bytes = self.extractor.create_synthetic_wav("test_cap", duration_sec=5.0)
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            tmp.write(wav_bytes)
+            tmp_path = tmp.name
+
+        try:
+            pcm_data, meta = self.extractor.extract_pcm16(tmp_path, max_duration=2.0)
+            self.assertLessEqual(len(pcm_data), 16000 * 2 * 2)
+            self.assertAlmostEqual(meta.duration, 2.0, delta=0.1)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
 
 if __name__ == "__main__":
     unittest.main()

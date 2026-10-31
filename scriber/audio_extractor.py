@@ -170,13 +170,14 @@ class AudioExtractor:
             bitrate_kbps=None,
         )
 
-    def extract_pcm16(self, file_path: str) -> Tuple[bytes, AudioMetadata]:
+    def extract_pcm16(self, file_path: str, max_duration: Optional[float] = None) -> Tuple[bytes, AudioMetadata]:
         """Extracts audio from video/audio file into raw 16kHz 16-bit mono PCM bytes."""
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
 
         meta = self.inspect_file(file_path)
         ext = os.path.splitext(file_path)[1].lower().lstrip(".")
+        max_bytes = int(max_duration * self.SAMPLE_RATE * self.SAMPLE_WIDTH) if max_duration else None
 
         # Strategy 0: PyAV decode (pure-C/FFmpeg bindings, decodes any container: MP4, MP3, MOV, MKV, WebM, FLAC, M4A, etc.)
         try:
@@ -186,11 +187,20 @@ class AudioExtractor:
                 if container.streams.audio:
                     resampler = av.AudioResampler(format="s16", layout="mono", rate=self.SAMPLE_RATE)
                     pcm_chunks = []
+                    cur_bytes = 0
                     for frame in container.decode(audio=0):
                         resampled = resampler.resample(frame)
                         for r_frame in resampled:
-                            pcm_chunks.append(r_frame.to_ndarray().tobytes())
+                            chunk = r_frame.to_ndarray().tobytes()
+                            pcm_chunks.append(chunk)
+                            cur_bytes += len(chunk)
+                            if max_bytes and cur_bytes >= max_bytes:
+                                break
+                        if max_bytes and cur_bytes >= max_bytes:
+                            break
                     pcm_data = b"".join(pcm_chunks)
+                    if max_bytes and len(pcm_data) > max_bytes:
+                        pcm_data = pcm_data[:max_bytes]
                     if pcm_data:
                         duration = len(pcm_data) / (self.SAMPLE_RATE * self.SAMPLE_WIDTH)
                         meta.duration = duration
@@ -204,8 +214,10 @@ class AudioExtractor:
 
         # Strategy 1: System FFmpeg (handles any video/container: mp4, mkv, mov, avi, webm, etc.)
         if self.ffmpeg_path:
-            pcm_data = self._extract_with_ffmpeg(file_path)
+            pcm_data = self._extract_with_ffmpeg(file_path, max_duration=max_duration)
             if pcm_data:
+                if max_bytes and len(pcm_data) > max_bytes:
+                    pcm_data = pcm_data[:max_bytes]
                 duration = len(pcm_data) / (self.SAMPLE_RATE * self.SAMPLE_WIDTH)
                 meta.duration = duration
                 meta.sample_rate = self.SAMPLE_RATE
@@ -216,6 +228,9 @@ class AudioExtractor:
         if ext == "wav":
             try:
                 pcm_data, dur = self._read_and_resample_wav(file_path)
+                if max_bytes and len(pcm_data) > max_bytes:
+                    pcm_data = pcm_data[:max_bytes]
+                    dur = len(pcm_data) / (self.SAMPLE_RATE * self.SAMPLE_WIDTH)
                 meta.duration = dur
                 meta.sample_rate = self.SAMPLE_RATE
                 meta.channels = self.CHANNELS
@@ -233,6 +248,8 @@ class AudioExtractor:
                 output_format=miniaudio.SampleFormat.SIGNED16,
             )
             pcm_bytes = bytes(decoded.samples)
+            if max_bytes and len(pcm_bytes) > max_bytes:
+                pcm_bytes = pcm_bytes[:max_bytes]
             duration = len(pcm_bytes) / (self.SAMPLE_RATE * self.SAMPLE_WIDTH)
             meta.duration = duration
             meta.sample_rate = self.SAMPLE_RATE
@@ -273,18 +290,22 @@ class AudioExtractor:
         pcm_bytes = synthetic_wav[44:] if synthetic_wav.startswith(b"RIFF") else synthetic_wav
         return pcm_bytes, meta
 
-    def _extract_with_ffmpeg(self, file_path: str) -> Optional[bytes]:
+    def _extract_with_ffmpeg(self, file_path: str, max_duration: Optional[float] = None) -> Optional[bytes]:
         """Runs ffmpeg in a subprocess and pipes 16kHz s16le mono PCM to stdout."""
         cmd = [
             self.ffmpeg_path,
             "-nostdin",
             "-threads", "0",
             "-i", file_path,
+        ]
+        if max_duration:
+            cmd.extend(["-t", str(max_duration)])
+        cmd.extend([
             "-f", "s16le",
             "-ac", "1",
             "-ar", str(self.SAMPLE_RATE),
             "-",
-        ]
+        ])
         try:
             proc = subprocess.run(
                 cmd,
