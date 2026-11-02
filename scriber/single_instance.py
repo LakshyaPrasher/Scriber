@@ -6,9 +6,11 @@ and exits cleanly.
 
 from __future__ import annotations
 
+import atexit
 import ctypes
 from ctypes import wintypes
 import logging
+import signal
 import sys
 
 logger = logging.getLogger("scriber.single_instance")
@@ -16,6 +18,27 @@ logger = logging.getLogger("scriber.single_instance")
 # Global handle reference so Python GC does not close the handle
 _MUTEX_HANDLE = None
 MUTEX_NAME = "Local\\ScriberStudioDesktopSingleInstanceMutex"
+_HANDLERS_REGISTERED = False
+
+
+def _signal_handler(signum, frame):
+    """Signal handler that releases mutex lock and exits."""
+    release_single_instance()
+    sys.exit(128 + signum)
+
+
+def _register_cleanup_handlers():
+    """Registers atexit and signal cleanup handlers once."""
+    global _HANDLERS_REGISTERED
+    if _HANDLERS_REGISTERED:
+        return
+    atexit.register(release_single_instance)
+    try:
+        signal.signal(signal.SIGINT, _signal_handler)
+        signal.signal(signal.SIGTERM, _signal_handler)
+    except (ValueError, AttributeError):
+        pass  # Ignored if not on main thread
+    _HANDLERS_REGISTERED = True
 
 
 def focus_existing_window() -> bool:
@@ -101,6 +124,7 @@ def ensure_single_instance() -> bool:
             focus_existing_window()
             return False
 
+        _register_cleanup_handlers()
         return True
     except Exception as e:
         logger.warning("Single instance mutex initialization skipped: %s", e)

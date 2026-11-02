@@ -8,6 +8,7 @@ Evaluates Scriber's Acoustic Diarization & Vocal Biometric Engine across 20 dist
   Target: 100% Speaker Segregation & Biometric Memory Retention.
 """
 
+import argparse
 import json
 import os
 import sys
@@ -374,9 +375,18 @@ def main():
     print("=" * 90)
 
     # Save to JSON
-    out_dir = os.path.abspath("tests/suite_20_samples")
-    os.makedirs(out_dir, exist_ok=True)
-    report_file = os.path.join(out_dir, "suite_20_results.json")
+    parser = argparse.ArgumentParser(description="Scriber 20-Sample Benchmark Evaluator")
+    parser.add_argument("--output", default=None, help="Explicit path for output JSON report")
+    args, _ = parser.parse_known_args()
+
+    if args.output:
+        report_file = os.path.abspath(args.output)
+    else:
+        out_dir = os.path.abspath("test_scratch")
+        os.makedirs(out_dir, exist_ok=True)
+        report_file = os.path.join(out_dir, "suite_20_results.json")
+
+    os.makedirs(os.path.dirname(report_file), exist_ok=True)
     with open(report_file, "w", encoding="utf-8") as f:
         json.dump({
             "total_samples": total,
@@ -390,3 +400,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

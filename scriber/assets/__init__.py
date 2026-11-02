@@ -45,3 +45,10 @@ def get_icon_path() -> Path:
         return png
     return ico
 
+
+def get_avatar_path() -> Path:
+    """Returns the creator profile avatar path."""
+    return get_asset_path("avatar.png")
+
+
+

@@ -12,9 +12,11 @@ block_cipher = None
 
 project_root = os.path.abspath(SPECPATH)
 assets_src = os.path.join(project_root, "scriber", "assets")
+static_src = os.path.join(project_root, "scriber", "web", "static")
 
 datas = [
     (assets_src, os.path.join("scriber", "assets")),
+    (static_src, os.path.join("scriber", "web", "static")),
 ]
 datas.extend(collect_data_files("faster_whisper"))
 datas.extend(collect_data_files("ctranslate2"))

@@ -52,3 +52,5 @@ test_scratch/
 *.onnx
 .antigravity/
 .agents/
+tests/suite_20_samples/suite_20_results.json
+

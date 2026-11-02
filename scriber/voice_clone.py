@@ -20,6 +20,7 @@ import io
 import json
 import logging
 import math
+import atexit
 import os
 import struct
 import subprocess
@@ -30,6 +31,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import wave
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 # Pre-emptively disable unsigned C extensions in aiohttp to avoid Windows Smart App Control blocks
@@ -759,7 +761,9 @@ class VoiceMicroserviceManager:
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     creationflags=flags,
+                    shell=False,
                 )
+                atexit.register(self.shutdown)
                 for _ in range(30):
                     time.sleep(0.1)
                     if self.is_available(timeout_sec=0.2):
@@ -1358,7 +1362,7 @@ class VoiceCloner:
 
         clean_text = text.replace("'", "''").replace('"', '`"').replace("\n", " ").replace("\r", " ")
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_wav:
-            tmp_wav_path = tmp_wav.name
+            tmp_wav_path = str(Path(tmp_wav.name).resolve())
 
         ps_cmd = (
             f"Add-Type -AssemblyName System.Speech; "
@@ -1377,6 +1381,7 @@ class VoiceCloner:
                 capture_output=True,
                 timeout=12,
                 creationflags=flags,
+                shell=False,
             )
             if os.path.exists(tmp_wav_path) and os.path.getsize(tmp_wav_path) > 44:
                 from scriber.audio_extractor import AudioExtractor

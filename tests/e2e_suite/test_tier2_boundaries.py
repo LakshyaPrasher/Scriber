@@ -1136,22 +1136,22 @@ class TestTier2F19ShortcutBoundaries(unittest.TestCase):
     """Boundary & Corner cases for F19: Shortcut Automation."""
 
     def test_f19_b01_missing_destination_directory_created(self):
-        """Verifies scripts/install_windows_shortcuts.ps1 creates parent directories if missing."""
-        ps1 = os.path.join(REPO_ROOT, "scripts", "install_windows_shortcuts.ps1")
-        with open(ps1, "r", encoding="utf-8") as f:
+        """Verifies scriber/cli.py creates parent directories if missing."""
+        cli_py = os.path.join(REPO_ROOT, "scriber", "cli.py")
+        with open(cli_py, "r", encoding="utf-8") as f:
             content = f.read()
-        self.assertIn("New-Item -ItemType Directory", content)
+        self.assertIn("os.makedirs", content)
 
     def test_f19_b02_existing_shortcut_overwritten_cleanly(self):
         """Verifies existing shortcut file is removed before recreation to prevent stale PropertyStore."""
-        ps1 = os.path.join(REPO_ROOT, "scripts", "install_windows_shortcuts.ps1")
-        with open(ps1, "r", encoding="utf-8") as f:
+        cli_py = os.path.join(REPO_ROOT, "scriber", "cli.py")
+        with open(cli_py, "r", encoding="utf-8") as f:
             content = f.read()
-        self.assertIn("Remove-Item", content)
+        self.assertIn("unlink", content)
 
     def test_f19_b03_custom_desktop_path_with_spaces(self):
         """Verifies paths containing spaces are wrapped in quotes in shortcut script."""
-        with open(os.path.join(REPO_ROOT, "make_shortcut.py"), "r", encoding="utf-8") as f:
+        with open(os.path.join(REPO_ROOT, "scriber", "cli.py"), "r", encoding="utf-8") as f:
             content = f.read()
         self.assertIn('sLinkFile = "', content)
 
@@ -1162,10 +1162,10 @@ class TestTier2F19ShortcutBoundaries(unittest.TestCase):
 
     def test_f19_b05_missing_executable_target_handled(self):
         """Verifies shortcut script validates executable existence."""
-        ps1 = os.path.join(REPO_ROOT, "scripts", "install_windows_shortcuts.ps1")
-        with open(ps1, "r", encoding="utf-8") as f:
+        cli_py = os.path.join(REPO_ROOT, "scriber", "cli.py")
+        with open(cli_py, "r", encoding="utf-8") as f:
             content = f.read()
-        self.assertIn("Test-Path", content)
+        self.assertIn(".exists()", content)
 
 
 # ==============================================================================

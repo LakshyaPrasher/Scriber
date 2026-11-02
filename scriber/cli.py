@@ -11,9 +11,14 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import ctypes
 import json
 import os
+import subprocess
 import sys
+import tempfile
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 from scriber import ScriberPipeline, ResultValidator, TOP_LEVERAGED_REPOS, __version__
 from scriber.exporters import ScriberExporter
@@ -90,6 +95,13 @@ def main():
     app_parser.add_argument("--fullscreen", action="store_true", help="Launch in fullscreen mode")
     app_parser.add_argument("--debug", action="store_true", help="Enable developer tools and debug logging")
 
+    # Command: shortcut
+    shortcut_parser = subparsers.add_parser("shortcut", help="Create and manage Windows desktop and Start Menu shortcuts")
+    shortcut_parser.add_argument("--install", action="store_true", help="Install or update desktop and Start Menu shortcuts")
+    shortcut_parser.add_argument("--desktop-only", action="store_true", help="Install shortcut to Desktop only")
+    shortcut_parser.add_argument("--target", default=None, help="Explicit target executable path")
+    shortcut_parser.add_argument("--icon", default=None, help="Explicit icon path")
+
     args = parser.parse_args()
 
     if args.command == "process":
@@ -108,6 +120,8 @@ def main():
         run_serve(args)
     elif args.command == "app":
         run_app(args)
+    elif args.command == "shortcut":
+        run_shortcut(args)
     else:
         parser.print_help()
 
@@ -351,5 +365,152 @@ def run_app(args):
     )
 
 
+def get_default_shortcut_destinations(desktop_only: bool = False) -> List[Path]:
+    """Resolves standard Windows shortcut target destinations."""
+    desktop = Path(os.path.expanduser("~/Desktop"))
+    destinations = [desktop / "Scriber.lnk"]
+    if not desktop_only:
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            programs_dir = Path(appdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs"
+            destinations.append(programs_dir / "Scriber.lnk")
+        userprofile = os.environ.get("USERPROFILE")
+        if userprofile:
+            onedrive_desktop = Path(userprofile) / "OneDrive" / "Desktop"
+            if onedrive_desktop.is_dir():
+                destinations.append(onedrive_desktop / "Scriber.lnk")
+    return destinations
+
+
+def create_windows_shortcut(
+    dest_path: Union[str, Path],
+    target_path: Union[str, Path],
+    working_dir: Union[str, Path],
+    icon_path: Union[str, Path],
+    description: str = "Scriber - Studio Intelligence and Voice Synthesis",
+) -> Path:
+    """Creates a Windows .lnk shortcut using Windows Script Host with icon binding."""
+    dest = Path(dest_path).resolve()
+    target = Path(target_path).resolve()
+    workdir = Path(working_dir).resolve()
+    icon = Path(icon_path).resolve()
+
+    # Ensure parent destination directory exists
+    parent_dir = dest.parent
+    if not parent_dir.exists():
+        os.makedirs(parent_dir, exist_ok=True)
+
+    # Remove existing shortcut to prevent stale PropertyStore
+    if dest.exists():
+        try:
+            dest.unlink()
+        except Exception:
+            pass
+
+    dest_str = str(dest)
+    target_str = str(target)
+    workdir_str = str(workdir)
+    icon_str = str(icon)
+
+    vbs_content = f'''Set oWS = WScript.CreateObject("WScript.Shell")
+sLinkFile = "{dest_str}"
+Set oLink = oWS.CreateShortcut(sLinkFile)
+oLink.TargetPath = "{target_str}"
+oLink.WorkingDirectory = "{workdir_str}"
+oLink.Description = "{description}"
+oLink.IconLocation = "{icon_str},0"
+oLink.Save
+'''
+    with tempfile.NamedTemporaryFile("w", suffix=".vbs", delete=False) as f:
+        f.write(vbs_content)
+        tmp_vbs = f.name
+
+    try:
+        subprocess.run(["cscript", "//nologo", tmp_vbs], check=True, shell=False)
+    finally:
+        if os.path.exists(tmp_vbs):
+            try:
+                os.remove(tmp_vbs)
+            except Exception:
+                pass
+
+    if sys.platform == "win32":
+        try:
+            ctypes.windll.shell32.SHChangeNotify(0x08000000, 0, 0, 0)
+        except Exception:
+            pass
+
+    return dest
+
+
+def install_shortcuts(
+    target_exe: Optional[Union[str, Path]] = None,
+    icon_path: Optional[Union[str, Path]] = None,
+    desktop_only: bool = False,
+) -> List[Path]:
+    """Installs or updates Scriber desktop and Start Menu shortcuts across Windows."""
+    repo_root = Path(__file__).resolve().parent.parent
+
+    # Resolve executable target
+    if target_exe:
+        resolved_exe = Path(target_exe).resolve()
+    else:
+        candidate_bundle = repo_root / "dist" / "Scriber" / "Scriber.exe"
+        candidate_onefile = repo_root / "dist" / "Scriber.exe"
+        if candidate_bundle.exists():
+            resolved_exe = candidate_bundle.resolve()
+        elif candidate_onefile.exists():
+            resolved_exe = candidate_onefile.resolve()
+        else:
+            resolved_exe = candidate_bundle.resolve()
+
+    working_dir = resolved_exe.parent if resolved_exe.exists() else repo_root
+
+    # Resolve icon
+    if icon_path:
+        resolved_icon = Path(icon_path).resolve()
+    else:
+        from scriber.assets import get_icon_path
+        resolved_icon = Path(get_icon_path()).resolve()
+
+    destinations = get_default_shortcut_destinations(desktop_only=desktop_only)
+    created: List[Path] = []
+    for dest in destinations:
+        try:
+            res = create_windows_shortcut(
+                dest_path=dest,
+                target_path=resolved_exe,
+                working_dir=working_dir,
+                icon_path=resolved_icon,
+            )
+            created.append(res)
+            print(f"[+] Installed shortcut: {res} -> {resolved_exe}")
+        except Exception as e:
+            print(f"[-] Warning: Failed creating shortcut at {dest}: {e}", file=sys.stderr)
+
+    return created
+
+
+def create_desktop_shortcut(
+    target_exe: Optional[Union[str, Path]] = None,
+    icon_path: Optional[Union[str, Path]] = None,
+) -> Path:
+    """Convenience helper to create or refresh the primary Desktop shortcut."""
+    shortcuts = install_shortcuts(target_exe=target_exe, icon_path=icon_path, desktop_only=True)
+    if shortcuts:
+        return shortcuts[0]
+    return Path(os.path.expanduser("~/Desktop")) / "Scriber.lnk"
+
+
+def run_shortcut(args):
+    desktop_only = getattr(args, "desktop_only", False)
+    target = getattr(args, "target", None)
+    icon = getattr(args, "icon", None)
+    installed = install_shortcuts(target_exe=target, icon_path=icon, desktop_only=desktop_only)
+    if not installed:
+        print("[-] No shortcuts were created.")
+
+
 if __name__ == "__main__":
     main()
+

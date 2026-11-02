@@ -52,7 +52,30 @@ if sys.stdin is None:
     except Exception:
         pass
 
+import atexit
+import signal
 from scriber.desktop import launch_desktop
+
+
+def _cleanup_handler():
+    try:
+        from scriber.single_instance import release_single_instance
+        release_single_instance()
+    except Exception:
+        pass
+    try:
+        from scriber.voice_clone import VoiceMicroserviceManager
+        VoiceMicroserviceManager().shutdown()
+    except Exception:
+        pass
+
+
+atexit.register(_cleanup_handler)
+try:
+    signal.signal(signal.SIGINT, lambda s, f: (_cleanup_handler(), sys.exit(128 + s)))
+    signal.signal(signal.SIGTERM, lambda s, f: (_cleanup_handler(), sys.exit(128 + s)))
+except (ValueError, AttributeError):
+    pass
 
 
 def parse_and_run() -> int:
@@ -64,7 +87,7 @@ def parse_and_run() -> int:
     first_arg = sys.argv[1].lower()
 
     # If first argument is a known CLI subcommand, dispatch to CLI
-    cli_commands = {"process", "benchmark", "info", "clone-voice", "serve", "app"}
+    cli_commands = {"process", "benchmark", "info", "clone-voice", "serve", "app", "shortcut"}
     if first_arg in cli_commands:
         import scriber.cli
         scriber.cli.main()

@@ -1225,18 +1225,18 @@ class TestTier1F19WindowsShortcutAutomation(unittest.TestCase):
     """E2E Feature tests for F19: Windows Desktop Shortcut Automation."""
 
     def test_f19_01_make_shortcut_script_exists(self):
-        """Verifies make_shortcut.py exists at project root."""
-        p = os.path.join(REPO_ROOT, "make_shortcut.py")
-        self.assertTrue(os.path.exists(p))
+        """Verifies shortcut subcommand logic and helpers exist in scriber.cli."""
+        from scriber.cli import create_desktop_shortcut
+        self.assertTrue(callable(create_desktop_shortcut))
 
     def test_f19_02_install_shortcuts_powershell_script_exists(self):
-        """Verifies scripts/install_windows_shortcuts.ps1 exists."""
-        p = os.path.join(REPO_ROOT, "scripts", "install_windows_shortcuts.ps1")
-        self.assertTrue(os.path.exists(p))
+        """Verifies install_shortcuts helper exists in scriber.cli."""
+        from scriber.cli import install_shortcuts
+        self.assertTrue(callable(install_shortcuts))
 
     def test_f19_03_shortcut_target_points_to_bundle(self):
-        """Verifies make_shortcut targets dist/Scriber/Scriber.exe."""
-        with open(os.path.join(REPO_ROOT, "make_shortcut.py"), "r", encoding="utf-8") as f:
+        """Verifies shortcut logic targets dist/Scriber/Scriber.exe."""
+        with open(os.path.join(REPO_ROOT, "scriber", "cli.py"), "r", encoding="utf-8") as f:
             content = f.read()
         self.assertIn("Scriber.exe", content)
 
@@ -1249,11 +1249,11 @@ class TestTier1F19WindowsShortcutAutomation(unittest.TestCase):
 
     def test_f19_05_desktop_shortcut_file_generation(self):
         """Verifies shortcut script creates .lnk file without raising error."""
-        import make_shortcut
+        from scriber.cli import create_desktop_shortcut
 
         # Execute shortcut creation (idempotent)
         try:
-            make_shortcut.create_desktop_shortcut()
+            create_desktop_shortcut()
         except Exception as e:
             self.fail(f"create_desktop_shortcut raised exception: {e}")
 

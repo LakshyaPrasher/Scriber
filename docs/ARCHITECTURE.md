@@ -45,9 +45,14 @@ The system operates strictly on local hardware with zero external cloud dependen
 
 ### 2.4 Desktop Integration & User Interface (`scriber.desktop`, `scriber.web`)
 - **Window Shell**: Native Microsoft Edge WebView2 via `pywebview`.
-- **UI Architecture**: Obsidian dark theme (`#08090C`) with Tangerine (`#FF5E00`) and Antique Gold (`#FFA826`) accents.
+- **UI Architecture**: Obsidian dark theme (`#08090C`) with Tangerine (`#FF5E00`) and Antique Gold (`#FFA826`) accents. Decoupled static assets (`index.html`, `styles.css`, `app.js`) loaded dynamically from `scriber/web/static`.
 - **Subsystem 2 Enforcement**: Built with Windows Subsystem 2 (`IMAGE_SUBSYSTEM_WINDOWS_GUI`) to launch cleanly without a black console terminal window.
 - **Live Progress Meter**: Interactive progress card with animated progress track, real-time percentage, dynamic ETA, and decoding speed display.
+
+### 2.5 Standardized Entrypoints & Lifecycle Management (`scriber.cli`, `run_desktop.py`)
+- **Consolidated Entrypoints**: `Scriber.bat` and `Scriber.vbs` invoke `run_desktop.py` (or compiled `dist/Scriber/Scriber.exe`) consistently without duplicated environment setup.
+- **Unified Shortcut CLI**: Windows `.lnk` shortcut creation and Start Menu binding are consolidated into `python -m scriber shortcut --install` via `scriber/cli.py`.
+- **Subprocess & Mutex Safety**: Automatic process lifecycle termination via `atexit` and `SIGINT`/`SIGTERM` handlers ensures single-instance mutex release and companion microservice shutdown without leaving orphaned processes.
 
 ---
 

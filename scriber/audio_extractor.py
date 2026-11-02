@@ -11,6 +11,7 @@ import shutil
 import struct
 import subprocess
 import wave
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 from scriber.models import AudioMetadata
@@ -292,11 +293,12 @@ class AudioExtractor:
 
     def _extract_with_ffmpeg(self, file_path: str, max_duration: Optional[float] = None) -> Optional[bytes]:
         """Runs ffmpeg in a subprocess and pipes 16kHz s16le mono PCM to stdout."""
+        resolved_file = str(Path(file_path).resolve())
         cmd = [
             self.ffmpeg_path,
             "-nostdin",
             "-threads", "0",
-            "-i", file_path,
+            "-i", resolved_file,
         ]
         if max_duration:
             cmd.extend(["-t", str(max_duration)])
@@ -312,6 +314,7 @@ class AudioExtractor:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 check=True,
+                shell=False,
             )
             return proc.stdout
         except Exception:

@@ -109,6 +109,15 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self._serve_static_file(str(asset_file))
             else:
                 self._send_json_response(404, {"error": "Asset not found"})
+        elif path.startswith("/static/"):
+            from scriber.web.ui import get_static_dir
+            static_dir = get_static_dir()
+            rel_name = path[len("/static/"):].lstrip("/\\")
+            static_file = (static_dir / rel_name).resolve()
+            if static_file.is_file() and str(static_file).startswith(str(static_dir.resolve())):
+                self._serve_static_file(str(static_file))
+            else:
+                self._send_json_response(404, {"error": "Static file not found"})
         elif path == "/api/health":
             self._send_json_response(200, {"status": "ok", "app": "Scriber"})
         elif path == "/api/media":

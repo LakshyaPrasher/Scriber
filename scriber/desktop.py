@@ -326,6 +326,7 @@ class ScriberDesktopApp:
         self.bridge = ScriberDesktopBridge(self)
         self.active_engine = "unknown"
         self._shutdown_event = threading.Event()
+        self._edge_proc: Optional[subprocess.Popen] = None
 
     def detect_available_engines(self) -> List[str]:
         """Detects available desktop runtime engines in order of preference."""
@@ -365,14 +366,29 @@ class ScriberDesktopApp:
         return self.server.url
 
     def stop(self):
-        """Stops the desktop application and shuts down the background server."""
+        """Stops the desktop application and shuts down all background services and child processes."""
         self._shutdown_event.set()
+        if self._edge_proc:
+            try:
+                self._edge_proc.terminate()
+                self._edge_proc.wait(timeout=1.0)
+            except Exception:
+                pass
+            self._edge_proc = None
+
+        try:
+            from scriber.voice_clone import VoiceMicroserviceManager
+            VoiceMicroserviceManager().shutdown()
+        except Exception:
+            pass
+
         if self.server:
             try:
                 self.server.stop()
             except Exception as e:
                 logger.debug("Error stopping server: %s", e)
             self.server = None
+
         try:
             from scriber.single_instance import release_single_instance
             release_single_instance()
@@ -383,8 +399,18 @@ class ScriberDesktopApp:
         """Launches the desktop application window with native system integration."""
         apply_windows_dpi_and_app_id()
 
-        # Register cleanup handlers
+        # Register cleanup handlers for normal and abnormal exits
         atexit.register(self.stop)
+
+        def _sig_handler(signum, frame):
+            self.stop()
+            sys.exit(128 + signum)
+
+        try:
+            signal.signal(signal.SIGINT, _sig_handler)
+            signal.signal(signal.SIGTERM, _sig_handler)
+        except (ValueError, AttributeError):
+            pass
 
         try:
             url = self.start_background_server()
@@ -558,7 +584,8 @@ class ScriberDesktopApp:
             args.append("--start-fullscreen")
 
         print("[*] Launching Scriber in standalone desktop application window...")
-        proc = subprocess.Popen(args)
+        proc = subprocess.Popen(args, shell=False)
+        self._edge_proc = proc
 
         try:
             proc.wait()
@@ -569,6 +596,8 @@ class ScriberDesktopApp:
             except Exception:
                 pass
             return 0
+        finally:
+            self._edge_proc = None
 
     def _run_browser(self, url: str) -> int:
         """Launches system default web browser fallback."""
@@ -606,7 +635,10 @@ def launch_desktop(
     return app.run()
 
 
+def main() -> int:
+    """Entry point for scriber-desktop console/gui script."""
+    return launch_desktop()
 
 
 if __name__ == "__main__":
-    sys.exit(launch_desktop())
+    sys.exit(main())

@@ -10,6 +10,7 @@ import io
 import math
 import os
 import wave
+from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
@@ -212,11 +213,11 @@ class AudioEditor:
         saved_path = None
         if output_dir:
             try:
-                os.makedirs(output_dir, exist_ok=True)
-                target = os.path.join(output_dir, clean_name)
-                with open(target, "wb") as f:
-                    f.write(mp3_bytes)
-                saved_path = os.path.abspath(target)
+                resolved_dir = Path(output_dir).resolve()
+                resolved_dir.mkdir(parents=True, exist_ok=True)
+                target = resolved_dir / clean_name
+                target.write_bytes(mp3_bytes)
+                saved_path = str(target.resolve())
             except Exception:
                 pass
 

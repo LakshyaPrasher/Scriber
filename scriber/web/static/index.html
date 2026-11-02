@@ -1,0 +1,917 @@
+    return r'''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scriber — Studio Intelligence & Voice Synthesis</title>
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="icon" type="image/svg+xml" href="/assets/icon.svg">
+<link rel="apple-touch-icon" href="/assets/icon.png">
+<meta name="application-name" content="Scriber Studio">
+<meta name="msapplication-TileColor" content="#08090C">
+<meta name="msapplication-TileImage" content="/assets/icon.png">
+<meta name="theme-color" content="#08090C">
+<!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<!-- SVG Gooey Filter Hook -->
+<svg class="gooey-filter-svg" xmlns="http://www.w3.org/2000/svg" version="1.1" aria-hidden="true" style="position:absolute; width:0; height:0; pointer-events:none;">
+  <defs>
+    <filter id="goo">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur" />
+      <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -9" result="goo" />
+      <feBlend in="SourceGraphic" in2="goo" />
+    </filter>
+  </defs>
+</svg>
+
+<div class="app-container">
+  <!-- Minimal Header Bar -->
+  <header>
+    <div class="logo-block">
+      <!-- Scriber Harmonic S Monogram Emblem -->
+      <svg class="brand-svg-mark" width="46" height="46" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="scBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#12151D" />
+            <stop offset="50%" stop-color="#0A0B0F" />
+            <stop offset="100%" stop-color="#050608" />
+          </linearGradient>
+          <linearGradient id="scWaveGrad" x1="15%" y1="10%" x2="85%" y2="90%">
+            <stop offset="0%" stop-color="#FF3800" />
+            <stop offset="45%" stop-color="#FF5E00" />
+            <stop offset="80%" stop-color="#FFA826" />
+            <stop offset="100%" stop-color="#FFC043" />
+          </linearGradient>
+          <linearGradient id="scCoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FFA826" />
+            <stop offset="100%" stop-color="#FF5E00" />
+          </linearGradient>
+          <filter id="scSubtleBloom" x="-15%" y="-15%" width="130%" height="130%">
+            <feGaussianBlur stdDeviation="6" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+        <rect x="28" y="28" width="456" height="456" rx="96" fill="url(#scBgGrad)" stroke="rgba(255, 94, 0, 0.22)" stroke-width="2" />
+        <rect x="30" y="30" width="452" height="452" rx="94" fill="none" stroke="rgba(255, 255, 255, 0.05)" stroke-width="1" />
+        <g>
+          <path d="M 364 196 C 364 126 316 76 256 76 C 196 76 148 126 148 184 C 148 268 364 244 364 328 C 364 386 316 436 256 436 C 196 436 148 386 148 316 L 204 316 C 204 362 228 380 256 380 C 284 380 308 362 308 328 C 308 276 204 236 204 184 C 204 150 228 132 256 132 C 284 132 308 150 308 196 Z"
+                fill="url(#scWaveGrad)" />
+        </g>
+      </svg>
+      <div class="logo-title">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <h1>Scriber</h1>
+          <span class="app-version-badge" style="font-family:var(--font-mono); font-size:11px; padding:2px 7px; border-radius:6px; background:rgba(255,94,0,0.12); border:1px solid rgba(255,94,0,0.3); color:var(--tangerine); font-weight:600; letter-spacing:0.04em;">v2.0</span>
+        </div>
+        <p class="subtitle">Autonomous Speech Intelligence & Voice Synthesis Studio</p>
+      </div>
+    </div>
+
+    <!-- Navigation Modes -->
+    <nav class="nav-pills">
+      <button class="nav-pill active" id="btn-mode-transcribe" onclick="switchMode('transcribe')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+        Transcribe
+      </button>
+      <button class="nav-pill" id="btn-mode-voice" onclick="switchMode('voice')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H2v-8z"></path><path d="M22 12h-2a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2v-8z"></path><path d="M4 12a8 8 0 0 1 16 0"></path><line x1="12" y1="8" x2="12" y2="16"></line></svg>
+        Voice Clone
+      </button>
+      <button class="nav-pill" id="btn-mode-about" onclick="switchMode('about')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        About
+      </button>
+    </nav>
+  </header>
+
+  <!-- ========================================================= -->
+  <!-- MODE 1: TRANSCRIBE VIEW                                   -->
+  <!-- ========================================================= -->
+  <main id="transcribe-view" class="view-panel active">
+    
+    <!-- Model Switcher: Custom Dropdown Menu for Transcription Engine -->
+    <div class="studio-model-console" id="transcribe-model-switcher">
+      <div class="model-selector-bar">
+        <div class="model-selector-meta">
+          <div class="model-selector-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v20M17 5v14M22 9v6M7 5v14M2 9v6"/>
+            </svg>
+          </div>
+          <div class="model-selector-text">
+            <span class="model-selector-title">Transcription Model</span>
+            <span class="model-selector-sub">Select speech recognition architecture</span>
+          </div>
+        </div>
+
+        <div class="custom-model-dropdown">
+          <button type="button" class="model-dropdown-trigger" id="transcribe-dropdown-trigger" onclick="toggleModelDropdown('transcribe-dropdown-menu', event)" aria-haspopup="true" aria-expanded="false" aria-controls="transcribe-dropdown-menu">
+            <div class="dropdown-trigger-main">
+              <span class="status-dot-pulse"></span>
+              <div class="dropdown-trigger-text">
+                <span class="dropdown-selected-name" id="active-transcribe-tag">Whisper Turbo</span>
+                <span class="model-tier-badge tier-recommended" id="active-transcribe-badge">Best Accuracy · Recommended</span>
+              </div>
+            </div>
+            <svg class="dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+
+          <div class="model-dropdown-menu" id="transcribe-dropdown-menu" role="listbox" aria-label="Transcription Models">
+            <div class="dropdown-item active" id="model-opt-turbo" role="option" aria-selected="true" tabindex="0" onclick="selectTranscribeModel('turbo')" onkeydown="if(event.key==='Enter'||event.key===' '){selectTranscribeModel('turbo');event.preventDefault();}">
+              <div class="dropdown-item-header">
+                <div class="dropdown-item-title-wrap">
+                  <span class="dropdown-item-radio" aria-hidden="true"></span>
+                  <span class="dropdown-item-title">Whisper Turbo</span>
+                </div>
+                <span class="model-tier-badge tier-recommended">Best Accuracy · Recommended</span>
+              </div>
+              <p class="dropdown-item-desc">OpenAI large-v3-turbo architecture with 8x accelerated INT8 execution. SOTA benchmark accuracy.</p>
+            </div>
+
+            <div class="dropdown-item" id="model-opt-distil-large-v3" role="option" aria-selected="false" tabindex="0" onclick="selectTranscribeModel('distil-large-v3')" onkeydown="if(event.key==='Enter'||event.key===' '){selectTranscribeModel('distil-large-v3');event.preventDefault();}">
+              <div class="dropdown-item-header">
+                <div class="dropdown-item-title-wrap">
+                  <span class="dropdown-item-radio" aria-hidden="true"></span>
+                  <span class="dropdown-item-title">Distil-Whisper Large-v3</span>
+                </div>
+                <span class="model-tier-badge tier-speed">High Speed</span>
+              </div>
+              <p class="dropdown-item-desc">Distilled Whisper architecture matching Large-v3 accuracy with 50% fewer parameters and 6x real-time speed.</p>
+            </div>
+
+            <div class="dropdown-item" id="model-opt-base" role="option" aria-selected="false" tabindex="0" onclick="selectTranscribeModel('base')" onkeydown="if(event.key==='Enter'||event.key===' '){selectTranscribeModel('base');event.preventDefault();}">
+              <div class="dropdown-item-header">
+                <div class="dropdown-item-title-wrap">
+                  <span class="dropdown-item-radio" aria-hidden="true"></span>
+                  <span class="dropdown-item-title">Whisper Base</span>
+                </div>
+                <span class="model-tier-badge tier-lightweight">Lightweight / Low-RAM</span>
+              </div>
+              <p class="dropdown-item-desc">Ultra-lightweight engine with instant startup and minimal memory footprint on standard CPUs.</p>
+            </div>
+
+            <div class="dropdown-item" id="model-opt-whisperx" role="option" aria-selected="false" tabindex="0" onclick="selectTranscribeModel('whisperx')" onkeydown="if(event.key==='Enter'||event.key===' '){selectTranscribeModel('whisperx');event.preventDefault();}">
+              <div class="dropdown-item-header">
+                <div class="dropdown-item-title-wrap">
+                  <span class="dropdown-item-radio" aria-hidden="true"></span>
+                  <span class="dropdown-item-title">WhisperX</span>
+                </div>
+                <span class="model-tier-badge tier-aligned">Phoneme Aligned</span>
+              </div>
+              <p class="dropdown-item-desc">Silero VAD voice activity gating with sub-10ms forced phoneme alignment to eliminate word drift.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- State 1: Dropzone / Select Media File -->
+    <div class="upload-bay-asymmetric" id="dropzone" onclick="openFileDialog(event)">
+      <div class="upload-editorial-copy">
+        <span class="upload-kicker">Universal Media Upload</span>
+        <h2 class="upload-headline">Upload Audio or Video</h2>
+        <p class="upload-editorial-desc">Drag and drop your media file here, or click to browse. Scriber extracts pristine 16kHz speech streams with acoustic diarization and instant transcription.</p>
+        
+        <div class="upload-btn-wrap" style="justify-content: flex-start; margin: 0;">
+          <button type="button" class="btn-primary" id="select-media-btn" onclick="openFileDialog(event)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+            Select Audio or Video
+          </button>
+        </div>
+      </div>
+
+      <div class="upload-matrix-panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:6px;">
+          <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted);">Supported formats</span>
+          <span style="font-family:var(--font-mono); font-size:10px; color:var(--tangerine);">Direct extraction</span>
+        </div>
+        <div class="format-matrix-grid">
+          <span class="format-mono-tag">MP4</span>
+          <span class="format-mono-tag">MP3</span>
+          <span class="format-mono-tag">WAV</span>
+          <span class="format-mono-tag">M4A</span>
+          <span class="format-mono-tag">MOV</span>
+          <span class="format-mono-tag">MKV</span>
+          <span class="format-mono-tag">WebM</span>
+          <span class="format-mono-tag">FLAC</span>
+          <span class="format-mono-tag">AAC</span>
+          <span class="format-mono-tag">OGG</span>
+          <span class="format-mono-tag">OPUS</span>
+          <span class="format-mono-tag">AVI</span>
+        </div>
+        <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted); margin-top:4px;">
+          Lossless 16kHz mono speech extraction for all major container formats
+        </div>
+      </div>
+    </div>
+
+    <!-- Native hidden file input (outside dropzone to eliminate click event bubbling & COM dialog deadlock) -->
+    <input type="file" id="media-file-input" name="file" accept="audio/*,video/*,.mp4,.mp3,.wav,.m4a,.mov,.webm,.flac,.ogg,.aac,.mkv,.avi,.flv,.wmv,.opus,.wma,.3gp,.ts,.m4v" class="visually-hidden-input" onchange="handleFileSelected(event)" onclick="event.stopPropagation();" />
+
+    <!-- State 2: Minimalist Liquid Light Orb + Precision Live Progress Tracker -->
+    <div class="processing-card" id="processing-card">
+      <div class="liquid-orb-stage liquid-canvas-stage">
+        <canvas id="liquid-orb-canvas" width="220" height="220"></canvas>
+        <div class="orb-core"></div>
+      </div>
+      <h3 class="processing-title" id="processing-main-title">Transcribing & Translating to English</h3>
+      <p class="processing-sub" id="processing-status-text">Ingesting media buffer · Extracting 16kHz speech stream...</p>
+
+      <!-- Precision Real-Time Progress Bar & Metrics -->
+      <div class="progress-meter-container" id="progress-meter-container">
+        <div class="progress-meter-header">
+          <div class="progress-pct-badge" id="progress-pct-badge">0%</div>
+          <div class="progress-eta-badge" id="progress-eta-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span id="progress-eta-text">Estimating time...</span>
+          </div>
+        </div>
+        <div class="progress-track" id="progress-track">
+          <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+        </div>
+        <div class="progress-metrics-row" id="progress-metrics-row">
+          <span class="progress-metric-item" id="progress-speed-item">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <span id="progress-speed-text">--x speed</span>
+          </span>
+          <span class="progress-metric-item" id="progress-position-item">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+            <span id="progress-position-text">00:00 / 00:00</span>
+          </span>
+          <span class="progress-metric-item" id="progress-elapsed-item">
+            <span id="progress-elapsed-text">Elapsed: 0s</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="processing-meta-row">
+        <div class="processing-file-badge" id="processing-file-name">media_file.mp4</div>
+        <div class="processing-stage-pill" id="processing-stage-pill">Phase 1/4 · Neural Alignment</div>
+      </div>
+    </div>
+
+    <!-- State 3: Clean Output Viewport (Copy-Paste Ready) -->
+    <div class="output-viewport" id="output-viewport">
+      
+      <!-- Top Action Bar -->
+      <div class="action-bar">
+        <div class="action-bar-left">
+          <button type="button" class="btn-primary" id="copy-transcript-btn" onclick="copyFullTranscript()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            Copy Full Transcript
+          </button>
+          <select id="copy-format-select" class="copy-format-select" title="Choose format for transcript copy">
+            <option value="standard">Standard (Timecode & Speaker)</option>
+            <option value="dialogue">Dialogue (Speaker Only)</option>
+            <option value="text">Clean Text (No Headers)</option>
+            <option value="markdown">Markdown Formatted</option>
+          </select>
+          <button type="button" class="btn-secondary" onclick="resetToUpload()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+            Upload Another
+          </button>
+        </div>
+        
+        <div class="action-bar-right">
+          <div class="search-wrapper">
+            <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="transcript-search" class="search-input" placeholder="Search transcript..." oninput="filterTranscript()" />
+            <span class="search-count-badge" id="search-count-badge">0</span>
+          </div>
+          <button class="btn-export" onclick="downloadArtifact('txt')" title="Download formatted plain text (.txt)">.TXT</button>
+          <button class="btn-export" onclick="downloadArtifact('md')" title="Download formatted Markdown (.md)">.MD</button>
+          <button class="btn-export" onclick="downloadArtifact('srt')" title="Download SubRip subtitles (.srt)">.SRT</button>
+          <button class="btn-export" onclick="downloadArtifact('vtt')" title="Download WebVTT subtitles (.vtt)">.VTT</button>
+          <button class="btn-export" onclick="downloadArtifact('json')" title="Download full analysis JSON (.json)">.JSON</button>
+          <button class="btn-export" id="btn-reveal-folder" onclick="revealExportFolder()" title="Open outputs folder in native file explorer" style="display:inline-flex; align-items:center; gap:4px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>FOLDER</button>
+        </div>
+      </div>
+
+      <!-- Bespoke Studio Audio Player -->
+      <div class="media-hub" id="player-box">
+        <!-- Hidden Native Audio for Audio Synchronization -->
+        <audio id="audio-player" preload="auto" style="display:none;" ontimeupdate="handleAudioTimeUpdate()" onseeking="handleAudioTimeUpdate()" onseeked="handleAudioTimeUpdate()" onplay="handleAudioTimeUpdate()" onloadedmetadata="handleAudioTimeUpdate()" onended="handleAudioEnded()"></audio>
+
+        <!-- Custom Studio Transport Bar -->
+        <div class="custom-audio-transport">
+          <div class="transport-left">
+            <button type="button" class="btn-play-master" id="btn-master-play" onclick="togglePlayPause()" title="Play / Pause (Space)">
+              <svg id="play-icon" width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              <svg id="pause-icon" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+            </button>
+            <button type="button" class="btn-skip" onclick="skipAudio(-5)" title="Rewind 5s (J / Left Arrow)">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"></path><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+              -5s
+            </button>
+            <button type="button" class="btn-skip" onclick="skipAudio(5)" title="Forward 5s (L / Right Arrow)">
+              +5s
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+            </button>
+          </div>
+
+          <div class="transport-right">
+            <div class="volume-control-wrap">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+              <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.05" value="1" oninput="setAudioVolume(this.value)" />
+            </div>
+            <div class="speed-toggle-wrap">
+              <button type="button" class="btn-speed" onclick="setPlaybackRate(0.75, this)">0.75x</button>
+              <button type="button" class="btn-speed active" onclick="setPlaybackRate(1, this)">1x</button>
+              <button type="button" class="btn-speed" onclick="setPlaybackRate(1.25, this)">1.25x</button>
+              <button type="button" class="btn-speed" onclick="setPlaybackRate(1.5, this)">1.5x</button>
+              <button type="button" class="btn-speed" onclick="setPlaybackRate(2, this)">2x</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Waveform Scrubber -->
+        <div class="waveform-container" id="waveform-wrap" title="Click or drag anywhere on waveform to seek audio">
+          <canvas id="waveform-canvas"></canvas>
+          <div class="waveform-hover-tooltip" id="waveform-tooltip">00:00</div>
+        </div>
+
+        <!-- HUD Telemetry -->
+        <div class="media-hud-bar">
+          <div class="hud-item">
+            <span>Timecode:</span> <span class="val" id="live-timecode">00:00 / 00:00</span>
+          </div>
+          <div class="hud-item">
+            <span>Speaker:</span>
+            <span class="speaker-live-pill">
+              <span class="pulse-dot"></span>
+              <span class="val" id="live-speaker" style="color:var(--tangerine);">Speaker 1</span>
+            </span>
+          </div>
+          <div class="hud-item">
+            <span>Words:</span> <span class="val" id="live-word-count">0</span>
+          </div>
+          <div class="hud-item" style="color:var(--text-muted); font-size:11px;">
+            <span>Shortcuts:</span> <code>Space</code> Play/Pause · <code>J/L</code> Seek
+          </div>
+        </div>
+      </div>
+
+      <!-- MP3 Studio & Audio Editor (Mode 1) -->
+      <div class="audio-editor-card" id="mode1-audio-editor">
+        <div class="audio-editor-header">
+          <div class="editor-title-wrap">
+            <div class="editor-icon-badge">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            </div>
+            <div>
+              <h3 class="editor-heading">Audio Studio & MP3 Editor</h3>
+              <p class="editor-subtext">Fine-tune volume gain, pitch shift, and trim audio segments with lossless MP3 export</p>
+            </div>
+          </div>
+          <div class="editor-badges-wrap">
+            <span class="editor-stat-pill" id="m1-vol-pill">Vol: 100%</span>
+            <span class="editor-stat-pill" id="m1-pitch-pill">Pitch: 0 st</span>
+            <span class="editor-stat-pill" id="m1-trim-pill">Trim: Full Length</span>
+          </div>
+        </div>
+
+        <div class="audio-editor-grid">
+          <!-- Volume & Gain -->
+          <div class="editor-control-col">
+            <div class="control-header">
+              <span class="control-label">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                Volume / Gain
+              </span>
+              <span class="control-val" id="m1-vol-val">100% (0.0 dB)</span>
+            </div>
+            <input type="range" class="editor-slider" id="m1-vol-slider" min="0" max="200" value="100" step="1" oninput="handleVolumeInput('m1', this.value)" />
+            <div class="preset-buttons">
+              <button type="button" class="btn-preset" onclick="setVolumePreset('m1', 50)">50%</button>
+              <button type="button" class="btn-preset active" id="m1-vol-preset-100" onclick="setVolumePreset('m1', 100)">100%</button>
+              <button type="button" class="btn-preset" onclick="setVolumePreset('m1', 130)">130%</button>
+              <button type="button" class="btn-preset" onclick="setVolumePreset('m1', 160)">160%</button>
+              <button type="button" class="btn-preset" onclick="setVolumePreset('m1', 200)">200%</button>
+            </div>
+          </div>
+
+          <!-- Pitch Tuning -->
+          <div class="editor-control-col">
+            <div class="control-header">
+              <span class="control-label">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                Pitch Shift
+              </span>
+              <span class="control-val" id="m1-pitch-val">0 st (Natural)</span>
+            </div>
+            <input type="range" class="editor-slider" id="m1-pitch-slider" min="-12" max="12" value="0" step="1" oninput="handlePitchInput('m1', this.value)" />
+            <div class="preset-buttons">
+              <button type="button" class="btn-preset" onclick="setPitchPreset('m1', -4)">-4 st</button>
+              <button type="button" class="btn-preset" onclick="setPitchPreset('m1', -2)">-2 st</button>
+              <button type="button" class="btn-preset active" id="m1-pitch-preset-0" onclick="setPitchPreset('m1', 0)">0 st (Reset)</button>
+              <button type="button" class="btn-preset" onclick="setPitchPreset('m1', 2)">+2 st</button>
+              <button type="button" class="btn-preset" onclick="setPitchPreset('m1', 4)">+4 st</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trimming Section -->
+        <div class="editor-trim-section">
+          <div class="control-header">
+            <span class="control-label">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line></svg>
+              Trimming & Playhead In/Out
+            </span>
+            <span class="control-val" id="m1-trim-duration-val">Full File</span>
+          </div>
+
+          <div class="trim-inputs-row">
+            <div class="trim-input-group">
+              <label for="m1-trim-start">Trim Start (In Point):</label>
+              <div class="input-with-btn">
+                <input type="text" id="m1-trim-start" class="trim-text-input" value="00:00.00" onchange="updateTrimFromText('m1')" />
+                <button type="button" class="btn-trim-set" onclick="setTrimToPlayhead('m1', 'start')" title="Set start trim point to current audio playhead">Set In</button>
+              </div>
+            </div>
+
+            <div class="trim-input-group">
+              <label for="m1-trim-end">Trim End (Out Point):</label>
+              <div class="input-with-btn">
+                <input type="text" id="m1-trim-end" class="trim-text-input" value="00:00.00" onchange="updateTrimFromText('m1')" />
+                <button type="button" class="btn-trim-set" onclick="setTrimToPlayhead('m1', 'end')" title="Set end trim point to current audio playhead">Set Out</button>
+              </div>
+            </div>
+
+            <div class="trim-actions-group">
+              <button type="button" class="btn-secondary" onclick="resetTrimRange('m1')">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                Reset In/Out
+              </button>
+            </div>
+          </div>
+
+          <div class="trim-slider-scrub-row" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.08);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-size:11px; color:var(--text-secondary); font-weight:600;">Live Trimming Sliders:</span>
+              <span id="m1-trim-slider-pill" style="font-size:10.5px; font-family:'JetBrains Mono', monospace; color:var(--tangerine);">00:00 - 00:00</span>
+            </div>
+            <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+              <div style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px;">
+                <span style="font-size:10.5px; color:var(--text-muted); font-weight:600;">In</span>
+                <input type="range" class="editor-slider" id="m1-trim-start-bar" min="0" max="100" value="0" step="0.05" oninput="handleTrimBarInput('m1', 'start', this.value)" />
+              </div>
+              <div style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px;">
+                <span style="font-size:10.5px; color:var(--text-muted); font-weight:600;">Out</span>
+                <input type="range" class="editor-slider" id="m1-trim-end-bar" min="0" max="100" value="100" step="0.05" oninput="handleTrimBarInput('m1', 'end', this.value)" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Bar -->
+        <div class="editor-bottom-bar">
+          <div class="editor-bottom-left">
+            <button type="button" class="btn-preview-edit" id="m1-preview-btn" onclick="togglePreviewEditedAudio('m1')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              <span>Preview Edited Audio</span>
+            </button>
+            <span class="preview-active-pill" id="m1-preview-status" style="display:none;">
+              <span class="pulse-dot"></span> Previewing
+            </span>
+          </div>
+
+          <div class="editor-bottom-right">
+            <button type="button" class="btn-primary btn-export-mp3" id="m1-export-btn" onclick="exportEditedMP3('m1')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              Export Edited MP3
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Colorful Speaker Blocks -->
+      <div class="transcript-container" id="transcript-container"></div>
+    </div>
+  </main>
+
+  <!-- ========================================================= -->
+  <!-- MODE 2: VOICE CLONING STUDIO                              -->
+  <!-- ========================================================= -->
+  <section id="voice-view" class="view-panel">
+    <div class="voice-card-panel">
+      <div class="voice-header">
+        <h2>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--tangerine)" stroke-width="2.2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+          Voice Cloning Studio
+        </h2>
+        <p class="subtitle">Synthesize speech in the authentic voice of transcribed speakers with zero-shot acoustic timbre matching.</p>
+      </div>
+
+      <!-- Model Switcher: Custom Dropdown Menu for Voice Cloning Engine -->
+      <div class="studio-model-console" id="voice-model-switcher" style="margin: 0 0 24px 0; max-width: 100%;">
+        <div class="model-selector-bar">
+          <div class="model-selector-meta">
+            <div class="model-selector-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            </div>
+            <div class="model-selector-text">
+              <span class="model-selector-title">Voice Synthesis Engine</span>
+              <span class="model-selector-sub">Select neural architecture for voice cloning</span>
+            </div>
+          </div>
+
+          <div class="custom-model-dropdown">
+            <button type="button" class="model-dropdown-trigger" id="voice-dropdown-trigger" onclick="toggleModelDropdown('voice-dropdown-menu', event)" aria-haspopup="true" aria-expanded="false" aria-controls="voice-dropdown-menu">
+              <div class="dropdown-trigger-main">
+                <span class="status-dot-pulse"></span>
+                <div class="dropdown-trigger-text">
+                  <span class="dropdown-selected-name" id="active-voice-tag">Edge-Neural Studio</span>
+                  <span class="model-tier-badge tier-recommended" id="active-voice-badge">Studio Quality · Recommended</span>
+                </div>
+              </div>
+              <svg class="dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+
+            <div class="model-dropdown-menu" id="voice-dropdown-menu" role="listbox" aria-label="Voice Synthesis Models">
+              <div class="dropdown-item" id="voice-opt-local-gpu" role="option" aria-selected="false" tabindex="0" onclick="selectVoiceModel('local-gpu')" onkeydown="if(event.key==='Enter'||event.key===' '){selectVoiceModel('local-gpu');event.preventDefault();}">
+                <div class="dropdown-item-header">
+                  <div class="dropdown-item-title-wrap">
+                    <span class="dropdown-item-radio" aria-hidden="true"></span>
+                    <span class="dropdown-item-title">Local GPU (F5-TTS Flow-Matching 48kHz)</span>
+                  </div>
+                  <span class="model-tier-badge tier-recommended">Zero-Shot · NVIDIA GPU</span>
+                </div>
+                <p class="dropdown-item-desc">Local zero-shot speech flow-matching diffusion transformer (DiT) with 48kHz Vocos neural vocoder on dedicated RTX GPU.</p>
+              </div>
+
+
+
+              <div class="dropdown-item active" id="voice-opt-edge-neural" role="option" aria-selected="true" tabindex="0" onclick="selectVoiceModel('edge-neural')" onkeydown="if(event.key==='Enter'||event.key===' '){selectVoiceModel('edge-neural');event.preventDefault();}">
+                <div class="dropdown-item-header">
+                  <div class="dropdown-item-title-wrap">
+                    <span class="dropdown-item-radio" aria-hidden="true"></span>
+                    <span class="dropdown-item-title">Edge-Neural Studio</span>
+                  </div>
+                  <span class="model-tier-badge tier-recommended">Studio Quality · Recommended</span>
+                </div>
+                <p class="dropdown-item-desc">High-fidelity multi-speaker biometric voice cloning with instantaneous neural synthesis.</p>
+              </div>
+
+              <div class="dropdown-item" id="voice-opt-whisperspeech" role="option" aria-selected="false" tabindex="0" onclick="selectVoiceModel('whisperspeech')" onkeydown="if(event.key==='Enter'||event.key===' '){selectVoiceModel('whisperspeech');event.preventDefault();}">
+                <div class="dropdown-item-header">
+                  <div class="dropdown-item-title-wrap">
+                    <span class="dropdown-item-radio" aria-hidden="true"></span>
+                    <span class="dropdown-item-title">WhisperSpeech</span>
+                  </div>
+                  <span class="model-tier-badge tier-inversion">Acoustic Inversion</span>
+                </div>
+                <p class="dropdown-item-desc">Inverts Whisper transformer acoustic token representations to mirror reference speaker vocal resonance.</p>
+              </div>
+
+              <div class="dropdown-item" id="voice-opt-gpt-sovits" role="option" aria-selected="false" tabindex="0" onclick="selectVoiceModel('gpt-sovits')" onkeydown="if(event.key==='Enter'||event.key===' '){selectVoiceModel('gpt-sovits');event.preventDefault();}">
+                <div class="dropdown-item-header">
+                  <div class="dropdown-item-title-wrap">
+                    <span class="dropdown-item-radio" aria-hidden="true"></span>
+                    <span class="dropdown-item-title">GPT-SoVITS</span>
+                  </div>
+                  <span class="model-tier-badge tier-formant">Formant Morphing</span>
+                </div>
+                <p class="dropdown-item-desc">Autocorrelation pitch tracking and spectral formant resonances preserving authentic vocal timbre.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+
+      <!-- Transcribed Multi-Speaker Quick Selector Pills -->
+      <div id="transcribed-speakers-pill-wrap" class="transcribed-speakers-pill-wrap" style="display:none;"></div>
+
+      <!-- Dropzone for New Reference Audio File -->
+      <div class="voice-ref-dropzone" id="voice-ref-dropzone" onclick="triggerVoiceRefFileDialog(event)" role="button" tabindex="0">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--tangerine)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <span id="voice-ref-label-text">Drop a custom audio/video clip or <strong style="color:var(--tangerine); text-decoration:underline;">browse</strong> to extract speaker biometric timbre</span>
+      </div>
+      <input type="file" id="voice-ref-input" accept="audio/*,video/*,.mp4,.mp3,.wav,.m4a,.mov,.webm,.flac,.ogg,.aac,.mkv,.avi,.flv,.wmv,.opus,.wma,.3gp,.ts,.m4v" style="display:none;" onchange="handleVoiceRefSelected(event)" onclick="event.stopPropagation();" />
+
+      <!-- Active Reference Audio Status Badge (replaces raw profile box) -->
+      <div id="voice-ref-badge" class="voice-ref-badge" style="display:none;">
+        <div class="ref-badge-left">
+          <div class="ref-badge-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+          </div>
+          <div class="ref-badge-details">
+            <span class="ref-badge-title" id="voice-ref-title">Reference Audio Loaded</span>
+            <span class="ref-badge-sub" id="voice-ref-sub">Biometric Timbre Locked · Ready for Cloning & Editing</span>
+          </div>
+        </div>
+        <button type="button" class="btn-clear-ref" onclick="clearVoiceRef()" title="Clear reference file">✕ Clear</button>
+      </div>
+
+      <div class="section-label" style="margin-top: 16px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        Speech Prompt
+      </div>
+      <textarea id="clone-text" class="clone-textarea" placeholder="Type text for the cloned voice to speak...">Welcome to Scriber. This speech was synthesized with zero-shot acoustic timbre matching and harmonic formant preservation.</textarea>
+
+      <!-- Minimal Acoustic Resonance Canvas during Voice Synthesis -->
+      <div class="synthesis-resonance-stage" id="synthesis-resonance-stage">
+        <div class="voice-orb-wrap" style="text-align:center; margin-bottom:12px;">
+          <canvas id="voice-orb-canvas" width="160" height="160" style="width:160px; height:160px; display:inline-block; vertical-align:middle;"></canvas>
+        </div>
+        <div class="resonance-canvas-wrap">
+          <canvas id="resonance-canvas"></canvas>
+        </div>
+        <div class="resonance-label" id="resonance-status-text">Harmonic Formant Alignment · F0 Pitch Tracking · Phase Synthesis</div>
+      </div>
+
+      <button type="button" class="btn-primary" id="synthesize-btn" style="width:100%; justify-content:center; padding:12px;" onclick="synthesizeClonedVoice()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        Clone & Synthesize Voice
+      </button>
+
+      <!-- Playable Result Box -->
+      <div id="clone-result-box" class="clone-result-box">
+        <div class="clone-result-header">
+          <span class="fidelity-badge" id="clone-fidelity-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            99.4% Biometric Timbre Match
+          </span>
+          <a id="clone-download-btn" class="btn-export" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;" download="scriber_cloned_voice.mp3">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Download Cloned Speech (.mp3)
+          </a>
+        </div>
+        <audio id="clone-audio-player" class="audio-elem" controls style="width:100%; height:38px; margin-top:8px; accent-color:var(--tangerine); outline:none;"></audio>
+      </div>
+
+      <!-- Collapsible Accordion for Advanced Audio Studio & Fine-Tuning Controls -->
+      <details class="voice-advanced-controls" id="voice-advanced-controls">
+        <summary class="voice-advanced-summary">
+          <div class="voice-advanced-summary-left">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tangerine)" stroke-width="2.2"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+            <span>Advanced Audio Studio & Fine-Tuning Controls (Pitch, Gain, Trimming)</span>
+          </div>
+          <svg class="voice-advanced-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </summary>
+        <div class="voice-advanced-body">
+          <div class="sliders-row" style="margin-bottom: 20px;">
+            <div class="slider-col">
+              <div class="slider-label">
+                <span>Pitch Fine-Tuning</span>
+                <span id="pitch-val" style="color:var(--tangerine); font-family:'JetBrains Mono', monospace;">0 Hz</span>
+              </div>
+              <input type="range" id="pitch-slider" class="slider-ctrl" min="-40" max="40" value="0" oninput="document.getElementById('pitch-val').innerText = (this.value >= 0 ? '+' : '') + this.value + ' Hz'" />
+            </div>
+            <div class="slider-col">
+              <div class="slider-label">
+                <span>Speaking Rate</span>
+                <span id="rate-val" style="color:var(--tangerine); font-family:'JetBrains Mono', monospace;">0%</span>
+              </div>
+              <input type="range" id="rate-slider" class="slider-ctrl" min="-30" max="30" value="0" oninput="document.getElementById('rate-val').innerText = (this.value >= 0 ? '+' : '') + this.value + '%'" />
+            </div>
+          </div>
+
+          <!-- Audio Editor & MP3 Studio (Mode 2) -->
+          <div class="audio-editor-card" id="mode2-audio-editor">
+            <div class="audio-editor-header">
+              <div class="editor-title-wrap">
+                <div class="editor-icon-badge">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                </div>
+                <div>
+                  <h3 class="editor-heading">Voice Audio Studio & MP3 Editor</h3>
+                  <p class="editor-subtext">Adjust volume gain, pitch tuning, and trim boundaries for reference audio or cloned speech</p>
+                </div>
+              </div>
+              <div class="editor-badges-wrap">
+                <span class="editor-stat-pill" id="m2-vol-pill">Vol: 100%</span>
+                <span class="editor-stat-pill" id="m2-pitch-pill">Pitch: 0 st</span>
+                <span class="editor-stat-pill" id="m2-trim-pill">Trim: Full Length</span>
+              </div>
+            </div>
+
+            <div class="audio-editor-grid">
+              <!-- Volume & Gain -->
+              <div class="editor-control-col">
+                <div class="control-header">
+                  <span class="control-label">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                    Volume / Gain
+                  </span>
+                  <span class="control-val" id="m2-vol-val">100% (0.0 dB)</span>
+                </div>
+                <input type="range" class="editor-slider" id="m2-vol-slider" min="0" max="200" value="100" step="1" oninput="handleVolumeInput('m2', this.value)" />
+                <div class="preset-buttons">
+                  <button type="button" class="btn-preset" onclick="setVolumePreset('m2', 50)">50%</button>
+                  <button type="button" class="btn-preset active" id="m2-vol-preset-100" onclick="setVolumePreset('m2', 100)">100%</button>
+                  <button type="button" class="btn-preset" onclick="setVolumePreset('m2', 130)">130%</button>
+                  <button type="button" class="btn-preset" onclick="setVolumePreset('m2', 160)">160%</button>
+                  <button type="button" class="btn-preset" onclick="setVolumePreset('m2', 200)">200%</button>
+                </div>
+              </div>
+
+              <!-- Pitch Tuning -->
+              <div class="editor-control-col">
+                <div class="control-header">
+                  <span class="control-label">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                    Pitch Shift
+                  </span>
+                  <span class="control-val" id="m2-pitch-val">0 st (Natural)</span>
+                </div>
+                <input type="range" class="editor-slider" id="m2-pitch-slider" min="-12" max="12" value="0" step="1" oninput="handlePitchInput('m2', this.value)" />
+                <div class="preset-buttons">
+                  <button type="button" class="btn-preset" onclick="setPitchPreset('m2', -4)">-4 st</button>
+                  <button type="button" class="btn-preset" onclick="setPitchPreset('m2', -2)">-2 st</button>
+                  <button type="button" class="btn-preset active" id="m2-pitch-preset-0" onclick="setPitchPreset('m2', 0)">0 st (Reset)</button>
+                  <button type="button" class="btn-preset" onclick="setPitchPreset('m2', 2)">+2 st</button>
+                  <button type="button" class="btn-preset" onclick="setPitchPreset('m2', 4)">+4 st</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Trimming Section -->
+            <div class="editor-trim-section">
+              <div class="control-header">
+                <span class="control-label">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line></svg>
+                  Trimming & Playhead In/Out
+                </span>
+                <span class="control-val" id="m2-trim-duration-val">Full File</span>
+              </div>
+
+              <div class="trim-inputs-row">
+                <div class="trim-input-group">
+                  <label for="m2-trim-start">Trim Start (In Point):</label>
+                  <div class="input-with-btn">
+                    <input type="text" id="m2-trim-start" class="trim-text-input" value="00:00.00" onchange="updateTrimFromText('m2')" />
+                    <button type="button" class="btn-trim-set" onclick="setTrimToPlayhead('m2', 'start')" title="Set start trim point to current audio playhead">Set In</button>
+                  </div>
+                </div>
+
+                <div class="trim-input-group">
+                  <label for="m2-trim-end">Trim End (Out Point):</label>
+                  <div class="input-with-btn">
+                    <input type="text" id="m2-trim-end" class="trim-text-input" value="00:00.00" onchange="updateTrimFromText('m2')" />
+                    <button type="button" class="btn-trim-set" onclick="setTrimToPlayhead('m2', 'end')" title="Set end trim point to current audio playhead">Set Out</button>
+                  </div>
+                </div>
+
+                <div class="trim-actions-group">
+                  <button type="button" class="btn-secondary" onclick="resetTrimRange('m2')">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                    Reset In/Out
+                  </button>
+                </div>
+              </div>
+
+              <div class="trim-slider-scrub-row" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.08);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                  <span style="font-size:11px; color:var(--text-secondary); font-weight:600;">Live Trimming Sliders:</span>
+                  <span id="m2-trim-slider-pill" style="font-size:10.5px; font-family:'JetBrains Mono', monospace; color:var(--tangerine);">00:00 - 00:00</span>
+                </div>
+                <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+                  <div style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:10.5px; color:var(--text-muted); font-weight:600;">In</span>
+                    <input type="range" class="editor-slider" id="m2-trim-start-bar" min="0" max="100" value="0" step="0.05" oninput="handleTrimBarInput('m2', 'start', this.value)" />
+                  </div>
+                  <div style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:10.5px; color:var(--text-muted); font-weight:600;">Out</span>
+                    <input type="range" class="editor-slider" id="m2-trim-end-bar" min="0" max="100" value="100" step="0.05" oninput="handleTrimBarInput('m2', 'end', this.value)" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="editor-bottom-bar">
+              <div class="editor-bottom-left">
+                <button type="button" class="btn-preview-edit" id="m2-preview-btn" onclick="togglePreviewEditedAudio('m2')">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                  <span>Preview Edited Audio</span>
+                </button>
+                <span class="preview-active-pill" id="m2-preview-status" style="display:none;">
+                  <span class="pulse-dot"></span> Previewing
+                </span>
+              </div>
+
+              <div class="editor-bottom-right">
+                <button type="button" class="btn-primary btn-export-mp3" id="m2-export-btn" onclick="exportEditedMP3('m2')">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  Export Edited MP3
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- MODE 3: ABOUT CREATOR — LAKSHYA PRASHER                   -->
+  <!-- ========================================================= -->
+  <section id="about-view" class="view-panel">
+    <div class="about-container">
+      <div class="about-bento-grid">
+        <!-- Card 1: Icon / Avatar Card -->
+        <div class="about-card about-avatar-card">
+          <div class="card-ambient-glow"></div>
+          <div class="creator-avatar-wrap">
+            <img src="/assets/avatar.png" alt="Lakshya Prasher" class="creator-avatar-img" onerror="if(!this.dataset.step){this.dataset.step='1';this.src='/api/assets/avatar.png';}else{this.onerror=null;}" />
+          </div>
+        </div>
+
+        <!-- Card 2: Name Card -->
+        <div class="about-card about-name-card" id="about-name-card">
+          <div class="card-ambient-glow"></div>
+          <h2 class="creator-name">Lakshya Prasher</h2>
+        </div>
+
+        <!-- Card 3: Email & Social Card -->
+        <div class="about-card about-contact-card">
+          <div class="card-ambient-glow"></div>
+          <button type="button" class="btn-copy-contact" onclick="copyContactHandle(event)" title="Copy direct contact email">
+            <span style="display:inline-flex; align-items:center; gap:8px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+              <span>lakshyaprasher01@gmail.com</span>
+            </span>
+            <span class="copy-tag">Copy Email</span>
+          </button>
+
+          <!-- Social Links Row -->
+          <div class="about-social-row">
+            <!-- Instagram -->
+            <a href="https://www.instagram.com/laksh._.ya/" target="_blank" rel="noopener noreferrer" class="social-node-card instagram" title="Follow Lakshya on Instagram">
+              <div class="social-icon-box">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                </svg>
+              </div>
+              <div class="social-info">
+                <div class="social-label">Instagram</div>
+                <div class="social-handle">@laksh._.ya</div>
+              </div>
+              <span class="social-arrow">↗</span>
+            </a>
+
+            <!-- LinkedIn -->
+            <a href="https://www.linkedin.com/in/lakshyaprasher/" target="_blank" rel="noopener noreferrer" class="social-node-card linkedin" title="Connect on LinkedIn">
+              <div class="social-icon-box">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+                  <rect x="2" y="9" width="4" height="12"></rect>
+                  <circle cx="4" cy="4" r="2"></circle>
+                </svg>
+              </div>
+              <div class="social-info">
+                <div class="social-label">LinkedIn</div>
+                <div class="social-handle">in/lakshyaprasher</div>
+              </div>
+              <span class="social-arrow">↗</span>
+            </a>
+
+            <!-- GitHub -->
+            <a href="https://github.com/LakshyaPrasher" target="_blank" rel="noopener noreferrer" class="social-node-card github" title="Explore Repositories on GitHub">
+              <div class="social-icon-box">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+                </svg>
+              </div>
+              <div class="social-info">
+                <div class="social-label">GitHub</div>
+                <div class="social-handle">@LakshyaPrasher</div>
+              </div>
+              <span class="social-arrow">↗</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Floating Toast Container -->
+<div id="toast-container"></div>
+
+<script src="/static/app.js"></script>
+
+
+</body>
+</html>

@@ -90,9 +90,15 @@ Measured on local hardware (NVIDIA GeForce RTX 5050 Laptop GPU, Windows 11):
 
 ### Running the Desktop App
 
-If you have built the application, launch it directly from your Desktop shortcut or run:
+Launch Scriber using the standardized Windows launchers:
 
 ```powershell
+# Double-click or run the native batch or VBScript launcher:
+.\Scriber.bat
+# Or:
+.\Scriber.vbs
+
+# Or run the compiled standalone binary directly:
 .\dist\Scriber\Scriber.exe
 ```
 
@@ -121,6 +127,9 @@ python -m scriber.cli process "meeting.mp4" --task translate
 
 # Start the local web studio server on port 8080
 python -m scriber.cli serve --port 8080
+
+# Install or refresh Windows Desktop and Start Menu shortcuts
+python -m scriber.cli shortcut --install
 ```
 
 ---

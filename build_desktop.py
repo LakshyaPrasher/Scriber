@@ -194,12 +194,15 @@ def build_executable(onefile: bool = False, console: bool = False, clean: bool =
     if onefile:
         # Onefile build
         assets_src = str(root_dir / "scriber" / "assets")
-        add_data = f"{assets_src}{os.pathsep}scriber/assets"
+        static_src = str(root_dir / "scriber" / "web" / "static")
+        add_data_assets = f"{assets_src}{os.pathsep}scriber/assets"
+        add_data_static = f"{static_src}{os.pathsep}scriber/web/static"
         cmd.extend([
             str(root_dir / "run_desktop.py"),
             "--name=Scriber",
             "--onefile",
-            f"--add-data={add_data}",
+            f"--add-data={add_data_assets}",
+            f"--add-data={add_data_static}",
             "--collect-submodules=scriber",
             "--collect-submodules=clr_loader",
             "--collect-submodules=pythonnet",
@@ -285,7 +288,7 @@ def build_executable(onefile: bool = False, console: bool = False, clean: bool =
         # Note: Smoke-test via subprocess is omitted to prevent triggering Windows Smart App Control
         print("[+] Binary bundle verified ready for deployment.")
         try:
-            from make_shortcut import create_desktop_shortcut
+            from scriber.cli import create_desktop_shortcut
             create_desktop_shortcut()
             print("[+] Automatically refreshed Scriber.lnk shortcut on Desktop.")
         except Exception as e:

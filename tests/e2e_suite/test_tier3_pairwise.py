@@ -511,7 +511,7 @@ class TestTier3PackagingDesktopPairwise(unittest.TestCase):
     def test_p16_desktop_brand_assets_and_shortcut_creation(self):
         """Verifies brand assets exist and desktop shortcut creation script generates valid path."""
         import build_desktop
-        import make_shortcut
+        from scriber.cli import create_desktop_shortcut
 
         # 1. Verify brand assets
         icon_path = build_desktop.ensure_brand_assets(pathlib.Path(REPO_ROOT))
@@ -519,7 +519,7 @@ class TestTier3PackagingDesktopPairwise(unittest.TestCase):
         self.assertTrue(str(icon_path).endswith(".ico"))
 
         # 2. Verify shortcut creation script dry-run / generation
-        make_shortcut.create_desktop_shortcut()
+        create_desktop_shortcut()
         lnk_path = os.path.join(os.path.expanduser("~/Desktop"), "Scriber.lnk")
         self.assertTrue(os.path.exists(lnk_path))
 

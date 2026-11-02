@@ -93,7 +93,6 @@ class TestUIContracts(unittest.TestCase):
         self.assertIn("initBentoSpotlight", self.html)
         self.assertIn(".about-bento-grid", self.html)
         self.assertIn(".social-node-card", self.html)
-        self.assertIn("/assets/creator_profile.png", self.html)
         self.assertIn("/assets/avatar.png", self.html)
         self.assertIn("creator-avatar-img", self.html)
         self.assertIn("about-name-card", self.html)
