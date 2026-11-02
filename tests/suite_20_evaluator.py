@@ -323,6 +323,10 @@ def ensure_test_assets():
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Scriber 20-Sample Benchmark Evaluator")
+    parser.add_argument("--output", default=None, help="Explicit path for output JSON report")
+    args = parser.parse_args()
+
     ensure_test_assets()
     print("=" * 90)
     print("      SCRIBER 20-SAMPLE ACOUSTIC DIARIZATION & SEGREGATION TEST SUITE")
@@ -375,10 +379,6 @@ def main():
     print("=" * 90)
 
     # Save to JSON
-    parser = argparse.ArgumentParser(description="Scriber 20-Sample Benchmark Evaluator")
-    parser.add_argument("--output", default=None, help="Explicit path for output JSON report")
-    args, _ = parser.parse_known_args()
-
     if args.output:
         report_file = os.path.abspath(args.output)
     else:

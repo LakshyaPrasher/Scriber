@@ -43,3 +43,13 @@ scriber-desktop = "scriber.desktop:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["scriber*"]
+
+[tool.setuptools.package-data]
+scriber = [
+    "assets/*",
+    "web/static/*",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

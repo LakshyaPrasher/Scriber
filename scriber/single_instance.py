@@ -21,9 +21,19 @@ MUTEX_NAME = "Local\\ScriberStudioDesktopSingleInstanceMutex"
 _HANDLERS_REGISTERED = False
 
 
-def _signal_handler(signum, frame):
-    """Signal handler that releases mutex lock and exits."""
+def cleanup_all():
+    """Terminates spawned companion microservices and releases single-instance mutex."""
+    try:
+        from scriber.voice_clone import VoiceMicroserviceManager
+        VoiceMicroserviceManager().shutdown()
+    except Exception:
+        pass
     release_single_instance()
+
+
+def _signal_handler(signum, frame):
+    """Signal handler that terminates microservices, releases mutex lock, and exits."""
+    cleanup_all()
     sys.exit(128 + signum)
 
 
@@ -32,7 +42,7 @@ def _register_cleanup_handlers():
     global _HANDLERS_REGISTERED
     if _HANDLERS_REGISTERED:
         return
-    atexit.register(release_single_instance)
+    atexit.register(cleanup_all)
     try:
         signal.signal(signal.SIGINT, _signal_handler)
         signal.signal(signal.SIGTERM, _signal_handler)

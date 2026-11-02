@@ -29,6 +29,12 @@ if sys.stderr and hasattr(sys.stderr, "reconfigure"):
     except Exception:
         pass
 
+# PyInstaller asset and static resource bundling specifications
+datas = [
+    ("scriber/assets", "scriber/assets"),
+    ("scriber/web/static", "scriber/web/static"),
+]
+
 
 def ensure_brand_assets(root_dir: Path) -> Path:
     """Ensures icon assets exist in scriber/assets, generating them if absent."""
