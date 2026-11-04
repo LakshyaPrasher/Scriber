@@ -64,6 +64,7 @@ class SupremeCouncil:
     DECISION_PATTERNS = [
         r"(?:we decided|agreed that|the decision is|we agreed|consensus is|approved)\s+(?:that\s+)?(?P<decision>[^.!?]+)",
         r"(?:let's go with|moving forward with|we will proceed with)\s+(?P<decision>[^.!?]+)",
+        r"(?:we need to|must|committed to|will invest|decision is to)\s+(?P<decision>[^.!?]+)",
     ]
 
     QUESTION_PATTERNS = [

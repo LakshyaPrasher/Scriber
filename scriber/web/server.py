@@ -434,6 +434,8 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     self._send_json_response(400, {"error": f"File '{file_path_arg}' not found on server"})
                     return
                 redact_pii_val = bool(data.get("redact_pii", False))
+                max_dur_raw = data.get("max_duration")
+                max_dur_val = float(max_dur_raw) if max_dur_raw not in (None, "", 0) else None
                 reset_progress_state(file_name=os.path.basename(file_path_arg))
                 try:
                     output = self.pipeline.process_file(
@@ -444,6 +446,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         model=data.get("model", "turbo"),
                         redact_pii=redact_pii_val,
                         progress_callback=update_progress_state,
+                        max_duration=max_dur_val,
                     )
                 finally:
                     reset_progress_state()

@@ -325,9 +325,10 @@
     }
   }
 
-  async function startProcessingPath(filePath) {
+  async function startProcessingPath(filePath, options) {
     if (!filePath) return;
     const fileName = filePath.split(/[\\/]/).pop() || filePath;
+    const maxDuration = (options && options.max_duration) || (typeof options === 'number' ? options : null);
 
     // Transition into Liquid Morphing Orb & Genuine Progress Viewport
     document.getElementById('dropzone').style.display = 'none';
@@ -360,7 +361,8 @@
           task: 'translate',
           language: 'auto',
           model: selectedTranscribeModel || 'turbo',
-          redact_pii: window.isPIIRedacted ? 'true' : 'false'
+          redact_pii: window.isPIIRedacted ? 'true' : 'false',
+          max_duration: maxDuration
         })
       });
       const data = await res.json();
@@ -2754,6 +2756,34 @@
       }
     }
 
+    // Thematic Chapters & Soundbite Jump-to Links
+    const chaptersWrap = document.getElementById('council-chapters-wrap');
+    const chaptersStrip = document.getElementById('council-chapters-strip');
+    if (chaptersWrap && chaptersStrip) {
+      const chapters = (council && (council.thematic_chapters || council.discussion_points)) || [];
+      if (chapters.length > 0) {
+        chaptersWrap.style.display = 'block';
+        chaptersStrip.innerHTML = chapters.map(ch => {
+          const startTime = typeof ch.start_time === 'number' ? ch.start_time : (ch.seek_start || 0);
+          const quotes = Array.isArray(ch.key_quotes) && ch.key_quotes.length > 0 ? `"${escapeHtml(ch.key_quotes[0])}"` : (ch.summary || '');
+          return `
+            <div class="chapter-card" onclick="seekTo(${startTime})" style="cursor:pointer; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:6px; padding:10px 14px; margin-bottom:8px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <span style="font-weight:600; font-size:13px; color:var(--text-primary);">${escapeHtml(ch.title || 'Discussion Topic')}</span>
+                <span class="action-seek-btn" style="font-size:11px;">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                  ${formatSec(startTime)}
+                </span>
+              </div>
+              ${quotes ? `<div style="font-size:12px; color:var(--text-secondary); line-height:1.4;">${quotes}</div>` : ''}
+            </div>
+          `;
+        }).join('');
+      } else {
+        chaptersWrap.style.display = 'none';
+      }
+    }
+
     // Optional validation metrics if elements exist
     const certId = document.getElementById('audit-cert-id');
     const certStatus = document.getElementById('audit-cert-status');
@@ -2916,11 +2946,18 @@
   window.copyAuditReceipt = copyAuditReceipt;
   window.installAntigravityPlugin = installAntigravityPlugin;
   window.loadSwarmAgents = loadSwarmAgents;
-  window.openVoiceCredentialsModal = openVoiceCredentialsModal;
-  window.closeVoiceCredentialsModal = closeVoiceCredentialsModal;
-  window.saveVoiceCredentials = saveVoiceCredentials;
+  window.openVoiceCredentialsModal = function() {};
+  window.closeVoiceCredentialsModal = function() {};
+  window.saveVoiceCredentials = function() {};
   window.setTranscribeModelLocked = setTranscribeModelLocked;
   window.setVoiceModelLocked = setVoiceModelLocked;
   window.triggerVoiceRefFileDialog = triggerVoiceRefFileDialog;
   window.selectVoiceProfileByIndex = selectVoiceProfileByIndex;
   window.handleVoiceRefPath = handleVoiceRefPath;
+  window.startProcessingPath = startProcessingPath;
+  window.initModeAudioEditor = initModeAudioEditor;
+  window.exportEditedMP3 = exportEditedMP3;
+  window.audioEditorState = audioEditorState;
+  window.handleVolumeInput = handleVolumeInput;
+  window.handlePitchInput = handlePitchInput;
+  window.handleTrimBarInput = handleTrimBarInput;

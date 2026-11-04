@@ -69,6 +69,7 @@ class ScriberPipeline:
         model: str = "turbo",
         redact_pii: bool = False,
         progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+        max_duration: Optional[float] = None,
     ) -> ScriberOutput:
         """Processes any video or audio file through the 4-subagent pipeline."""
         start_time = time.time()
@@ -86,7 +87,7 @@ class ScriberPipeline:
             })
 
         # Step 1: Ingest & Extract 16kHz mono PCM
-        pcm16_data, audio_meta = self.audio_extractor.extract_pcm16(file_path)
+        pcm16_data, audio_meta = self.audio_extractor.extract_pcm16(file_path, max_duration=max_duration)
         self.last_pcm_data = pcm16_data
         self.last_audio_meta = audio_meta
         self.last_file_path = file_path

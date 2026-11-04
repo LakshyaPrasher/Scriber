@@ -366,15 +366,15 @@ class AcousticDiarizer:
                     )
 
                     should_split = False
-                    if ends_question and gap >= 0.15:
+                    if ends_question and gap >= 0.05:
                         should_split = True
-                    elif ends_sentence and next_is_q_starter and gap >= 0.10:
+                    elif ends_sentence and next_is_q_starter and gap >= 0.05:
                         should_split = True
-                    elif ends_sentence and gap >= 0.30:
+                    elif ends_sentence and gap >= 0.25:
                         should_split = True
                     elif gap >= 0.45:
                         should_split = True
-                    elif (w.end - turn_start) >= 20.0 and ends_sentence and gap >= 0.15:
+                    elif (w.end - turn_start) >= 20.0 and ends_sentence and gap >= 0.10:
                         should_split = True
 
                     if should_split:

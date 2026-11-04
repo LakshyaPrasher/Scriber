@@ -1,4 +1,4 @@
-    return r'''<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -489,6 +489,48 @@
               Export Edited MP3
             </button>
           </div>
+        </div>
+      </div>
+
+      <!-- Meeting Intelligence Dashboard -->
+      <div class="council-dashboard" id="council-dashboard-panel" style="display:none;">
+        <div class="council-header-bar">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="council-tag-badge">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              Meeting Intelligence
+            </span>
+            <span id="council-duration-badge" style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted);"></span>
+          </div>
+          <div class="pii-shield-controls">
+            <button type="button" class="btn-pii-toggle" id="btn-pii-shield" onclick="togglePIIShield()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              <span id="pii-shield-status-text">PII Privacy: Off</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="council-briefing-wrap">
+          <h3 class="council-headline" id="council-briefing-headline">Executive Briefing</h3>
+          <p class="council-tldr" id="council-briefing-tldr"></p>
+        </div>
+
+        <!-- Key Decisions -->
+        <div id="council-decisions-wrap" style="display:none;">
+          <div class="council-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            Ratified Decisions
+          </div>
+          <div class="council-decisions-box" id="council-decisions-list"></div>
+        </div>
+
+        <!-- Thematic Chapters Strip -->
+        <div id="council-chapters-wrap" style="display:none;">
+          <div class="council-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            Thematic Chapters & Soundbites
+          </div>
+          <div class="chapters-strip" id="council-chapters-strip"></div>
         </div>
       </div>
 
