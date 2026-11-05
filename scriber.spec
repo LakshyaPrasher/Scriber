@@ -22,6 +22,8 @@ datas.extend(collect_data_files("faster_whisper"))
 datas.extend(collect_data_files("ctranslate2"))
 datas.extend(collect_data_files("onnxruntime"))
 datas.extend(collect_data_files("tokenizers"))
+datas.extend(collect_data_files("edge_tts"))
+datas.extend(collect_data_files("certifi"))
 
 hidden_imports = [
     "scriber",
@@ -43,6 +45,11 @@ hidden_imports = [
     "scriber.transcription_engine",
     "scriber.exporters",
     "scriber.cli",
+    "edge_tts",
+    "miniaudio",
+    "aiohttp",
+    "certifi",
+    "ssl",
     "webview",
     "webview.platforms.winforms",
     "clr_loader",
@@ -64,6 +71,9 @@ hidden_imports.extend(collect_submodules("webview"))
 hidden_imports.extend(collect_submodules("faster_whisper"))
 hidden_imports.extend(collect_submodules("ctranslate2"))
 hidden_imports.extend(collect_submodules("onnxruntime"))
+hidden_imports.extend(collect_submodules("edge_tts"))
+hidden_imports.extend(collect_submodules("aiohttp"))
+hidden_imports.extend(collect_submodules("miniaudio"))
 
 binaries = []
 

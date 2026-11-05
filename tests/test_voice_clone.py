@@ -304,6 +304,38 @@ class TestVoiceClone(unittest.TestCase):
         self.assertGreater(len(clone_res.audio_pcm16), 0)
         self.assertGreaterEqual(clone_res.similarity_score, 0.990)
 
+    def test_voice_cloner_volume_scaling(self):
+        """Verifies that the volume parameter dynamically scales output audio RMS energy."""
+        cloner = VoiceCloner()
+        # Test studio voice volume dynamic scaling
+        res_half = cloner.clone_voice(text_prompt="Testing volume scaling", voice_id="en-US-JennyNeural", volume=0.5)
+        res_full = cloner.clone_voice(text_prompt="Testing volume scaling", voice_id="en-US-JennyNeural", volume=1.5)
+
+        arr_half = np.frombuffer(res_half.audio_pcm16, dtype=np.int16).astype(np.float32)
+        arr_full = np.frombuffer(res_full.audio_pcm16, dtype=np.int16).astype(np.float32)
+
+        rms_half = float(np.sqrt(np.mean(arr_half ** 2)))
+        rms_full = float(np.sqrt(np.mean(arr_full ** 2)))
+
+        self.assertGreater(rms_full, rms_half * 1.8, f"150% volume should have significantly higher RMS than 50% volume: {rms_full} vs {rms_half}")
+
+    def test_studio_voices_catalog_richness_and_africa_locales(self):
+        """Verifies studio voices catalog contains >= 20 natural voices across global regions including Africa."""
+        voices = VoiceCloner.get_studio_voices()
+        self.assertGreaterEqual(len(voices), 25)
+
+        regions = {v["region"] for v in voices}
+        self.assertIn("United States", regions)
+        self.assertIn("United Kingdom", regions)
+        self.assertIn("India", regions)
+        self.assertIn("Australia", regions)
+        self.assertIn("South Africa", regions)
+        self.assertIn("Nigeria", regions)
+
+        # Check African regional voices
+        african_voices = [v for v in voices if v["region"] in ("South Africa", "Nigeria")]
+        self.assertGreaterEqual(len(african_voices), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

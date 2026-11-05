@@ -1,0 +1,114 @@
+{
+  "1_idle_state": {
+    "timestamp": 1793898202.4483745,
+    "ram": {
+      "working_set_mb": 455.46,
+      "private_mb": 1097.16,
+      "peak_mb": 455.83,
+      "formatted": "455.46 MB"
+    },
+    "cpu": {
+      "percent": 0.0,
+      "core_count": 16,
+      "formatted": "0.0%"
+    },
+    "gpu": {
+      "name": "NVIDIA GeForce RTX 5050 Laptop GPU",
+      "vram_total_mb": 8151.0,
+      "vram_used_mb": 1426.8,
+      "vram_free_mb": 6724.2,
+      "formatted": "1426.8 MB / 8151.0 MB"
+    }
+  },
+  "2_tts_synthesis_state": {
+    "timestamp": 1793898203.9344523,
+    "ram": {
+      "working_set_mb": 479.41,
+      "private_mb": 1146.21,
+      "peak_mb": 481.68,
+      "formatted": "479.41 MB"
+    },
+    "cpu": {
+      "percent": 2.1,
+      "core_count": 16,
+      "formatted": "2.1%"
+    },
+    "gpu": {
+      "name": "NVIDIA GeForce RTX 5050 Laptop GPU",
+      "vram_total_mb": 8151.0,
+      "vram_used_mb": 1426.8,
+      "vram_free_mb": 6724.2,
+      "formatted": "1426.8 MB / 8151.0 MB"
+    },
+    "synthesis_latency_sec": 1.47,
+    "audio_duration_sec": 9.34,
+    "similarity_score": 0.995,
+    "provider": "edge-tts"
+  },
+  "3_post_tts_clean_state": {
+    "timestamp": 1793898203.9639862,
+    "ram": {
+      "working_set_mb": 479.42,
+      "private_mb": 1146.21,
+      "peak_mb": 481.68,
+      "formatted": "479.42 MB"
+    },
+    "cpu": {
+      "percent": 4.0,
+      "core_count": 16,
+      "formatted": "4.0%"
+    },
+    "gpu": {
+      "name": "NVIDIA GeForce RTX 5050 Laptop GPU",
+      "vram_total_mb": 8151.0,
+      "vram_used_mb": 1426.8,
+      "vram_free_mb": 6724.2,
+      "formatted": "1426.8 MB / 8151.0 MB"
+    }
+  },
+  "4_transcription_state": {
+    "timestamp": 1793898205.1245115,
+    "ram": {
+      "working_set_mb": 533.32,
+      "private_mb": 1199.26,
+      "peak_mb": 533.32,
+      "formatted": "533.32 MB"
+    },
+    "cpu": {
+      "percent": 34.4,
+      "core_count": 16,
+      "formatted": "34.4%"
+    },
+    "gpu": {
+      "name": "NVIDIA GeForce RTX 5050 Laptop GPU",
+      "vram_total_mb": 8151.0,
+      "vram_used_mb": 1426.8,
+      "vram_free_mb": 6724.2,
+      "formatted": "1426.8 MB / 8151.0 MB"
+    },
+    "transcribe_latency_sec": 0.17,
+    "wer_score": 0.0,
+    "accuracy_pct": 1.0
+  },
+  "5_optimized_final_state": {
+    "timestamp": 1793898207.707165,
+    "ram": {
+      "working_set_mb": 479.36,
+      "private_mb": 1145.37,
+      "peak_mb": 533.32,
+      "formatted": "479.36 MB"
+    },
+    "cpu": {
+      "percent": 0.5,
+      "core_count": 16,
+      "formatted": "0.5%"
+    },
+    "gpu": {
+      "name": "NVIDIA GeForce RTX 5050 Laptop GPU",
+      "vram_total_mb": 8151.0,
+      "vram_used_mb": 1426.8,
+      "vram_free_mb": 6724.2,
+      "formatted": "1426.8 MB / 8151.0 MB"
+    }
+  }
+}

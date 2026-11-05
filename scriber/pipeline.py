@@ -9,6 +9,7 @@ Sub-Agent Hierarchy:
 
 from __future__ import annotations
 
+import gc
 import os
 import time
 import uuid
@@ -268,6 +269,7 @@ class ScriberPipeline:
         if export_dir:
             self._export_all_formats(output, export_dir, export_formats or ["json", "md", "srt", "vtt", "html"])
 
+        gc.collect()
         return output
 
     def process_pcm(
@@ -358,6 +360,8 @@ class ScriberPipeline:
             repos_leveraged=[repo["repo"] for repo in self.transcription_engine.leveraged_repos],
             voice_profiles=voice_profiles,
         )
+        gc.collect()
+        return out
 
     def clone_voice(
         self,
@@ -370,13 +374,15 @@ class ScriberPipeline:
         backend: str = "edge-neural",
         sample_rate: int = 48000,
         cancel_checker: Optional[Callable[[], bool]] = None,
+        voice_id: Optional[str] = None,
+        volume: float = 1.0,
         **kwargs,
     ) -> VoiceCloneResult:
         """Clones speech matching the given speaker profile and reference audio."""
         if cancel_checker and cancel_checker():
             raise JobCancelledException("Voice cloning cancelled before starting")
         target_ref = reference_pcm or getattr(self, "reference_pcm", None) or self.last_pcm_data
-        return self.voice_cloner.clone_voice(
+        result = self.voice_cloner.clone_voice(
             profile=profile,
             text_prompt=text_prompt,
             pitch_shift_hz=pitch_shift_hz,
@@ -386,8 +392,12 @@ class ScriberPipeline:
             backend=backend,
             sample_rate=sample_rate,
             cancel_checker=cancel_checker,
+            voice_id=voice_id,
+            volume=volume,
             **kwargs,
         )
+        gc.collect()
+        return result
 
     def _extract_speaker_voice_profiles(
         self,

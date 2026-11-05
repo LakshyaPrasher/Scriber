@@ -34,7 +34,10 @@ from tests.run_live_gui_automation import discover_downloads_media
 class ChallengerEmpiricalTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.media = discover_downloads_media()
+        try:
+            cls.media = discover_downloads_media()
+        except FileNotFoundError as e:
+            raise unittest.SkipTest(f"Challenger empirical test media not present in Downloads: {e}")
         cls.extractor = AudioExtractor()
 
     # =========================================================================

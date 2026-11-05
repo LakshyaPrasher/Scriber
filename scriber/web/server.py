@@ -198,12 +198,22 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json_response(200, results)
         elif path == "/api/models":
             from scriber.transcription_engine import TOP_TRANSCRIBE_MODELS, get_model_evaluation_matrix
-            from scriber.voice_clone import TOP_VOICE_MODELS
+            from scriber.voice_clone import TOP_VOICE_MODELS, VoiceCloner
             self._send_json_response(200, {
                 "transcribe_models": TOP_TRANSCRIBE_MODELS,
                 "voice_models": TOP_VOICE_MODELS,
+                "studio_voices": VoiceCloner.get_studio_voices(),
                 "evaluation_matrix": get_model_evaluation_matrix(),
             })
+        elif path == "/api/voices":
+            from scriber.voice_clone import VoiceCloner
+            self._send_json_response(200, {
+                "voices": VoiceCloner.get_studio_voices(),
+                "total": len(VoiceCloner.get_studio_voices()),
+            })
+        elif path == "/api/performance":
+            from scriber.hardware import get_system_performance_telemetry
+            self._send_json_response(200, get_system_performance_telemetry())
         elif path == "/api/voice/credentials":
             # Paid cloud APIs removed for zero financial exposure
             self._send_json_response(200, {
@@ -870,6 +880,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             output_format = req_data.get("output_format") or req_data.get("format") or "mp3"
             sample_rate = int(req_data.get("sample_rate", 48000))
             voice_id = req_data.get("voice_id")
+            volume = float(req_data.get("volume", 1.0))
             _CANCEL_MGR.reset()
             try:
                 result = self.pipeline.clone_voice(
@@ -882,6 +893,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     backend=backend,
                     sample_rate=sample_rate,
                     voice_id=voice_id,
+                    volume=volume,
                     cancel_checker=_CANCEL_MGR.is_cancelled,
                 )
             except JobCancelledException:

@@ -13,6 +13,7 @@ import logging
 import os
 import sys
 import threading
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from scriber.models import HardwareCapabilities
@@ -184,9 +185,11 @@ def _query_nvml_gpu() -> Optional[Dict[str, Any]]:
             mem = _nvmlMemory_t()
             vram_total_mb = 0.0
             vram_free_mb = 0.0
+            vram_used_mb = 0.0
             if get_mem_fn(handle, byref(mem)) == 0:
                 vram_total_mb = round(mem.total / (1024.0 * 1024.0), 1)
                 vram_free_mb = round(mem.free / (1024.0 * 1024.0), 1)
+                vram_used_mb = round(mem.used / (1024.0 * 1024.0), 1)
 
             major = c_int(0)
             minor = c_int(0)
@@ -215,6 +218,7 @@ def _query_nvml_gpu() -> Optional[Dict[str, Any]]:
                 "gpu_name": name,
                 "vram_total_mb": vram_total_mb,
                 "vram_free_mb": vram_free_mb,
+                "vram_used_mb": vram_used_mb,
                 "compute_capability": cc,
                 "driver_version": drv_ver,
                 "cuda_version": cuda_ver_str,
@@ -382,5 +386,109 @@ def format_hardware_summary(caps: Optional[HardwareCapabilities] = None) -> str:
     return "\n".join(lines)
 
 
+_CPU_LOCK = threading.Lock()
+_LAST_CPU_CHECK: Dict[str, float] = {"time": 0.0, "process_time": 0.0}
+
+
+def get_process_memory_stats() -> Dict[str, float]:
+    """Returns current process RAM metrics in megabytes (MB) via zero-overhead Win32 PSAPI."""
+    ram_mb = 0.0
+    private_mb = 0.0
+    peak_mb = 0.0
+    if sys.platform == "win32":
+        try:
+            from ctypes import wintypes
+
+            class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
+                _fields_ = [
+                    ("cb", wintypes.DWORD),
+                    ("PageFaultCount", wintypes.DWORD),
+                    ("PeakWorkingSetSize", ctypes.c_size_t),
+                    ("WorkingSetSize", ctypes.c_size_t),
+                    ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                    ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                    ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                    ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                    ("PagefileUsage", ctypes.c_size_t),
+                    ("PeakPagefileUsage", ctypes.c_size_t),
+                    ("PrivateUsage", ctypes.c_size_t),
+                ]
+
+            psapi = ctypes.windll.psapi
+            kernel32 = ctypes.windll.kernel32
+            h = kernel32.GetCurrentProcess()
+            counters = PROCESS_MEMORY_COUNTERS_EX()
+            counters.cb = ctypes.sizeof(PROCESS_MEMORY_COUNTERS_EX)
+            psapi.GetProcessMemoryInfo.argtypes = [wintypes.HANDLE, ctypes.POINTER(PROCESS_MEMORY_COUNTERS_EX), wintypes.DWORD]
+            psapi.GetProcessMemoryInfo.restype = wintypes.BOOL
+            if psapi.GetProcessMemoryInfo(h, ctypes.byref(counters), counters.cb):
+                ram_mb = round(counters.WorkingSetSize / (1024.0 * 1024.0), 2)
+                private_mb = round(counters.PrivateUsage / (1024.0 * 1024.0), 2)
+                peak_mb = round(counters.PeakWorkingSetSize / (1024.0 * 1024.0), 2)
+        except Exception:
+            pass
+    else:
+        try:
+            import resource
+            ru = resource.getrusage(resource.RUSAGE_SELF)
+            ram_mb = round(ru.ru_maxrss / 1024.0, 2)
+            peak_mb = ram_mb
+        except Exception:
+            pass
+    return {
+        "working_set_mb": ram_mb,
+        "private_mb": private_mb,
+        "peak_mb": peak_mb,
+    }
+
+
+def get_process_cpu_percent() -> float:
+    """Returns approximate current process CPU utilization percentage."""
+    now = time.time()
+    p_time = time.process_time()
+    with _CPU_LOCK:
+        last_t = _LAST_CPU_CHECK["time"]
+        last_pt = _LAST_CPU_CHECK["process_time"]
+        _LAST_CPU_CHECK["time"] = now
+        _LAST_CPU_CHECK["process_time"] = p_time
+        if last_t == 0.0 or now <= last_t:
+            return 0.0
+        delta_wall = now - last_t
+        delta_proc = p_time - last_pt
+        num_cpus = os.cpu_count() or 1
+        pct = (delta_proc / (delta_wall * num_cpus)) * 100.0
+        return round(float(min(100.0, max(0.0, pct))), 1)
+
+
+def get_system_performance_telemetry() -> Dict[str, Any]:
+    """Returns complete real-time runtime performance stats: RAM, CPU, GPU VRAM."""
+    mem_stats = get_process_memory_stats()
+    cpu_pct = get_process_cpu_percent()
+    gpu_info = _query_nvml_gpu() or {}
+
+    return {
+        "timestamp": time.time(),
+        "ram": {
+            "working_set_mb": mem_stats["working_set_mb"],
+            "private_mb": mem_stats["private_mb"],
+            "peak_mb": mem_stats["peak_mb"],
+            "formatted": f"{mem_stats['working_set_mb']} MB",
+        },
+        "cpu": {
+            "percent": cpu_pct,
+            "core_count": os.cpu_count() or 1,
+            "formatted": f"{cpu_pct}%",
+        },
+        "gpu": {
+            "name": gpu_info.get("gpu_name") or "None (CPU fallback)",
+            "vram_total_mb": gpu_info.get("vram_total_mb", 0.0),
+            "vram_used_mb": gpu_info.get("vram_used_mb", 0.0),
+            "vram_free_mb": gpu_info.get("vram_free_mb", 0.0),
+            "formatted": f"{gpu_info.get('vram_used_mb', 0.0)} MB / {gpu_info.get('vram_total_mb', 0.0)} MB",
+        },
+    }
+
+
 if __name__ == "__main__":
     print(format_hardware_summary())
+    print("Telemetry:", get_system_performance_telemetry())

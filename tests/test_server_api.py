@@ -56,6 +56,33 @@ class TestServerAPI(unittest.TestCase):
         written = json.loads(self.handler.wfile.getvalue().decode("utf-8"))
         self.assertTrue(written["all_passed_99_percent"])
 
+    def test_do_get_voices(self):
+        """Verifies GET /api/voices returns curated studio voices suite."""
+        self.handler.path = "/api/voices"
+        self.handler.do_GET()
+        self.handler.send_response.assert_called_with(200)
+        written = json.loads(self.handler.wfile.getvalue().decode("utf-8"))
+        self.assertIn("voices", written)
+        self.assertGreaterEqual(len(written["voices"]), 20)
+        first_voice = written["voices"][0]
+        self.assertIn("id", first_voice)
+        self.assertIn("name", first_voice)
+        self.assertIn("locale", first_voice)
+        self.assertIn("gender", first_voice)
+
+    def test_do_get_performance(self):
+        """Verifies GET /api/performance returns RAM, CPU, and GPU stats."""
+        self.handler.path = "/api/performance"
+        self.handler.do_GET()
+        self.handler.send_response.assert_called_with(200)
+        written = json.loads(self.handler.wfile.getvalue().decode("utf-8"))
+        self.assertIn("ram", written)
+        self.assertIn("cpu", written)
+        self.assertIn("gpu", written)
+        self.assertIn("working_set_mb", written["ram"])
+        self.assertIn("percent", written["cpu"])
+        self.assertIn("name", written["gpu"])
+
     def test_do_get_progress(self):
         """Verifies GET /api/progress returns real-time progress state with speed factor and ETA."""
         self.handler.path = "/api/progress"
@@ -488,6 +515,35 @@ class TestServerAPI(unittest.TestCase):
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
+
+    def test_do_post_clone_voice_with_voice_id_and_volume(self):
+        """Verifies POST /api/clone-voice parses and forwards voice_id and volume."""
+        req_body = json.dumps({
+            "text": "Testing studio voice synthesis with voice_id and volume.",
+            "voice_id": "en-US-JennyNeural",
+            "volume": 1.25,
+            "output_format": "mp3",
+            "profile": {
+                "speaker_id": "en-US-JennyNeural",
+                "fundamental_frequency_hz": 180.0,
+                "gender_estimate": "feminine",
+            },
+        }).encode("utf-8")
+
+        self.handler.wfile = io.BytesIO()
+        self.handler.path = "/api/clone-voice"
+        self.handler.headers = {
+            "Content-Type": "application/json",
+            "Content-Length": str(len(req_body)),
+        }
+        self.handler.rfile = io.BytesIO(req_body)
+
+        self.handler.do_POST()
+        self.handler.send_response.assert_called_with(200)
+        written = json.loads(self.handler.wfile.getvalue().decode("utf-8"))
+        self.assertIn("audio_base64", written)
+        self.assertEqual(written["audio_format"], "mp3")
+        self.assertGreater(written["similarity_score"], 0.90)
 
 
 if __name__ == "__main__":

@@ -2147,6 +2147,9 @@
 
     const pitchShift = parseFloat(document.getElementById('pitch-slider').value) || 0;
     const rateShift = parseFloat(document.getElementById('rate-slider').value) || 0;
+    const volumeSlider = document.getElementById('volume-slider');
+    const volumeGain = volumeSlider ? (parseFloat(volumeSlider.value) / 100.0) : 1.0;
+    const targetVoiceId = (selectedStudioVoice && selectedStudioVoice.id) || (selectedVoiceProfile && selectedVoiceProfile.voice_id) || null;
 
     const btn = document.getElementById('synthesize-btn');
     const origHtml = btn.innerHTML;
@@ -2170,6 +2173,8 @@
           text: text,
           pitch_shift: pitchShift,
           rate_shift: rateShift,
+          volume: volumeGain,
+          voice_id: targetVoiceId,
           profile: selectedVoiceProfile,
           output_format: 'mp3',
           sample_rate: 48000,
@@ -2197,7 +2202,12 @@
 
       const resBox = document.getElementById('clone-result-box');
       resBox.style.display = 'block';
-      document.getElementById('clone-fidelity-badge').innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> ${(data.similarity_score * 100).toFixed(1)}% Biometric Match`;
+      const hasCustomRef = !!((audioEditorState.m2 && audioEditorState.m2.originalVoiceRefBase64) || 
+                              (audioEditorState.m2 && audioEditorState.m2.referenceAudioBase64) || 
+                              (selectedVoiceProfile && selectedVoiceProfile.file_path));
+      const scorePct = (data.similarity_score * 100).toFixed(1);
+      const fidelityLabel = hasCustomRef ? `${scorePct}% Biometric Match` : `Studio Master Quality (${scorePct}%)`;
+      document.getElementById('clone-fidelity-badge').innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> ${fidelityLabel}`;
       const player = document.getElementById('clone-audio-player');
       player.src = data.audio_base64;
       player.currentTime = 0;
@@ -2211,7 +2221,7 @@
       audioEditorState.m2.referenceAudioBase64 = data.audio_base64;
       initModeAudioEditor('m2', data.duration || 5, 'cloned_voice.mp3');
 
-      showToast('Voice cloned and synthesized successfully!', 'success');
+      showToast(hasCustomRef ? 'Voice cloned and synthesized successfully!' : 'Studio voice synthesized successfully!', 'success');
       resBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (e) {
       activeVoiceAbortController = null;
@@ -3085,7 +3095,190 @@
     if (!grid) return;
   }
 
+  /* ==========================================================================
+     Studio Voice Suite & Hardware Performance Telemetry
+     ========================================================================== */
+  var studioVoicesList = [];
+  var selectedStudioVoice = null;
+  var currentRegionFilter = 'all';
+  var currentGenderFilter = 'all';
+
+  async function loadStudioVoices() {
+    try {
+      const res = await fetch('/api/voices');
+      if (!res.ok) return;
+      const data = await res.json();
+      studioVoicesList = data.voices || [];
+      if (studioVoicesList.length > 0 && !selectedStudioVoice) {
+        selectedStudioVoice = studioVoicesList[0]; // Jenny (US)
+        updateActiveVoiceBanner(selectedStudioVoice);
+      }
+      renderStudioVoices();
+    } catch (e) {
+      console.warn('Failed to load studio voices:', e);
+    }
+  }
+
+  function renderStudioVoices() {
+    const grid = document.getElementById('voice-suite-grid');
+    if (!grid) return;
+    const filtered = studioVoicesList.filter(function(v) {
+      var matchRegion = (currentRegionFilter === 'all') || 
+                        (v.region === currentRegionFilter) ||
+                        (currentRegionFilter === 'Africa' && (v.region === 'South Africa' || v.region === 'Nigeria' || v.region.indexOf('Africa') !== -1));
+      var matchGender = (currentGenderFilter === 'all') || (v.gender === currentGenderFilter);
+      return matchRegion && matchGender;
+    });
+
+    if (filtered.length === 0) {
+      grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 24px; color: var(--text-muted); font-size:12px;">No voices found for selected filters.</div>';
+      return;
+    }
+
+    grid.innerHTML = filtered.map(function(v) {
+      var isSel = selectedStudioVoice && (selectedStudioVoice.id === v.id);
+      var genderClass = v.gender === 'feminine' ? 'female' : 'male';
+      var genderInit = v.gender === 'feminine' ? 'F' : 'M';
+      return `
+        <div class="voice-suite-card ${isSel ? 'selected' : ''}" onclick="selectStudioVoice('${v.id}')">
+          <div class="voice-card-header-row">
+            <div class="voice-card-name-wrap">
+              <span class="voice-avatar-badge ${genderClass}">${genderInit}</span>
+              <span class="voice-card-name">${escapeHtml(v.name)}</span>
+            </div>
+            <span class="voice-locale-badge">${escapeHtml(v.locale)}</span>
+          </div>
+          <div class="voice-card-style">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <span>${escapeHtml(v.style || 'Natural')}</span>
+          </div>
+          <div class="voice-card-desc">${escapeHtml(v.description || '')}</div>
+          <div class="voice-card-footer">
+            <button type="button" class="btn-audition-card" onclick="event.stopPropagation(); auditionVoiceCard('${v.id}')" title="Audition this voice preview">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              <span>Preview Script</span>
+            </button>
+            <div class="voice-select-radio"></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function filterStudioVoices(type, value, btnElem) {
+    if (type === 'region') {
+      currentRegionFilter = value;
+    } else if (type === 'gender') {
+      currentGenderFilter = value;
+    }
+    if (btnElem && btnElem.parentNode) {
+      btnElem.parentNode.querySelectorAll('.suite-filter-pill').forEach(function(p) {
+        p.classList.remove('active');
+      });
+      btnElem.classList.add('active');
+    }
+    renderStudioVoices();
+  }
+
+  function selectStudioVoice(voiceId) {
+    var voice = studioVoicesList.find(function(v) { return v.id === voiceId; });
+    if (!voice) return;
+    selectedStudioVoice = voice;
+    updateActiveVoiceBanner(voice);
+
+    selectedVoiceProfile = {
+      speaker_id: voice.id,
+      voice_id: voice.id,
+      fundamental_frequency_hz: voice.base_f0 || 160.0,
+      gender_estimate: voice.gender || "feminine",
+      spectral_centroid_hz: voice.centroid || 1600.0,
+      recommended_voice: voice.id,
+    };
+    window.selectedVoiceProfile = selectedVoiceProfile;
+
+    renderStudioVoices();
+  }
+
+  function updateActiveVoiceBanner(voice) {
+    var titleEl = document.getElementById('banner-voice-title');
+    var subEl = document.getElementById('banner-voice-sub');
+    if (titleEl && voice) {
+      titleEl.innerText = voice.name + ' — ' + (voice.style || 'Studio Quality');
+    }
+    if (subEl && voice) {
+      subEl.innerText = voice.locale + ' · ' + (voice.description || '');
+    }
+  }
+
+  function auditionVoiceCard(voiceId) {
+    var voice = studioVoicesList.find(function(v) { return v.id === voiceId; });
+    if (!voice) return;
+    selectStudioVoice(voiceId);
+    if (voice.preview_text) {
+      var txtArea = document.getElementById('clone-text');
+      if (txtArea) txtArea.value = voice.preview_text;
+    }
+    showToast(`Loaded preview script for ${voice.name}. Ready to synthesize!`, 'info');
+  }
+
+  function auditionSelectedVoice() {
+    if (selectedStudioVoice) {
+      auditionVoiceCard(selectedStudioVoice.id);
+    }
+  }
+
+  function switchVoiceSelectionTab(tab) {
+    var btnSuite = document.getElementById('tab-btn-suite');
+    var btnCustom = document.getElementById('tab-btn-custom');
+    var pSuite = document.getElementById('voice-panel-suite');
+    var pCustom = document.getElementById('voice-panel-custom');
+
+    if (tab === 'suite') {
+      if (btnSuite) btnSuite.classList.add('active');
+      if (btnCustom) btnCustom.classList.remove('active');
+      if (pSuite) pSuite.style.display = 'flex';
+      if (pCustom) pCustom.style.display = 'none';
+      if (selectedStudioVoice) selectStudioVoice(selectedStudioVoice.id);
+    } else {
+      if (btnSuite) btnSuite.classList.remove('active');
+      if (btnCustom) btnCustom.classList.add('active');
+      if (pSuite) pSuite.style.display = 'none';
+      if (pCustom) pCustom.style.display = 'block';
+    }
+  }
+
+  /* Real-time Hardware Performance Telemetry Polling */
+  async function pollPerformanceTelemetry() {
+    try {
+      const res = await fetch('/api/performance');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.ram && document.getElementById('perf-ram-val')) {
+        document.getElementById('perf-ram-val').innerText = data.ram.formatted || (data.ram.working_set_mb + ' MB');
+      }
+      if (data.cpu && document.getElementById('perf-cpu-val')) {
+        document.getElementById('perf-cpu-val').innerText = data.cpu.formatted || (data.cpu.percent + '%');
+      }
+      if (data.gpu && document.getElementById('perf-gpu-val')) {
+        const gpuName = data.gpu.name ? data.gpu.name.replace('NVIDIA GeForce ', '').replace(' Laptop GPU', '') : 'GPU';
+        document.getElementById('perf-gpu-val').innerText = gpuName + ' (' + (data.gpu.vram_used_mb || 0) + ' MB)';
+      }
+    } catch (e) {}
+  }
+
+  // Initialize studio voices and telemetry polling on startup
+  setTimeout(loadStudioVoices, 100);
+  setTimeout(pollPerformanceTelemetry, 300);
+  setInterval(pollPerformanceTelemetry, 5000);
+
   // Export functions to window
+  window.loadStudioVoices = loadStudioVoices;
+  window.filterStudioVoices = filterStudioVoices;
+  window.selectStudioVoice = selectStudioVoice;
+  window.auditionVoiceCard = auditionVoiceCard;
+  window.auditionSelectedVoice = auditionSelectedVoice;
+  window.switchVoiceSelectionTab = switchVoiceSelectionTab;
+  window.pollPerformanceTelemetry = pollPerformanceTelemetry;
   window.renderTranscription = renderTranscription;
   window.copyFullTranscript = copyFullTranscript;
   window.switchMode = switchMode;
