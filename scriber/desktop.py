@@ -196,8 +196,12 @@ class ScriberDesktopBridge:
             os.makedirs(path, exist_ok=True)
         try:
             if sys.platform == "win32":
+                flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+                si = subprocess.STARTUPINFO()
+                si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                si.wShowWindow = 0
                 if os.path.isfile(path):
-                    subprocess.Popen(["explorer.exe", f"/select,{path}"])
+                    subprocess.Popen(["explorer.exe", f"/select,{path}"], creationflags=flags, startupinfo=si)
                 else:
                     os.startfile(path)
                 return True
@@ -236,22 +240,56 @@ def cleanup_stale_webview_processes(storage_path: Optional[str] = None):
     Scriber from previous ungraceful shutdowns, freeing locked files and pipes."""
     if sys.platform != "win32":
         return
+
+    # If storage_path is provided, only inspect processes if a lock file is actively held
+    if storage_path and os.path.exists(storage_path):
+        lock_names = {"SingletonLock", "SingletonCookie", "SingletonSocket", "lockfile", "LOCK"}
+        has_active_lock = False
+        for root, dirs, files in os.walk(storage_path):
+            dirs[:] = [d for d in dirs if d.lower() not in ("cache", "code cache", "gpucache", "dawncache", "service worker")]
+            for f in files:
+                if f.endswith(".lock") or f in lock_names:
+                    p = os.path.join(root, f)
+                    try:
+                        with open(p, "a+"):
+                            pass
+                    except (IOError, PermissionError):
+                        has_active_lock = True
+                        break
+            if has_active_lock:
+                break
+        if not has_active_lock:
+            return  # No locked files from prior crash, skip heavy process query
+
     try:
         current_pid = os.getpid()
         cmd = [
             "powershell",
             "-NoProfile",
             "-NonInteractive",
+            "-WindowStyle",
+            "Hidden",
             "-Command",
             f"""
             Get-CimInstance Win32_Process -Filter "Name = 'msedgewebview2.exe'" | Where-Object {{
-                ($_.CommandLine -like '*Scriber*') -and ($_.ParentProcessId -ne {current_pid})
+                ($_.CommandLine -like '*Scriber*') -and ($_.ParentProcessId -ne {current_pid}) -and ($_.CreationDate -lt (Get-Date).AddSeconds(-15))
             }} | ForEach-Object {{
                 try {{ Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }} catch {{}}
             }}
             """,
         ]
-        subprocess.run(cmd, timeout=3.0, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        si = subprocess.STARTUPINFO()
+        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        si.wShowWindow = 0
+        subprocess.run(
+            cmd,
+            timeout=3.0,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=flags,
+            startupinfo=si,
+        )
     except Exception as e:
         logger.debug("Orphaned webview process cleanup skipped: %s", e)
 
@@ -270,7 +308,8 @@ def cleanup_webview_storage_locks(storage_path: str) -> str:
         lock_names = {"SingletonLock", "SingletonCookie", "SingletonSocket", "lockfile", "LOCK"}
         has_unremovable_lock = False
 
-        for root, _, files in os.walk(storage_path):
+        for root, dirs, files in os.walk(storage_path):
+            dirs[:] = [d for d in dirs if d.lower() not in ("cache", "code cache", "gpucache", "dawncache", "service worker")]
             for f in files:
                 if f.endswith(".lock") or f in lock_names:
                     p = os.path.join(root, f)
@@ -586,7 +625,13 @@ class ScriberDesktopApp:
             args.append("--start-fullscreen")
 
         print("[*] Launching Scriber in standalone desktop application window...")
-        proc = subprocess.Popen(args, shell=False)
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if sys.platform == "win32" else 0
+        si = None
+        if sys.platform == "win32":
+            si = subprocess.STARTUPINFO()
+            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            si.wShowWindow = 0
+        proc = subprocess.Popen(args, shell=False, creationflags=flags, startupinfo=si)
         self._edge_proc = proc
 
         try:

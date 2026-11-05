@@ -388,6 +388,7 @@ def create_windows_shortcut(
     working_dir: Union[str, Path],
     icon_path: Union[str, Path],
     description: str = "Scriber - Studio Intelligence and Voice Synthesis",
+    arguments: str = "",
 ) -> Path:
     """Creates a Windows .lnk shortcut using Windows Script Host with icon binding."""
     dest = Path(dest_path).resolve()
@@ -411,22 +412,35 @@ def create_windows_shortcut(
     target_str = str(target)
     workdir_str = str(workdir)
     icon_str = str(icon)
+    args_str = str(arguments)
 
     vbs_content = f'''Set oWS = WScript.CreateObject("WScript.Shell")
 sLinkFile = "{dest_str}"
 Set oLink = oWS.CreateShortcut(sLinkFile)
 oLink.TargetPath = "{target_str}"
+oLink.Arguments = "{args_str}"
 oLink.WorkingDirectory = "{workdir_str}"
 oLink.Description = "{description}"
 oLink.IconLocation = "{icon_str},0"
+oLink.WindowStyle = 1
 oLink.Save
 '''
     with tempfile.NamedTemporaryFile("w", suffix=".vbs", delete=False) as f:
         f.write(vbs_content)
         tmp_vbs = f.name
 
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if sys.platform == "win32" else 0
+    si = None
+    if sys.platform == "win32":
+        si = subprocess.STARTUPINFO()
+        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        si.wShowWindow = 0
+
     try:
-        subprocess.run(["cscript", "//nologo", tmp_vbs], check=True, shell=False)
+        try:
+            subprocess.run(["wscript", "//nologo", tmp_vbs], check=True, shell=False, creationflags=flags, startupinfo=si)
+        except Exception:
+            subprocess.run(["cscript", "//nologo", tmp_vbs], check=True, shell=False, creationflags=flags, startupinfo=si)
     finally:
         if os.path.exists(tmp_vbs):
             try:
@@ -451,16 +465,21 @@ def install_shortcuts(
     """Installs or updates Scriber desktop and Start Menu shortcuts across Windows."""
     repo_root = Path(__file__).resolve().parent.parent
 
+    target_args = ""
     # Resolve executable target
     if target_exe:
         resolved_exe = Path(target_exe).resolve()
     else:
         candidate_bundle = repo_root / "dist" / "Scriber" / "Scriber.exe"
         candidate_onefile = repo_root / "dist" / "Scriber.exe"
+        pythonw_candidate = repo_root / ".venv" / "Scripts" / "pythonw.exe"
         if candidate_bundle.exists():
             resolved_exe = candidate_bundle.resolve()
         elif candidate_onefile.exists():
             resolved_exe = candidate_onefile.resolve()
+        elif pythonw_candidate.exists():
+            resolved_exe = pythonw_candidate.resolve()
+            target_args = f'"{repo_root / "run_desktop.py"}"'
         else:
             resolved_exe = candidate_bundle.resolve()
 
@@ -482,6 +501,7 @@ def install_shortcuts(
                 target_path=resolved_exe,
                 working_dir=working_dir,
                 icon_path=resolved_icon,
+                arguments=target_args,
             )
             created.append(res)
             print(f"[+] Installed shortcut: {res} -> {resolved_exe}")

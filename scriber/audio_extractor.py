@@ -10,6 +10,7 @@ import os
 import shutil
 import struct
 import subprocess
+import sys
 import wave
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -308,6 +309,12 @@ class AudioExtractor:
             "-ar", str(self.SAMPLE_RATE),
             "-",
         ])
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if sys.platform == "win32" else 0
+        si = None
+        if sys.platform == "win32":
+            si = subprocess.STARTUPINFO()
+            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            si.wShowWindow = 0
         try:
             proc = subprocess.run(
                 cmd,
@@ -315,6 +322,8 @@ class AudioExtractor:
                 stderr=subprocess.PIPE,
                 check=True,
                 shell=False,
+                creationflags=flags,
+                startupinfo=si,
             )
             return proc.stdout
         except Exception:

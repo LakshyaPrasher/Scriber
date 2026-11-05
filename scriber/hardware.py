@@ -21,10 +21,15 @@ from scriber.models import HardwareCapabilities
 logger = logging.getLogger(__name__)
 
 
+_CUDA_REGISTERED = False
+
+
 def register_cuda_dll_directories() -> None:
     """Ensures nvidia-cublas, nvidia-cudnn, and other CUDA runtime DLL directories are registered on Windows."""
-    if sys.platform != "win32":
+    global _CUDA_REGISTERED
+    if _CUDA_REGISTERED or sys.platform != "win32":
         return
+    _CUDA_REGISTERED = True
     import site
 
     search_dirs: List[str] = []
@@ -83,9 +88,6 @@ def register_cuda_dll_directories() -> None:
                 except Exception:
                     pass
 
-
-# Automatically register on module import
-register_cuda_dll_directories()
 
 # Direct3D Feature Level constants
 D3D_FEATURE_LEVEL_12_2 = 0xc200
@@ -310,6 +312,8 @@ def get_hardware_capabilities(force_refresh: bool = False) -> HardwareCapabiliti
         if _CACHED_HARDWARE is not None and not force_refresh:
             return _CACHED_HARDWARE
 
+        if sys.platform == "win32":
+            register_cuda_dll_directories()
         nvml_gpu = _query_nvml_gpu()
         d3d12_supported, d3d12_fl = _query_d3d12()
         ct2_cuda_count = _query_ctranslate2_cuda()

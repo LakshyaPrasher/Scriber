@@ -747,8 +747,12 @@ class VoiceMicroserviceManager:
                 return True
             try:
                 flags = 0
+                si = None
                 if sys.platform == "win32":
                     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+                    si = subprocess.STARTUPINFO()
+                    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                    si.wShowWindow = 0
                 cmd = [
                     sys.executable,
                     "-m",
@@ -763,6 +767,7 @@ class VoiceMicroserviceManager:
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     creationflags=flags,
+                    startupinfo=si,
                     shell=False,
                 )
                 atexit.register(self.shutdown)
@@ -1753,11 +1758,17 @@ class VoiceCloner:
         )
         try:
             flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+            si = None
+            if sys.platform == "win32":
+                si = subprocess.STARTUPINFO()
+                si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                si.wShowWindow = 0
             res = subprocess.run(
                 ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", ps_cmd],
                 capture_output=True,
                 timeout=12,
                 creationflags=flags,
+                startupinfo=si,
                 shell=False,
             )
             if os.path.exists(tmp_wav_path) and os.path.getsize(tmp_wav_path) > 44:

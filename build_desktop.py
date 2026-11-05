@@ -94,10 +94,12 @@ def clean_build_artifacts(root_dir: Path):
     """Removes previous build and dist directories, terminating any lingering Scriber instances."""
     if sys.platform == "win32":
         try:
+            flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
             subprocess.run(
                 ["taskkill", "/F", "/IM", "Scriber.exe", "/T"],
                 capture_output=True,
                 check=False,
+                creationflags=flags,
             )
             time.sleep(0.5)
         except Exception:
@@ -165,7 +167,8 @@ def build_executable(onefile: bool = False, console: bool = False, clean: bool =
 
     if sys.platform == "win32":
         try:
-            subprocess.run(["taskkill", "/F", "/IM", "Scriber.exe", "/T"], capture_output=True, check=False)
+            flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+            subprocess.run(["taskkill", "/F", "/IM", "Scriber.exe", "/T"], capture_output=True, check=False, creationflags=flags)
             time.sleep(0.5)
         except Exception:
             pass

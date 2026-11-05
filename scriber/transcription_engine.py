@@ -18,10 +18,15 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from scriber.exceptions import JobCancelledException
 
+_NVIDIA_DIRS_REGISTERED = False
+
+
 def _register_nvidia_dll_directories() -> None:
     """Ensures nvidia-cublas and nvidia-cudnn DLL directories are registered and preloaded on Windows."""
-    if sys.platform != "win32":
+    global _NVIDIA_DIRS_REGISTERED
+    if _NVIDIA_DIRS_REGISTERED or sys.platform != "win32":
         return
+    _NVIDIA_DIRS_REGISTERED = True
     import ctypes
     import site
 
@@ -85,7 +90,6 @@ def _register_nvidia_dll_directories() -> None:
                     pass
 
 register_cuda_dll_directories = _register_nvidia_dll_directories
-_register_nvidia_dll_directories()
 
 from scriber.models import AudioSegment, TranscriptionResult, WordTimestamp
 

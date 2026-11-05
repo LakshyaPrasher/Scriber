@@ -93,6 +93,26 @@ def parse_and_run() -> int:
         scriber.cli.main()
         return 0
 
+    # Support running embedded modules (e.g. voice microservice companion) when frozen
+    if first_arg == "-m" and len(sys.argv) > 2:
+        mod_name = sys.argv[2]
+        if mod_name in ("scriber.services.voice_microservice", "services.voice_microservice", "voice_microservice"):
+            from scriber.services.voice_microservice import main as microservice_main
+            sys.argv = [sys.argv[0]] + sys.argv[3:]
+            microservice_main()
+            return 0
+        else:
+            import runpy
+            sys.argv = [sys.argv[0]] + sys.argv[3:]
+            runpy.run_module(mod_name, run_name="__main__")
+            return 0
+
+    if first_arg in ("voice-microservice", "microservice"):
+        from scriber.services.voice_microservice import main as microservice_main
+        sys.argv = [sys.argv[0]] + sys.argv[2:]
+        microservice_main()
+        return 0
+
     # Otherwise, handle top-level desktop flags and help
     parser = argparse.ArgumentParser(
         prog="Scriber",

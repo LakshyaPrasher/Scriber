@@ -8,13 +8,6 @@ os.environ.setdefault("AIOHTTP_NO_EXTENSIONS", "1")
 
 __version__ = "2.0.0"
 
-from scriber.audio_extractor import AudioExtractor
-from scriber.audio_editor import AudioEditor
-from scriber.council import SupremeCouncil
-from scriber.exporters import ScriberExporter
-from scriber.transcription_engine import TOP_LEVERAGED_REPOS, GitHubEngine, TranscriptionEngine
-from scriber.agent_swarm import CouncilAgentSwarm
-from scriber.pii_security import PIISecurityOfficer
 from scriber.models import (
     ActionItem,
     AgentProfile,
@@ -34,11 +27,37 @@ from scriber.models import (
     VoiceProfile,
     WordTimestamp,
 )
-from scriber.pipeline import ScriberPipeline
-from scriber.quality import QualityChecker
-from scriber.validator import ResultValidator
-from scriber.voice_clone import VoiceCloner, VoiceProfiler
-from scriber.desktop import ScriberDesktopApp, launch_desktop
+
+_LAZY_IMPORTS = {
+    "AudioExtractor": ("scriber.audio_extractor", "AudioExtractor"),
+    "AudioEditor": ("scriber.audio_editor", "AudioEditor"),
+    "SupremeCouncil": ("scriber.council", "SupremeCouncil"),
+    "ScriberExporter": ("scriber.exporters", "ScriberExporter"),
+    "TOP_LEVERAGED_REPOS": ("scriber.transcription_engine", "TOP_LEVERAGED_REPOS"),
+    "GitHubEngine": ("scriber.transcription_engine", "GitHubEngine"),
+    "TranscriptionEngine": ("scriber.transcription_engine", "TranscriptionEngine"),
+    "CouncilAgentSwarm": ("scriber.agent_swarm", "CouncilAgentSwarm"),
+    "PIISecurityOfficer": ("scriber.pii_security", "PIISecurityOfficer"),
+    "ScriberPipeline": ("scriber.pipeline", "ScriberPipeline"),
+    "QualityChecker": ("scriber.quality", "QualityChecker"),
+    "ResultValidator": ("scriber.validator", "ResultValidator"),
+    "VoiceCloner": ("scriber.voice_clone", "VoiceCloner"),
+    "VoiceProfiler": ("scriber.voice_clone", "VoiceProfiler"),
+    "ScriberDesktopApp": ("scriber.desktop", "ScriberDesktopApp"),
+    "launch_desktop": ("scriber.desktop", "launch_desktop"),
+}
+
+
+def __getattr__(name: str):
+    if name in _LAZY_IMPORTS:
+        mod_name, attr_name = _LAZY_IMPORTS[name]
+        import importlib
+        mod = importlib.import_module(mod_name)
+        val = getattr(mod, attr_name)
+        globals()[name] = val
+        return val
+    raise AttributeError(f"module 'scriber' has no attribute '{name}'")
+
 
 __all__ = [
     "AudioExtractor",
@@ -75,3 +94,4 @@ __all__ = [
     "ScriberDesktopApp",
     "launch_desktop",
 ]
+

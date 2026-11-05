@@ -21,11 +21,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from scriber.exceptions import JobCancelledException
 from scriber.exporters import ScriberExporter
-from scriber.transcription_engine import TOP_LEVERAGED_REPOS
 from scriber.models import VoiceProfile
-from scriber.pipeline import ScriberPipeline
-from scriber.validator import ResultValidator
-from scriber.voice_clone import VoiceCloner, VoiceProfiler
 from scriber.web.ui import get_embedded_html
 
 
@@ -123,11 +119,35 @@ def reset_progress_state(file_name: str = "") -> None:
         })
 
 
+class _PipelineDescriptor:
+    """Lazily instantiates ScriberPipeline on first access."""
+
+    def __init__(self):
+        self._default = None
+        self._lock = threading.Lock()
+
+    def __get__(self, instance, owner=None):
+        if instance is not None and "_instance_pipeline" in instance.__dict__:
+            return instance.__dict__["_instance_pipeline"]
+        if self._default is None:
+            with self._lock:
+                if self._default is None:
+                    from scriber.pipeline import ScriberPipeline
+                    self._default = ScriberPipeline()
+        return self._default
+
+    def __set__(self, instance, value):
+        if instance is None:
+            self._default = value
+        else:
+            instance.__dict__["_instance_pipeline"] = value
+
+
 class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     """Custom HTTP handler for Scriber Web UI and REST API."""
 
     protocol_version = "HTTP/1.0"
-    pipeline = ScriberPipeline()
+    pipeline = _PipelineDescriptor()
 
     def do_OPTIONS(self):
         """Handles CORS preflight requests."""
@@ -194,6 +214,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 "is_frozen": getattr(sys, "frozen", False),
             })
         elif path == "/api/benchmark":
+            from scriber.validator import ResultValidator
             results = ResultValidator.run_benchmark_suite()
             self._send_json_response(200, results)
         elif path == "/api/models":
@@ -255,6 +276,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif path == "/api/info":
             from scriber import __version__
             from scriber.agent_swarm import CouncilAgentSwarm
+            from scriber.transcription_engine import TOP_LEVERAGED_REPOS
             swarm = CouncilAgentSwarm()
             self._send_json_response(200, {
                 "name": "Scriber",
@@ -831,6 +853,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             if profile_dict and isinstance(profile_dict, dict):
                 profile = VoiceProfile.from_dict(profile_dict)
             else:
+                from scriber.voice_clone import VoiceProfiler
                 profile = VoiceProfiler._empty_profile("Speaker_1")
 
             ref_pcm = getattr(self.pipeline, "reference_pcm", None) or getattr(self.pipeline, "last_pcm_data", None)
@@ -977,6 +1000,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 return
 
             pcm_data, meta = self.pipeline.audio_extractor.extract_pcm16(target_file, max_duration=45.0)
+            from scriber.voice_clone import VoiceProfiler
             profile = VoiceProfiler.profile_from_pcm16(pcm_data, speaker_id=speaker_name)
 
             # Extract a representative 15s high-RMS speech slice to avoid multi-megabyte base64 payload freezes
@@ -1166,8 +1190,12 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             opened = False
             if sys.platform == "win32":
                 import subprocess
+                flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+                si = subprocess.STARTUPINFO()
+                si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                si.wShowWindow = 0
                 if os.path.isfile(abs_path):
-                    subprocess.Popen(["explorer.exe", f"/select,{abs_path}"])
+                    subprocess.Popen(["explorer.exe", f"/select,{abs_path}"], creationflags=flags, startupinfo=si)
                     opened = True
                 else:
                     os.startfile(abs_path)
