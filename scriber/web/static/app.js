@@ -3247,29 +3247,8 @@
     }
   }
 
-  /* Real-time Hardware Performance Telemetry Polling */
-  async function pollPerformanceTelemetry() {
-    try {
-      const res = await fetch('/api/performance');
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.ram && document.getElementById('perf-ram-val')) {
-        document.getElementById('perf-ram-val').innerText = data.ram.formatted || (data.ram.working_set_mb + ' MB');
-      }
-      if (data.cpu && document.getElementById('perf-cpu-val')) {
-        document.getElementById('perf-cpu-val').innerText = data.cpu.formatted || (data.cpu.percent + '%');
-      }
-      if (data.gpu && document.getElementById('perf-gpu-val')) {
-        const gpuName = data.gpu.name ? data.gpu.name.replace('NVIDIA GeForce ', '').replace(' Laptop GPU', '') : 'GPU';
-        document.getElementById('perf-gpu-val').innerText = gpuName + ' (' + (data.gpu.vram_used_mb || 0) + ' MB)';
-      }
-    } catch (e) {}
-  }
-
-  // Initialize studio voices and telemetry polling on startup
+  // Initialize studio voices on startup
   setTimeout(loadStudioVoices, 100);
-  setTimeout(pollPerformanceTelemetry, 300);
-  setInterval(pollPerformanceTelemetry, 5000);
 
   // Export functions to window
   window.loadStudioVoices = loadStudioVoices;

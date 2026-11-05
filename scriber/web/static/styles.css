@@ -2902,38 +2902,3 @@
     color: var(--text-secondary);
   }
 
-  /* Header Performance Telemetry Pill */
-  .header-perf-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--border-glass);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-secondary);
-    margin-left: auto;
-  }
-  .perf-metric {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .perf-metric b {
-    color: var(--text-primary);
-    font-weight: 600;
-  }
-  .perf-divider {
-    color: rgba(255, 255, 255, 0.15);
-  }
-  .perf-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--emerald);
-    box-shadow: 0 0 6px var(--emerald-glow);
-    display: inline-block;
-  }
-
