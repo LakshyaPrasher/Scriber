@@ -16,6 +16,8 @@ import time
 import unicodedata
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from scriber.exceptions import JobCancelledException
+
 def _register_nvidia_dll_directories() -> None:
     """Ensures nvidia-cublas and nvidia-cudnn DLL directories are registered and preloaded on Windows."""
     if sys.platform != "win32":
@@ -460,8 +462,12 @@ class TranscriptionEngine:
         model: str = "turbo",
         beam_size: int = 1,
         progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+        cancel_checker: Optional[Callable[[], bool]] = None,
     ) -> TranscriptionResult:
         """Executes speech-to-text or speech translation matching Whisper's processing flow."""
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Whisper transcription cancelled before starting")
+
         selected_model = (model or "turbo").lower()
         model_label = "whisperx" if selected_model == "whisperx" else (selected_model if selected_model.startswith("whisper-") else f"whisper-{selected_model}")
         if ground_truth_hint:
@@ -473,6 +479,7 @@ class TranscriptionEngine:
                 prompt=prompt,
                 vad_segments=vad_segments,
                 ground_truth_hint=ground_truth_hint,
+                cancel_checker=cancel_checker,
             )
             res.model_name = model_label
             return res
@@ -487,8 +494,10 @@ class TranscriptionEngine:
                     vad_segments=vad_segments,
                     beam_size=beam_size,
                     progress_callback=progress_callback,
+                    cancel_checker=cancel_checker,
                 )
-                pass
+            except JobCancelledException:
+                raise
             except Exception:
                 # Clean graceful fallback to reference flow engine
                 res = self._transcribe_reference_flow(
@@ -499,6 +508,7 @@ class TranscriptionEngine:
                     prompt=prompt,
                     vad_segments=vad_segments,
                     ground_truth_hint=ground_truth_hint,
+                    cancel_checker=cancel_checker,
                 )
                 res.backend_used += f" (fallback from {selected_model})"
                 res.model_name = model_label
@@ -533,12 +543,16 @@ class TranscriptionEngine:
         prompt: Optional[str],
         vad_segments: Optional[List[Tuple[float, float, bytes]]],
         ground_truth_hint: Optional[str],
+        cancel_checker: Optional[Callable[[], bool]] = None,
     ) -> TranscriptionResult:
         """Autonomous reference engine implementing Whisper's exact token framing and segment flow.
         
         Guarantees zero-dependency local execution while faithfully adhering
         to Whisper's multi-task token specifications.
         """
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Reference flow cancelled before starting")
+
         # Parse acoustic energy profile
         total_samples = len(pcm16_data) // 2
         effective_duration = duration if duration > 0 else (total_samples / 16000.0)
@@ -796,6 +810,7 @@ class TranscriptionEngine:
         vad_segments: Optional[List[Tuple[float, float, bytes]]] = None,
         beam_size: int = 1,
         progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+        cancel_checker: Optional[Callable[[], bool]] = None,
     ) -> TranscriptionResult:
         """Integration with SYSTRAN/faster-whisper for real speech-to-text and translation."""
         import faster_whisper  # type: ignore
@@ -973,6 +988,8 @@ class TranscriptionEngine:
             out = []
             t_whisper_start = time.time()
             for seg in gen:
+                if cancel_checker and cancel_checker():
+                    raise JobCancelledException("Whisper inference aborted by cancellation signal")
                 # Discard ghost segments hallucinated past audio duration
                 if duration > 0 and seg.start >= duration:
                     continue

@@ -32,7 +32,9 @@ import urllib.parse
 import urllib.request
 import wave
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+from scriber.exceptions import JobCancelledException
 
 # Pre-emptively disable unsigned C extensions in aiohttp to avoid Windows Smart App Control blocks
 os.environ["AIOHTTP_NO_EXTENSIONS"] = "1"
@@ -1113,6 +1115,10 @@ class VoiceCloner:
         **kwargs,
     ) -> VoiceCloneResult:
         """Synthesizes speech matching the VoiceProfile and validates acoustic similarity."""
+        cancel_checker = kwargs.get("cancel_checker")
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Voice synthesis cancelled before starting")
+
         prompt_text = (text_prompt or text or kwargs.get("text") or "").strip()
         if not prompt_text:
             prompt_text = "Scriber voice cloning verified."

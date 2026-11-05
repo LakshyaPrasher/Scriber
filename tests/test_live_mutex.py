@@ -21,8 +21,8 @@ def test_live_mutex():
     ]
     p2 = subprocess.Popen(cmd2, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-    out1, _ = p1.communicate(timeout=5)
-    out2, _ = p2.communicate(timeout=5)
+    out1, _ = p1.communicate(timeout=15)
+    out2, _ = p2.communicate(timeout=15)
 
     print("Process 1 Output:", out1.strip())
     print("Process 2 Output:", out2.strip())

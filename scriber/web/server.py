@@ -19,6 +19,7 @@ import urllib.parse
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
+from scriber.exceptions import JobCancelledException
 from scriber.exporters import ScriberExporter
 from scriber.transcription_engine import TOP_LEVERAGED_REPOS
 from scriber.models import VoiceProfile
@@ -26,6 +27,52 @@ from scriber.pipeline import ScriberPipeline
 from scriber.validator import ResultValidator
 from scriber.voice_clone import VoiceCloner, VoiceProfiler
 from scriber.web.ui import get_embedded_html
+
+
+class CancellationManager:
+    """Manages active job cancellation signals and temporary file tracking."""
+
+    def __init__(self):
+        self._event = threading.Event()
+        self._lock = threading.Lock()
+        self._temp_files: set[str] = set()
+
+    def request_cancel(self) -> None:
+        with self._lock:
+            self._event.set()
+        self.purge_temp_files()
+
+    def reset(self) -> None:
+        with self._lock:
+            self._event.clear()
+
+    def is_cancelled(self) -> bool:
+        return self._event.is_set()
+
+    def register_temp_file(self, filepath: str) -> None:
+        if not filepath:
+            return
+        with self._lock:
+            self._temp_files.add(os.path.abspath(filepath))
+
+    def unregister_temp_file(self, filepath: str) -> None:
+        if not filepath:
+            return
+        with self._lock:
+            self._temp_files.discard(os.path.abspath(filepath))
+
+    def purge_temp_files(self) -> None:
+        with self._lock:
+            for p in list(self._temp_files):
+                try:
+                    if os.path.isfile(p):
+                        os.remove(p)
+                except Exception:
+                    pass
+            self._temp_files.clear()
+
+
+_CANCEL_MGR = CancellationManager()
 
 _ACTIVE_PROGRESS: Dict[str, Any] = {
     "active": False,
@@ -331,8 +378,29 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._handle_plugin_install()
         elif path == "/api/voice/credentials":
             self._handle_voice_credentials()
+        elif path == "/api/cancel":
+            self._handle_cancel()
         else:
             self._send_json_response(404, {"error": "Endpoint not found"})
+
+    def _handle_cancel(self):
+        """Cancels active processing jobs, purges temporary files, and resets progress."""
+        _CANCEL_MGR.request_cancel()
+        reset_progress_state()
+        with _PROGRESS_LOCK:
+            _ACTIVE_PROGRESS.update({
+                "active": False,
+                "stage": "cancelled",
+                "phase": "Cancelled",
+                "title": "Operation Cancelled",
+                "subtitle": "Job aborted by user; temporary files purged",
+            })
+        self._send_json_response(200, {
+            "status": "cancelled",
+            "success": True,
+            "cancelled": True,
+            "message": "Active job cancelled successfully",
+        })
 
     def _handle_voice_credentials(self):
         """Saves Voicemaker and ElevenLabs API credentials."""
@@ -436,6 +504,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 redact_pii_val = bool(data.get("redact_pii", False))
                 max_dur_raw = data.get("max_duration")
                 max_dur_val = float(max_dur_raw) if max_dur_raw not in (None, "", 0) else None
+                _CANCEL_MGR.reset()
                 reset_progress_state(file_name=os.path.basename(file_path_arg))
                 try:
                     output = self.pipeline.process_file(
@@ -447,9 +516,20 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         redact_pii=redact_pii_val,
                         progress_callback=update_progress_state,
                         max_duration=max_dur_val,
+                        cancel_checker=_CANCEL_MGR.is_cancelled,
                     )
+                except JobCancelledException:
+                    _CANCEL_MGR.purge_temp_files()
+                    reset_progress_state()
+                    self._send_json_response(200, {
+                        "status": "cancelled",
+                        "message": "Processing cancelled by user request",
+                        "cancelled": True,
+                    })
+                    return
                 finally:
                     reset_progress_state()
+                    _CANCEL_MGR.reset()
                 output.video_source = os.path.basename(file_path_arg)
                 try:
                     self.pipeline._export_all_formats(output, "./scriber_output", ["json", "md", "srt", "vtt", "txt", "html"])
@@ -566,6 +646,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             # Handle file_path parameter if provided and valid
             if file_path_param and os.path.isfile(file_path_param):
+                _CANCEL_MGR.reset()
                 reset_progress_state(file_name=os.path.basename(file_path_param))
                 try:
                     output = self.pipeline.process_file(
@@ -576,9 +657,20 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         model=model,
                         redact_pii=redact_pii,
                         progress_callback=update_progress_state,
+                        cancel_checker=_CANCEL_MGR.is_cancelled,
                     )
+                except JobCancelledException:
+                    _CANCEL_MGR.purge_temp_files()
+                    reset_progress_state()
+                    self._send_json_response(200, {
+                        "status": "cancelled",
+                        "message": "Processing cancelled by user request",
+                        "cancelled": True,
+                    })
+                    return
                 finally:
                     reset_progress_state()
+                    _CANCEL_MGR.reset()
                 output.video_source = os.path.basename(file_path_param)
                 try:
                     self.pipeline._export_all_formats(output, "./scriber_output", ["json", "md", "srt", "vtt", "txt", "html"])
@@ -612,6 +704,8 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 tmp_path = tmp.name
                 tmp.write(file_data)
 
+            _CANCEL_MGR.reset()
+            _CANCEL_MGR.register_temp_file(tmp_path)
             reset_progress_state(file_name=filename)
             try:
                 output = self.pipeline.process_file(
@@ -622,9 +716,21 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     model=model,
                     redact_pii=redact_pii,
                     progress_callback=update_progress_state,
+                    cancel_checker=_CANCEL_MGR.is_cancelled,
                 )
+            except JobCancelledException:
+                _CANCEL_MGR.purge_temp_files()
+                reset_progress_state()
+                self._send_json_response(200, {
+                    "status": "cancelled",
+                    "message": "Processing cancelled by user request",
+                    "cancelled": True,
+                })
+                return
             finally:
                 reset_progress_state()
+                _CANCEL_MGR.unregister_temp_file(tmp_path)
+                _CANCEL_MGR.reset()
             output.video_source = filename
             try:
                 self.pipeline._export_all_formats(output, "./scriber_output", ["json", "md", "srt", "vtt", "txt", "html"])
@@ -764,17 +870,31 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             output_format = req_data.get("output_format") or req_data.get("format") or "mp3"
             sample_rate = int(req_data.get("sample_rate", 48000))
             voice_id = req_data.get("voice_id")
-            result = self.pipeline.clone_voice(
-                profile=profile,
-                text_prompt=text_prompt,
-                pitch_shift_hz=pitch_shift,
-                rate_shift_pct=rate_shift,
-                output_format=output_format,
-                reference_pcm=ref_pcm,
-                backend=backend,
-                sample_rate=sample_rate,
-                voice_id=voice_id,
-            )
+            _CANCEL_MGR.reset()
+            try:
+                result = self.pipeline.clone_voice(
+                    profile=profile,
+                    text_prompt=text_prompt,
+                    pitch_shift_hz=pitch_shift,
+                    rate_shift_pct=rate_shift,
+                    output_format=output_format,
+                    reference_pcm=ref_pcm,
+                    backend=backend,
+                    sample_rate=sample_rate,
+                    voice_id=voice_id,
+                    cancel_checker=_CANCEL_MGR.is_cancelled,
+                )
+            except JobCancelledException:
+                _CANCEL_MGR.purge_temp_files()
+                self._send_json_response(200, {
+                    "status": "cancelled",
+                    "message": "Voice synthesis cancelled by user request",
+                    "cancelled": True,
+                })
+                return
+            finally:
+                _CANCEL_MGR.reset()
+
             if result.audio_pcm16:
                 self.pipeline.last_pcm_data = result.audio_pcm16
                 self.pipeline.last_file_path = f"cloned_{profile.speaker_id}.mp3"
@@ -984,7 +1104,11 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
                     tmp_path = tmp.name
                     tmp.write(file_data)
+                _CANCEL_MGR.register_temp_file(tmp_path)
                 pcm_data, _ = self.pipeline.audio_extractor.extract_pcm16(tmp_path)
+
+            if _CANCEL_MGR.is_cancelled():
+                raise JobCancelledException("Audio editing cancelled by user")
 
             res = self.pipeline.edit_audio(
                 pcm_data=pcm_data,
@@ -996,14 +1120,24 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             )
             self._send_json_response(200, res)
 
+        except JobCancelledException:
+            _CANCEL_MGR.purge_temp_files()
+            self._send_json_response(200, {
+                "status": "cancelled",
+                "message": "Audio editing cancelled by user request",
+                "cancelled": True,
+            })
         except Exception as e:
             self._send_json_response(500, {"error": str(e)})
         finally:
-            if tmp_path and os.path.exists(tmp_path):
-                try:
-                    os.remove(tmp_path)
-                except Exception:
-                    pass
+            if tmp_path:
+                _CANCEL_MGR.unregister_temp_file(tmp_path)
+                if os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except Exception:
+                        pass
+            _CANCEL_MGR.reset()
 
     def _handle_desktop_reveal(self):
         """Reveals a target file or opens directory in native file explorer."""

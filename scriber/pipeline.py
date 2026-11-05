@@ -28,6 +28,7 @@ from scriber.models import (
     VoiceCloneResult,
     VoiceProfile,
 )
+from scriber.exceptions import JobCancelledException
 from scriber.quality import QualityChecker
 from scriber.validator import ResultValidator
 from scriber.voice_clone import VoiceCloner, VoiceProfiler
@@ -70,8 +71,12 @@ class ScriberPipeline:
         redact_pii: bool = False,
         progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
         max_duration: Optional[float] = None,
+        cancel_checker: Optional[Callable[[], bool]] = None,
     ) -> ScriberOutput:
         """Processes any video or audio file through the 4-subagent pipeline."""
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Pipeline processing cancelled before starting")
+
         start_time = time.time()
         session_id = f"sess_{uuid.uuid4().hex[:10]}"
 
@@ -92,6 +97,9 @@ class ScriberPipeline:
         self.last_audio_meta = audio_meta
         self.last_file_path = file_path
 
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Pipeline processing cancelled after extraction")
+
         if progress_callback:
             dur_fmt = f"{int(audio_meta.duration // 60):02d}:{int(audio_meta.duration % 60):02d}"
             progress_callback({
@@ -109,6 +117,9 @@ class ScriberPipeline:
             pcm16_data=pcm16_data,
             energy_threshold=0.015,
         )
+
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Pipeline processing cancelled after VAD segmentation")
 
         if progress_callback:
             progress_callback({
@@ -132,7 +143,11 @@ class ScriberPipeline:
             ground_truth_hint=reference_text,
             model=model,
             progress_callback=progress_callback,
+            cancel_checker=cancel_checker,
         )
+
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Pipeline processing cancelled prior to diarization")
 
         if progress_callback:
             progress_callback({
@@ -151,9 +166,13 @@ class ScriberPipeline:
             pcm16_data=pcm16_data,
             sample_rate=16000,
             progress_callback=progress_callback,
+            cancel_checker=cancel_checker,
         )
         raw_transcription.segments = diarized_segments
         raw_transcription.text = " ".join(s.text for s in diarized_segments).strip()
+
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Pipeline processing cancelled prior to post-processing")
 
         if progress_callback:
             progress_callback({
@@ -260,8 +279,12 @@ class ScriberPipeline:
         reference_text: Optional[str] = None,
         model: str = "turbo",
         progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+        cancel_checker: Optional[Callable[[], bool]] = None,
     ) -> ScriberOutput:
         """Processes in-memory PCM bytes (useful for serverless Lambda execution)."""
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Process PCM cancelled before starting")
+
         start_time = time.time()
         session_id = f"sess_{uuid.uuid4().hex[:10]}"
 
@@ -290,7 +313,11 @@ class ScriberPipeline:
             ground_truth_hint=reference_text,
             model=model,
             progress_callback=progress_callback,
+            cancel_checker=cancel_checker,
         )
+
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Process PCM cancelled prior to diarization")
 
         # Step 3.5: Acoustic Diarizer with Speaker Memory & Proper English Formatting
         diarized_segments = self.diarizer.diarize_segments(
@@ -298,9 +325,13 @@ class ScriberPipeline:
             pcm16_data=pcm16_data,
             sample_rate=16000,
             progress_callback=progress_callback,
+            cancel_checker=cancel_checker,
         )
         raw_trans.segments = diarized_segments
         raw_trans.text = " ".join(s.text for s in diarized_segments).strip()
+
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Process PCM cancelled prior to post-processing")
 
         cleaned_trans, qual_report = self.quality_checker.audit_and_clean(raw_trans)
         council_analysis = self.supreme_council.analyze(cleaned_trans)
@@ -338,9 +369,12 @@ class ScriberPipeline:
         reference_pcm: Optional[bytes] = None,
         backend: str = "edge-neural",
         sample_rate: int = 48000,
+        cancel_checker: Optional[Callable[[], bool]] = None,
         **kwargs,
     ) -> VoiceCloneResult:
         """Clones speech matching the given speaker profile and reference audio."""
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Voice cloning cancelled before starting")
         target_ref = reference_pcm or getattr(self, "reference_pcm", None) or self.last_pcm_data
         return self.voice_cloner.clone_voice(
             profile=profile,
@@ -351,6 +385,7 @@ class ScriberPipeline:
             reference_pcm=target_ref,
             backend=backend,
             sample_rate=sample_rate,
+            cancel_checker=cancel_checker,
             **kwargs,
         )
 

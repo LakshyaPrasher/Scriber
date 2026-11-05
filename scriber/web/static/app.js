@@ -325,6 +325,49 @@
     }
   }
 
+  /* ========================================================= */
+  /* ACTIVE JOB CANCELLATION & ABORT CONTROLLERS               */
+  /* ========================================================= */
+  var activeProcessAbortController = null;
+  var activeVoiceAbortController = null;
+
+  async function cancelActiveProcessing(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (activeProcessAbortController) {
+      activeProcessAbortController.abort();
+      activeProcessAbortController = null;
+    }
+    try {
+      await fetch('/api/cancel', { method: 'POST' });
+    } catch (err) {}
+    stopLiveProgressTracker();
+    stopLiquidOrbAnimation();
+    setTranscribeModelLocked(false);
+    resetToUpload();
+    showToast('Processing cancelled. System idle.', 'info');
+  }
+  window.cancelActiveProcessing = cancelActiveProcessing;
+
+  async function cancelVoiceSynthesis(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (activeVoiceAbortController) {
+      activeVoiceAbortController.abort();
+      activeVoiceAbortController = null;
+    }
+    try {
+      await fetch('/api/cancel', { method: 'POST' });
+    } catch (err) {}
+    stopAcousticResonanceAnimation();
+    setVoiceModelLocked(false);
+    var btn = document.getElementById('synthesize-btn');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> Clone & Synthesize Voice';
+    }
+    showToast('Voice synthesis cancelled.', 'info');
+  }
+  window.cancelVoiceSynthesis = cancelVoiceSynthesis;
+
   async function startProcessingPath(filePath, options) {
     if (!filePath) return;
     const fileName = filePath.split(/[\\/]/).pop() || filePath;
@@ -352,10 +395,16 @@
       audioPlayer.src = loadedMediaUrl;
     }
 
+    if (activeProcessAbortController) {
+      activeProcessAbortController.abort();
+    }
+    activeProcessAbortController = new AbortController();
+
     try {
       const res = await fetch('/api/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: activeProcessAbortController.signal,
         body: JSON.stringify({
           file_path: filePath,
           task: 'translate',
@@ -366,9 +415,16 @@
         })
       });
       const data = await res.json();
+      activeProcessAbortController = null;
 
       stopLiveProgressTracker();
       stopLiquidOrbAnimation();
+
+      if (data.cancelled) {
+        resetToUpload();
+        setTranscribeModelLocked(false);
+        return;
+      }
 
       if (data.error) {
         showToast('Processing error: ' + data.error, 'error');
@@ -390,8 +446,12 @@
       renderTranscription(data);
       setTranscribeModelLocked(false);
     } catch (err) {
+      activeProcessAbortController = null;
       stopLiveProgressTracker();
       stopLiquidOrbAnimation();
+      if (err.name === 'AbortError') {
+        return;
+      }
       showToast('Processing error: ' + err, 'error');
       resetToUpload();
       setTranscribeModelLocked(false);
@@ -428,12 +488,28 @@
     formData.append('model', selectedTranscribeModel || 'turbo');
     formData.append('redact_pii', window.isPIIRedacted ? 'true' : 'false');
 
+    if (activeProcessAbortController) {
+      activeProcessAbortController.abort();
+    }
+    activeProcessAbortController = new AbortController();
+
     try {
-      const res = await fetch('/api/process', { method: 'POST', body: formData });
+      const res = await fetch('/api/process', {
+        method: 'POST',
+        signal: activeProcessAbortController.signal,
+        body: formData
+      });
       const data = await res.json();
+      activeProcessAbortController = null;
 
       stopLiveProgressTracker();
       stopLiquidOrbAnimation();
+
+      if (data.cancelled) {
+        resetToUpload();
+        setTranscribeModelLocked(false);
+        return;
+      }
 
       if (data.error) {
         showToast('Processing error: ' + data.error, 'error');
@@ -455,8 +531,12 @@
       renderTranscription(data);
       setTranscribeModelLocked(false);
     } catch (err) {
+      activeProcessAbortController = null;
       stopLiveProgressTracker();
       stopLiquidOrbAnimation();
+      if (err.name === 'AbortError') {
+        return;
+      }
       showToast('Upload or network failed: ' + err, 'error');
       resetToUpload();
       setTranscribeModelLocked(false);
@@ -464,6 +544,10 @@
   }
 
   function resetToUpload() {
+    if (activeProcessAbortController) {
+      activeProcessAbortController.abort();
+      activeProcessAbortController = null;
+    }
     setTranscribeModelLocked(false);
     document.getElementById('dropzone').style.display = 'block';
     document.getElementById('processing-card').style.display = 'none';
@@ -471,6 +555,9 @@
     const player = document.getElementById('audio-player');
     if (player) { player.pause(); player.currentTime = 0; }
     updatePlayPauseIcons(false);
+    if (typeof toggleAudioToolsDrawer === 'function') {
+      toggleAudioToolsDrawer(false);
+    }
   }
 
   /* Audio Transport Controls */
@@ -1058,6 +1145,61 @@
       body: JSON.stringify({ filename: filename, content: content, dir: './scriber_output' })
     }).catch(function() {});
   }
+
+  /* ========================================================= */
+  /* MODE 1 AUDIO TOOLS DRAWER CONTROLLER                      */
+  /* ========================================================= */
+  var isAudioToolsDrawerOpen = false;
+
+  function toggleAudioToolsDrawer(forceState) {
+    var drawer = document.getElementById('audio-tools-drawer');
+    var btn = document.getElementById('btn-audio-tools') || document.getElementById('audio-tools-toggle');
+    if (!drawer) return;
+    isAudioToolsDrawerOpen = (typeof forceState === 'boolean') ? forceState : !isAudioToolsDrawerOpen;
+    drawer.style.display = isAudioToolsDrawerOpen ? 'block' : 'none';
+    if (btn) btn.classList.toggle('active', isAudioToolsDrawerOpen);
+    if (isAudioToolsDrawerOpen && currentResult) {
+      var dur = getAccurateDuration();
+      var fName = (currentResult && currentResult.video_source) || 'transcribed_media.mp3';
+      initModeAudioEditor('m1', dur > 0 ? dur : 10, fName);
+    }
+  }
+  window.toggleAudioToolsDrawer = toggleAudioToolsDrawer;
+
+  /* ========================================================= */
+  /* CONSOLIDATED EXPORT DROPDOWN MENU CONTROLLER              */
+  /* ========================================================= */
+  function toggleExportDropdown(e) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    var menu = document.getElementById('export-menu');
+    var trigger = document.getElementById('export-dropdown-trigger');
+    if (!menu) return;
+    var isOpen = menu.style.display !== 'none';
+    menu.style.display = isOpen ? 'none' : 'block';
+    if (trigger) trigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+  }
+
+  function handleExportSelect(type) {
+    toggleExportDropdown(null);
+    if (type === 'folder') {
+      revealExportFolder();
+    } else {
+      downloadArtifact(type);
+    }
+  }
+  window.toggleExportDropdown = toggleExportDropdown;
+  window.handleExportSelect = handleExportSelect;
+
+  document.addEventListener('click', function(e) {
+    var menu = document.getElementById('export-menu');
+    var trigger = document.getElementById('export-dropdown-trigger');
+    if (menu && menu.style.display !== 'none') {
+      if (!menu.contains(e.target) && (!trigger || !trigger.contains(e.target))) {
+        menu.style.display = 'none';
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+      }
+    }
+  });
 
   function formatSrtExport(segments) {
     let cues = [];
@@ -2014,10 +2156,16 @@
     startAcousticResonanceAnimation();
     setVoiceModelLocked(true);
 
+    if (activeVoiceAbortController) {
+      activeVoiceAbortController.abort();
+    }
+    activeVoiceAbortController = new AbortController();
+
     try {
       const res = await fetch('/api/clone-voice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: activeVoiceAbortController.signal,
         body: JSON.stringify({
           text: text,
           pitch_shift: pitchShift,
@@ -2031,10 +2179,16 @@
         }),
       });
       const data = await res.json();
+      activeVoiceAbortController = null;
       btn.innerHTML = origHtml;
       btn.disabled = false;
       stopAcousticResonanceAnimation();
       setVoiceModelLocked(false);
+
+      if (data.cancelled) {
+        showToast('Voice synthesis cancelled.', 'info');
+        return;
+      }
 
       if (data.error) {
         showToast('Cloning error: ' + data.error, 'error');
@@ -2060,10 +2214,14 @@
       showToast('Voice cloned and synthesized successfully!', 'success');
       resBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (e) {
+      activeVoiceAbortController = null;
       btn.innerHTML = origHtml;
       btn.disabled = false;
       stopAcousticResonanceAnimation();
       setVoiceModelLocked(false);
+      if (e.name === 'AbortError') {
+        return;
+      }
       showToast('Cloning network error: ' + e, 'error');
     }
   }
@@ -2961,3 +3119,8 @@
   window.handleVolumeInput = handleVolumeInput;
   window.handlePitchInput = handlePitchInput;
   window.handleTrimBarInput = handleTrimBarInput;
+  window.toggleAudioToolsDrawer = toggleAudioToolsDrawer;
+  window.toggleExportDropdown = toggleExportDropdown;
+  window.handleExportSelect = handleExportSelect;
+  window.cancelActiveProcessing = cancelActiveProcessing;
+  window.cancelVoiceSynthesis = cancelVoiceSynthesis;

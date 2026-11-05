@@ -237,7 +237,113 @@ class TestUIContracts(unittest.TestCase):
         self.assertIn("handleVoiceRefPath", self.html)
         self.assertIn("selectVoiceProfileByIndex", self.html)
 
+    def test_m12_progressive_disclosure_and_drawer(self):
+        """Verifies Mode 1 audio studio is tucked into a collapsible drawer with trigger button and quiet HUD."""
+        self.assertIn('id="audio-tools-drawer"', self.html)
+        self.assertIn('style="display: none;"', self.html, "Audio tools drawer must start hidden")
+        self.assertIn('id="btn-audio-tools"', self.html)
+        self.assertIn('id="audio-tools-toggle"', self.html)
+        self.assertIn('onclick="toggleAudioToolsDrawer()"', self.html)
+        self.assertIn('onclick="toggleAudioToolsDrawer(false)"', self.html)
+        self.assertIn('id="mode1-audio-editor"', self.html)
+        self.assertIn("toggleAudioToolsDrawer", self.html)
+        self.assertIn('id="m1-vol-slider"', self.html)
+        self.assertIn('id="m1-pitch-slider"', self.html)
+        self.assertIn('id="m1-trim-start"', self.html)
+        self.assertIn('id="m1-trim-end"', self.html)
+        self.assertIn('id="m1-trim-start-bar"', self.html)
+        self.assertIn('id="m1-trim-end-bar"', self.html)
+        self.assertIn('id="m1-preview-btn"', self.html)
+        self.assertIn('id="m1-export-btn"', self.html)
+        # Quiet Obsidian Telemetry HUD
+        self.assertIn("quiet-obsidian-hud", self.html)
+        self.assertIn("hud-pill", self.html)
+        self.assertIn('id="live-timecode"', self.html)
+        self.assertIn('id="live-speaker"', self.html)
+        self.assertIn('id="live-word-count"', self.html)
+
+    def test_m12_consolidated_export_dropdown(self):
+        """Verifies consolidated export trigger and dropdown menu supporting all 6 formats (.TXT, .MD, .SRT, .VTT, .JSON, FOLDER)."""
+        self.assertIn('id="export-dropdown-wrapper"', self.html)
+        self.assertIn('id="export-dropdown-trigger"', self.html)
+        self.assertIn('onclick="toggleExportDropdown(event)"', self.html)
+        self.assertIn('id="export-menu"', self.html)
+        self.assertIn('style="display:none;"', self.html, "Export menu must start hidden")
+        self.assertIn("toggleExportDropdown", self.html)
+        self.assertIn("handleExportSelect", self.html)
+        # Verify all 6 format handlers are explicitly wired
+        self.assertIn("handleExportSelect('txt')", self.html)
+        self.assertIn("handleExportSelect('md')", self.html)
+        self.assertIn("handleExportSelect('srt')", self.html)
+        self.assertIn("handleExportSelect('vtt')", self.html)
+        self.assertIn("handleExportSelect('json')", self.html)
+        self.assertIn("handleExportSelect('folder')", self.html)
+        # Verify format labels and folder reveal button
+        self.assertIn(".TXT", self.html)
+        self.assertIn(".MD", self.html)
+        self.assertIn(".SRT", self.html)
+        self.assertIn(".VTT", self.html)
+        self.assertIn(".JSON", self.html)
+        self.assertIn('id="btn-reveal-folder"', self.html)
+        self.assertIn("Open Output Folder", self.html)
+        self.assertIn("revealExportFolder", self.html)
+
+    def test_m12_voice_studio_three_step_flow(self):
+        """Verifies Voice Cloning Studio is organized into a clean 3-step sequential flow with collapsible accordion."""
+        self.assertIn('id="voice-ref-step"', self.html)
+        self.assertIn('id="voice-text-step"', self.html)
+        self.assertIn('id="voice-synthesize-step"', self.html)
+        self.assertIn('id="voice-advanced-accordion"', self.html)
+        self.assertIn('id="cancel-voice-btn"', self.html)
+        self.assertIn("cancelVoiceSynthesis", self.html)
+        # Verify sequential ordering: Step 1 -> Step 2 -> Step 3
+        idx_step1 = self.html.index('id="voice-ref-step"')
+        idx_step2 = self.html.index('id="voice-text-step"')
+        idx_step3 = self.html.index('id="voice-synthesize-step"')
+        idx_accordion = self.html.index('id="voice-advanced-accordion"')
+        self.assertLess(idx_step1, idx_step2, "Step 1 must precede Step 2")
+        self.assertLess(idx_step2, idx_step3, "Step 2 must precede Step 3")
+        self.assertLess(idx_step3, idx_accordion, "Accordion must follow the 3 primary steps")
+        # Step components
+        self.assertIn('id="voice-ref-dropzone"', self.html)
+        self.assertIn('id="voice-ref-input"', self.html)
+        self.assertIn('id="clone-text"', self.html)
+        self.assertIn('id="synthesize-btn"', self.html)
+        self.assertIn('id="clone-result-box"', self.html)
+        # Advanced parameters inside collapsible accordion
+        self.assertIn("<details", self.html)
+        self.assertIn("<summary", self.html)
+        self.assertIn('id="pitch-slider"', self.html)
+        self.assertIn('id="rate-slider"', self.html)
+        self.assertIn('id="voice-model-switcher"', self.html)
+
+    def test_m12_cancellation_ui_hooks(self):
+        """Verifies responsive cancellation buttons and JS controllers in transcription and voice cloning."""
+        self.assertIn('id="cancel-processing-btn"', self.html)
+        self.assertIn('onclick="cancelActiveProcessing(event)"', self.html)
+        self.assertIn('id="cancel-voice-btn"', self.html)
+        self.assertIn('onclick="cancelVoiceSynthesis(event)"', self.html)
+        self.assertIn("cancelActiveProcessing", self.html)
+        self.assertIn("cancelVoiceSynthesis", self.html)
+        self.assertIn("activeProcessAbortController", self.html)
+        self.assertIn("activeVoiceAbortController", self.html)
+        self.assertIn("/api/cancel", self.html)
+
+    def test_m12_white_flash_elimination(self):
+        """Verifies dark background inline styling on root html, css rules, and pywebview flags."""
+        self.assertIn('style="background-color: #08090C; color-scheme: dark;"', self.html)
+        self.assertIn('background-color: #08090C !important', self.html)
+        # Verify desktop pywebview flags in desktop.py
+        from scriber import desktop
+        import inspect
+        desktop_src = inspect.getsource(desktop.ScriberDesktopApp._run_webview)
+        self.assertIn('background_color="#08090C"', desktop_src)
+        self.assertIn('--force-dark-mode', desktop_src)
+        self.assertIn('--blink-settings=darkMode=4', desktop_src)
+
 
 if __name__ == "__main__":
     unittest.main()
+
+
 

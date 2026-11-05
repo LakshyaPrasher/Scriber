@@ -26,6 +26,7 @@ try:
 except ImportError:
     ort = None
 
+from scriber.exceptions import JobCancelledException
 from scriber.models import AudioSegment, VoiceProfile, WordTimestamp
 from scriber.voice_clone import VoiceProfiler
 
@@ -316,8 +317,12 @@ class AcousticDiarizer:
         pcm16_data: bytes,
         sample_rate: int = 16000,
         progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+        cancel_checker: Optional[Callable[[], bool]] = None,
     ) -> List[AudioSegment]:
         """Analyzes acoustic voice characteristics of each segment and assigns speakers based on real vocal biometrics."""
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Diarization cancelled before starting")
+
         if not segments:
             return []
 
@@ -427,6 +432,8 @@ class AcousticDiarizer:
         total_segs = len(segments)
 
         for idx_seg, seg in enumerate(segments):
+            if cancel_checker and cancel_checker():
+                raise JobCancelledException("Diarization aborted by cancellation signal")
             seg_dur = max(0.05, seg.end - seg.start)
             start_byte = max(0, int(seg.start * bytes_per_sec))
             start_byte -= (start_byte % 2)

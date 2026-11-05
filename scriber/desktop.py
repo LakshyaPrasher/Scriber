@@ -457,7 +457,9 @@ class ScriberDesktopApp:
             "--disable-background-timer-throttling "
             "--disable-backgrounding-occluded-windows "
             "--disable-renderer-backgrounding "
-            "--disable-features=ElasticOverscroll"
+            "--disable-features=ElasticOverscroll "
+            "--force-dark-mode "
+            "--blink-settings=darkMode=4"
         )
         if "--disable-gpu-process-crash-limit" not in existing_args:
             os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = f"{existing_args} {resilience_args}".strip()

@@ -24,8 +24,9 @@ _HANDLERS_REGISTERED = False
 def cleanup_all():
     """Terminates spawned companion microservices and releases single-instance mutex."""
     try:
-        from scriber.voice_clone import VoiceMicroserviceManager
-        VoiceMicroserviceManager().shutdown()
+        if "scriber.voice_clone" in sys.modules:
+            from scriber.voice_clone import VoiceMicroserviceManager
+            VoiceMicroserviceManager().shutdown()
     except Exception:
         pass
     release_single_instance()
