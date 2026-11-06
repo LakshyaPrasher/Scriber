@@ -43,9 +43,15 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  html, body {
+  html {
     background-color: #08090C !important;
     color-scheme: dark;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    background-color: #08090C !important;
     font-family: var(--font-body);
     color: var(--text-primary);
     line-height: 1.6;
@@ -678,36 +684,47 @@
   /* ========================================================= */
   .processing-card {
     display: none;
-    background: #0D0F14;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 40px 24px;
-    text-align: center;
+    max-width: 760px;
     margin: 24px auto;
-    max-width: 720px;
+    padding: clamp(22px, 3vw, 32px);
     position: relative;
     overflow: hidden;
+    background: linear-gradient(145deg, #10131A 0%, #0B0D12 100%);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 16px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.24);
   }
   .processing-card::before {
     content: '';
     position: absolute;
-    top: 0; left: 0; right: 0; height: 2px;
-    background: var(--tangerine);
+    top: 0;
+    left: 24px;
+    width: 48px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--tangerine), var(--gold));
+    border-radius: 0 0 2px 2px;
+  }
+  .processing-topline {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 22px;
   }
 
-  /* Liquid Morphing Stage */
+  /* Compact, secondary motion keeps the processing state informative. */
   .liquid-orb-stage, .liquid-canvas-stage {
     position: relative;
-    width: 220px;
-    height: 220px;
-    margin: 0 auto 16px auto;
+    width: 72px;
+    height: 72px;
+    margin: 0;
     display: flex;
     align-items: center;
     justify-content: center;
   }
   #liquid-orb-canvas {
-    width: 220px;
-    height: 220px;
+    width: 72px;
+    height: 72px;
     display: block;
     border-radius: 50%;
   }
@@ -725,77 +742,38 @@
   }
 
   .processing-title {
-    font-size: 18px;
-    font-weight: 600;
+    font-size: clamp(17px, 2vw, 20px);
+    font-weight: 650;
     color: var(--text-primary);
-    margin-bottom: 6px;
+    margin: 0 0 4px;
     letter-spacing: -0.01em;
   }
   .processing-sub {
     font-size: 13px;
     color: var(--text-secondary);
-    margin-bottom: 20px;
-    min-height: 20px;
+    margin: 0;
+    min-height: 0;
   }
-  .processing-meta-row {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    justify-content: center;
+  .processing-copy {
+    min-width: 0;
   }
-  .processing-file-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 3px 10px;
-    border-radius: 4px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--gold);
+  .processing-progress-summary {
+    display: flex;
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 3px;
+    min-width: max-content;
   }
-  .processing-stage-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255, 94, 0, 0.08);
-    border: 1px solid rgba(255, 94, 0, 0.2);
-    padding: 3px 10px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--tangerine);
-  }
-    border: 1px solid rgba(255, 94, 0, 0.3);
-    padding: 4px 12px;
-    border-radius: 9999px;
-    font-size: 11.5px;
-    font-weight: 600;
-    color: #FFA826;
-  }
-
-  /* Real-Time Precision Progress Bar & Metrics */
+  /* Real-Time Progress */
   .progress-meter-container {
     width: 100%;
-    max-width: 540px;
-    margin: 4px auto 22px auto;
-    background: rgba(18, 19, 24, 0.72);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
-    padding: 16px 20px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 30px rgba(0, 0, 0, 0.35);
-  }
-  .progress-meter-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px;
+    max-width: none;
+    margin: 0;
+    padding: 0;
   }
   .progress-pct-badge {
     font-family: var(--font-mono);
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 700;
     color: var(--tangerine);
     letter-spacing: -0.02em;
@@ -804,39 +782,37 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--border-glass);
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 500;
     color: var(--text-secondary);
     font-family: var(--font-mono);
+    white-space: nowrap;
   }
   .progress-track {
     width: 100%;
-    height: 6px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 3px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.09);
+    border-radius: 999px;
     overflow: hidden;
     position: relative;
-    margin-bottom: 12px;
+    margin-bottom: 11px;
   }
   .progress-fill {
     height: 100%;
-    background: var(--tangerine);
-    border-radius: 3px;
+    background: linear-gradient(90deg, var(--tangerine), #FF9B47);
+    border-radius: inherit;
     transition: width 0.3s ease;
+    box-shadow: 0 0 16px rgba(255, 94, 0, 0.35);
   }
   .progress-fill::after {
     display: none;
   }
   .progress-metrics-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    font-size: 11.5px;
+    gap: 10px;
+    font-size: 11px;
     color: var(--text-muted);
     font-family: var(--font-mono);
   }
@@ -844,8 +820,10 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
+    min-width: 0;
   }
-
+  #progress-position-item { justify-content: center; }
+  #progress-elapsed-item { justify-content: flex-end; }
   /* ========================================================= */
   /* STATE 3: CLEAN OUTPUT VIEWPORT (COPY-PASTE READY)         */
   /* ========================================================= */
@@ -2900,5 +2878,173 @@
   .active-voice-sub {
     font-size: 11px;
     color: var(--text-secondary);
+  }
+
+  /* ========================================================= */
+  /* RESPONSIVE COMPOSITION                                     */
+  /* ========================================================= */
+  @media (max-width: 860px) {
+    body {
+      padding: 20px 24px 48px;
+    }
+    header {
+      margin-bottom: 24px;
+    }
+    .studio-model-console, .model-switcher-card {
+      margin-bottom: 18px;
+    }
+    .processing-card {
+      margin: 18px auto;
+    }
+    .action-bar,
+    .action-bar-left,
+    .action-bar-right {
+      align-items: stretch;
+    }
+  }
+
+  @media (max-width: 640px) {
+    body {
+      padding: 16px 14px 40px;
+    }
+    header {
+      align-items: stretch;
+      gap: 14px;
+      padding-bottom: 16px;
+      margin-bottom: 18px;
+    }
+    .logo-block {
+      gap: 12px;
+    }
+    .brand-svg-mark {
+      width: 40px;
+      height: 40px;
+    }
+    .logo-title h1 {
+      font-size: 21px;
+    }
+    .subtitle {
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .nav-pills {
+      display: grid;
+      width: 100%;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .nav-pill {
+      justify-content: center;
+      gap: 5px;
+      padding: 7px 5px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .nav-pill svg {
+      width: 13px;
+      height: 13px;
+      flex: 0 0 auto;
+    }
+    .studio-model-console, .model-switcher-card {
+      padding: 14px;
+      border-radius: 10px;
+    }
+    .model-selector-meta {
+      gap: 10px;
+    }
+    .model-selector-sub {
+      line-height: 1.35;
+    }
+    .upload-bay-asymmetric, .upload-card {
+      padding: 18px 16px;
+      border-radius: 10px;
+    }
+    .upload-headline {
+      font-size: 24px;
+    }
+    .processing-card {
+      margin: 16px 0;
+      padding: 20px 16px;
+      border-radius: 12px;
+    }
+    .processing-card::before {
+      left: 16px;
+    }
+    .processing-topline {
+      grid-template-columns: 56px minmax(0, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .liquid-orb-stage, .liquid-canvas-stage,
+    #liquid-orb-canvas {
+      width: 56px;
+      height: 56px;
+    }
+    .processing-progress-summary {
+      grid-column: 1 / -1;
+      width: 100%;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .progress-pct-badge {
+      font-size: 20px;
+    }
+    .progress-metrics-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      row-gap: 7px;
+    }
+    #progress-position-item {
+      grid-column: 1 / -1;
+      justify-content: flex-start;
+      overflow: hidden;
+    }
+    #progress-position-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #progress-elapsed-item {
+      justify-content: flex-end;
+    }
+    .voice-card-panel {
+      padding: 20px 16px 24px;
+      border-radius: 10px;
+    }
+    .voice-ref-dropzone,
+    .voice-flow-step,
+    .audio-editor-card {
+      padding-left: 14px;
+      padding-right: 14px;
+    }
+    .action-bar-left,
+    .action-bar-right {
+      width: 100%;
+    }
+    .export-dropdown-wrapper,
+    .btn-export-dropdown {
+      width: 100%;
+    }
+    .btn-export-dropdown {
+      justify-content: center;
+    }
+    .export-menu {
+      right: auto;
+      left: 0;
+      width: 100%;
+      min-width: 0;
+    }
+    .about-container {
+      min-height: 0;
+      padding: 20px 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 

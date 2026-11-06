@@ -216,24 +216,27 @@
     <!-- Native hidden file input (outside dropzone to eliminate click event bubbling & COM dialog deadlock) -->
     <input type="file" id="media-file-input" name="file" accept="audio/*,video/*,.mp4,.mp3,.wav,.m4a,.mov,.webm,.flac,.ogg,.aac,.mkv,.avi,.flv,.wmv,.opus,.wma,.3gp,.ts,.m4v" class="visually-hidden-input" onchange="handleFileSelected(event)" onclick="event.stopPropagation();" />
 
-    <!-- State 2: Minimalist Liquid Light Orb + Precision Live Progress Tracker -->
-    <div class="processing-card" id="processing-card">
-      <div class="liquid-orb-stage liquid-canvas-stage">
-        <canvas id="liquid-orb-canvas" width="220" height="220"></canvas>
-        <div class="orb-core"></div>
-      </div>
-      <h3 class="processing-title" id="processing-main-title">Transcribing & Translating to English</h3>
-      <p class="processing-sub" id="processing-status-text">Ingesting media buffer · Extracting 16kHz speech stream...</p>
-
-      <!-- Precision Real-Time Progress Bar & Metrics -->
-      <div class="progress-meter-container" id="progress-meter-container">
-        <div class="progress-meter-header">
+    <!-- State 2: Live Processing Status -->
+    <div class="processing-card" id="processing-card" role="status" aria-live="polite">
+      <div class="processing-topline">
+        <div class="liquid-orb-stage liquid-canvas-stage" aria-hidden="true">
+          <canvas id="liquid-orb-canvas" width="220" height="220"></canvas>
+          <div class="orb-core"></div>
+        </div>
+        <div class="processing-copy">
+          <h3 class="processing-title" id="processing-main-title">Transcribing & Translating to English</h3>
+          <p class="processing-sub" id="processing-status-text">Ingesting media buffer · Extracting 16kHz speech stream...</p>
+        </div>
+        <div class="processing-progress-summary">
           <div class="progress-pct-badge" id="progress-pct-badge">0%</div>
           <div class="progress-eta-badge" id="progress-eta-badge">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             <span id="progress-eta-text">Estimating time...</span>
           </div>
         </div>
+      </div>
+
+      <div class="progress-meter-container" id="progress-meter-container">
         <div class="progress-track" id="progress-track">
           <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
         </div>
@@ -252,17 +255,6 @@
         </div>
       </div>
 
-      <div class="processing-meta-row">
-        <div class="processing-file-badge" id="processing-file-name">media_file.mp4</div>
-        <div class="processing-stage-pill" id="processing-stage-pill">Phase 1/4 · Neural Alignment</div>
-      </div>
-
-      <div class="processing-cancel-wrap" id="processing-cancel-wrap" style="text-align: center; margin-top: 14px;">
-        <button type="button" class="btn-cancel-job" id="cancel-processing-btn" onclick="cancelActiveProcessing(event)">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
-          <span>Cancel Processing</span>
-        </button>
-      </div>
     </div>
 
     <!-- State 3: Clean Output Viewport (Copy-Paste Ready) -->

@@ -227,13 +227,12 @@ class LiveGUIAutomationHarness:
             proc_disp = await self.cdp.evaluate("document.getElementById('processing-card').style.display")
             out_disp = await self.cdp.evaluate("document.getElementById('output-viewport').style.display")
             pct_text = await self.cdp.query_text("#progress-pct-badge")
-            stage_text = await self.cdp.query_text("#processing-stage-pill")
 
             if pct_text:
                 try:
                     pct_val = int(pct_text.replace("%", "").strip())
                     if pct_val != last_pct and pct_val % 10 == 0:
-                        print(f"      [Progress] {pct_val}% — {stage_text}")
+                        print(f"      [Progress] {pct_val}%")
                         last_pct = pct_val
                 except Exception:
                     pass
@@ -280,10 +279,6 @@ class LiveGUIAutomationHarness:
         # Verify #processing-card displayed with liquid orb
         proc_disp = await self.cdp.evaluate("document.getElementById('processing-card').style.display")
         assert proc_disp == "block", f"Expected #processing-card display:block, got: {proc_disp}"
-
-        file_label = await self.cdp.query_text("#processing-file-name")
-        print(f"  [*] Processing file name displayed: {file_label}")
-        assert os.path.basename(mp4_path) in file_label, f"File name mismatch in UI: {file_label}"
 
         # Poll until complete
         res = await self.wait_for_processing_completion(max_timeout_sec=45.0)

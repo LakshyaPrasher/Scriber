@@ -247,7 +247,6 @@
     var elapsedText = document.getElementById('progress-elapsed-text');
     var titleEl = document.getElementById('processing-main-title');
     var subEl = document.getElementById('processing-status-text');
-    var pillEl = document.getElementById('processing-stage-pill');
 
     if (fillEl) fillEl.style.width = pct + '%';
     if (pctBadge) pctBadge.innerText = pct + '%';
@@ -286,7 +285,6 @@
 
     if (titleEl && data.title) titleEl.innerText = data.title;
     if (subEl && data.subtitle) subEl.innerText = data.subtitle;
-    if (pillEl && data.phase) pillEl.innerText = data.phase;
   }
 
   function startLiveProgressTracker() {
@@ -377,7 +375,7 @@
     document.getElementById('dropzone').style.display = 'none';
     const procCard = document.getElementById('processing-card');
     procCard.style.display = 'block';
-    document.getElementById('processing-file-name').innerText = fileName;
+    // The source filename is intentionally kept out of the compact progress view.
     document.getElementById('output-viewport').style.display = 'none';
 
     // Start minimalist organic liquid light animation and live backend progress polling
@@ -465,7 +463,7 @@
     document.getElementById('dropzone').style.display = 'none';
     const procCard = document.getElementById('processing-card');
     procCard.style.display = 'block';
-    document.getElementById('processing-file-name').innerText = file.name;
+    // The source filename is intentionally kept out of the compact progress view.
     document.getElementById('output-viewport').style.display = 'none';
 
     // Start minimalist organic liquid light animation and live backend progress polling
@@ -2282,8 +2280,10 @@
     var dpr = window.devicePixelRatio || 1;
     liquidCanvas.width = 220 * dpr;
     liquidCanvas.height = 220 * dpr;
-    liquidCanvas.style.width = '220px';
-    liquidCanvas.style.height = '220px';
+    // Let the stylesheet scale this fixed logical canvas at each breakpoint.
+    // Keeping its 220px drawing space avoids a second rendering path for mobile.
+    liquidCanvas.style.width = '';
+    liquidCanvas.style.height = '';
     liquidCtx = liquidCanvas.getContext('2d');
     if (!liquidAnimId) {
       renderLiquidLoop();
@@ -3257,7 +3257,6 @@
   window.auditionVoiceCard = auditionVoiceCard;
   window.auditionSelectedVoice = auditionSelectedVoice;
   window.switchVoiceSelectionTab = switchVoiceSelectionTab;
-  window.pollPerformanceTelemetry = pollPerformanceTelemetry;
   window.renderTranscription = renderTranscription;
   window.copyFullTranscript = copyFullTranscript;
   window.switchMode = switchMode;

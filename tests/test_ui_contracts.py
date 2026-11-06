@@ -317,10 +317,9 @@ class TestUIContracts(unittest.TestCase):
         self.assertIn('id="rate-slider"', self.html)
         self.assertIn('id="voice-model-switcher"', self.html)
 
-    def test_m12_cancellation_ui_hooks(self):
-        """Verifies responsive cancellation buttons and JS controllers in transcription and voice cloning."""
-        self.assertIn('id="cancel-processing-btn"', self.html)
-        self.assertIn('onclick="cancelActiveProcessing(event)"', self.html)
+    def test_m12_cancellation_controller_and_voice_ui_hooks(self):
+        """Keeps cancellation handling for active jobs without restoring removed processing chrome."""
+        self.assertNotIn('id="cancel-processing-btn"', self.html)
         self.assertIn('id="cancel-voice-btn"', self.html)
         self.assertIn('onclick="cancelVoiceSynthesis(event)"', self.html)
         self.assertIn("cancelActiveProcessing", self.html)
@@ -328,6 +327,19 @@ class TestUIContracts(unittest.TestCase):
         self.assertIn("activeProcessAbortController", self.html)
         self.assertIn("activeVoiceAbortController", self.html)
         self.assertIn("/api/cancel", self.html)
+
+    def test_processing_status_has_compact_responsive_hierarchy(self):
+        """Keeps the live processing state legible without clipping at phone widths."""
+        self.assertIn('class="processing-topline"', self.html)
+        self.assertIn('class="processing-progress-summary"', self.html)
+        self.assertIn('role="status" aria-live="polite"', self.html)
+        self.assertIn('@media (max-width: 640px)', self.html)
+        self.assertIn('grid-template-columns: repeat(3, minmax(0, 1fr))', self.html)
+        self.assertNotIn('id="processing-file-name"', self.html)
+        self.assertNotIn('id="processing-stage-pill"', self.html)
+        self.assertIn("liquidCanvas.style.width = '';", self.html)
+        self.assertNotIn("liquidCanvas.style.width = '220px';", self.html)
+        self.assertNotIn("window.pollPerformanceTelemetry = pollPerformanceTelemetry;", self.html)
 
     def test_m12_white_flash_elimination(self):
         """Verifies dark background inline styling on root html, css rules, and pywebview flags."""
