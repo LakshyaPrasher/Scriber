@@ -2,6 +2,10 @@
 
 **Purpose:** Give a successor LLM (or agent) everything it needs to continue work on Scriber without re-auditing from scratch.
 
+> **Re-audit update (2026-11-07, HEAD `f19b4fe`):** A fresh independent audit was performed after this report was written. See **`RE_AUDIT_REPORT.md`** for the current findings. Two claims below are overstated:
+> - “Arbitrary file read/write/reveal endpoints locked down” is incomplete: `/api/media` still serves any file under `Path.home()` (`scriber/web/server.py:43`).
+> - “Hardcoded confidences replaced” is false: `scriber/agent_swarm.py:267` and `scriber/models.py:37,143` still contain hardcoded `0.985`/`0.99` values.
+
 ---
 
 ## 1. Project identity
@@ -13,13 +17,13 @@
 | Repo root | `C:\Users\laksh\.gemini\antigravity\scratch\scriber` |
 | Python package | `scriber/` |
 | Git branch | `main` |
-| HEAD commit | `e35c9a9` "fix: comprehensive security, honesty, accessibility, and contract audit remediation" |
+| HEAD commit | `f19b4fe` "docs: add LLM handoff report; commit pending cli.py shortcut-destination reorder" (prior remediation: `e35c9a9`) |
 | Prior HEAD | `51c70bf` (baseline, clean) |
 | Working tree | Clean (nothing uncommitted) |
 | Remote | `origin` → `https://github.com/LakshyaPrasher/Scriber.git` (in sync; 0 ahead/behind) |
 | `.git/config` | Clean — no embedded PAT or credentials |
 | Baseline tests | `532 passed, 8 skipped` in ~8 min (pre-remediation) |
-| Post-remediation tests | `533 passed, 8 skipped, 0 failed` in `tests/` (~6:24) |
+| Post-remediation tests | `533 passed, 8 skipped, 0 failed` in `tests/` (6:24–20:53 depending on machine load; see `RE_AUDIT_REPORT.md` P3-7) |
 
 ---
 
@@ -27,9 +31,9 @@
 
 ### Security (P0)
 - Removed plaintext GitHub PAT from `.git/config`; remote URL is now clean.
-- Removed CORS `*` wildcard; Host/Origin checks added; `/api/media`, save, and reveal restricted to `./scriber_output` with `Path.resolve()` allow-list.
+- Removed CORS `*` wildcard; Host/Origin checks added; save and reveal restricted to `./scriber_output` with `Path.resolve()` allow-list. `/api/media` is restricted to output root + temp + the user's home directory (broader than intended; see `RE_AUDIT_REPORT.md` P1-1).
 - PII span-based redaction with Luhn credit-card validation; honest `is_shielded`.
-- Arbitrary file read/write/reveal endpoints locked down.
+- Arbitrary file write/reveal endpoints locked down; `/api/media` read scope is still broader than intended (see `RE_AUDIT_REPORT.md` P1-1).
 - Microservice: honest GPU health fields, no fake telemetry, `similarity_score` null when unmeasured, CORS removed, token-protected `/shutdown` and `/synthesize`.
 - Microservice manager generates a per-launch token and passes it via `--token` / `X-Scriber-Token`.
 
@@ -40,7 +44,7 @@
 - Removed fabricated Whisper token IDs; removed WhisperSpeech/GPT-SoVITS/F5-TTS from `TOP_LEVERAGED_REPOS`; model labels are truthful ("not bundled / fallback").
 - `calculate_similarity` returns raw acoustic heuristic; 0.0 for empty profiles; no logistic inflation; no hardcoded 99.4%.
 - Voice backend labels honest (Edge-TTS / SAPI / formant-companion).
-- Agent swarm: hardcoded confidences replaced with computed heuristic scores + `confidence_basis` labels.
+- Agent swarm telemetry uses computed heuristic scores + `confidence_basis` labels; however, per-item `ActionItem.confidence` is still hardcoded `0.985` (see `RE_AUDIT_REPORT.md` P1-2).
 - Version uses `__version__` everywhere; removed "Certified 99%+ Accuracy".
 
 ### Validation semantics (P1)
@@ -80,6 +84,11 @@ These were **out of scope** or intentionally deferred. A successor LLM should tr
 | Responsive 360px layout pass | Not done | Breakpoints exist; narrow-width and 200% zoom not thoroughly tested. |
 | Real GPU/F5-TTS model execution | Not done | `torch` not installed; microservice optional. Claims about GPU acceleration are conditional on separate install. |
 | History purge if PAT was ever committed | Not done | PAT was only in `.git/config` (untracked), not in commit history. If it ever was committed, purge with BFG/filter-repo. |
+| `/api/media` home-directory read scope | Open (P1) | `_media_roots()` includes `Path.home()`, so `/api/media?path=` can serve any file under home. See `RE_AUDIT_REPORT.md` P1-1. |
+| Hardcoded confidence values | Open (P1) | `agent_swarm.py:267` uses `0.985`; `models.py:37,143` default to `0.99`; OpenAI-Whisper fallback inherits `0.99`. See P1-2. |
+| “Biometric” labels in CLI/progress/agents | Open (P2) | Frontend fixed, but `cli.py`, `pipeline.py`, `diarizer.py`, `agent_swarm.py`, `voice_clone.py` still use biometric language. See P2-1. |
+| Synthetic placeholder audio → ASR | Open (P2) | No decoder → synthetic tone is still transcribed; UI warns about audio but transcript is not marked synthetic. See P2-2. |
+| Full suite runtime | Open (P3) | Hardware stress test alone ~2 min; full suite can exceed 15 min. See P3-7. |
 
 ---
 
@@ -88,17 +97,18 @@ These were **out of scope** or intentionally deferred. A successor LLM should tr
 From the repo root (PowerShell):
 
 ```powershell
-# Full suite (~6-8 minutes)
-python -m pytest -q
+# Full suite (allow 30 minutes; the hardware stress test alone takes ~2 minutes
+# and the suite can exceed 15 minutes on a busy machine)
+.\.venv\Scripts\python.exe -m pytest -q
 
 # Targeted UI / API contracts (fast iteration)
-python -m pytest tests/test_ui_contracts.py tests/test_server_api.py -q
+.\.venv\Scripts\python.exe -m pytest tests/test_ui_contracts.py tests/test_server_api.py -q
 
 # Pipeline / validator / transcription / voice clone
-python -m pytest tests/test_pipeline.py tests/test_validator.py tests/test_transcription_engine.py tests/test_voice_clone.py -q
+.\.venv\Scripts\python.exe -m pytest tests/test_pipeline.py tests/test_validator.py tests/test_transcription_engine.py tests/test_voice_clone.py -q
 
 # E2E (may need optional deps)
-python -m pytest tests/e2e_suite/ -q
+.\.venv\Scripts\python.exe -m pytest tests/e2e_suite/ -q
 ```
 
 **Expected:** `533 passed, 8 skipped, 0 failed`. If a number drops, a regression was introduced — investigate before committing.
