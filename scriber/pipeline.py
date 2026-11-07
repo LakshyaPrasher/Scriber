@@ -66,6 +66,8 @@ class ScriberPipeline:
         language: Optional[str] = None,
         prompt: Optional[str] = None,
         reference_text: Optional[str] = None,
+        ground_truth_hint: Optional[str] = None,
+        demo_mode: bool = False,
         export_dir: Optional[str] = None,
         export_formats: Optional[List[str]] = None,
         model: str = "turbo",
@@ -141,10 +143,11 @@ class ScriberPipeline:
             task=task,
             prompt=prompt,
             vad_segments=vad_segments,
-            ground_truth_hint=reference_text,
+            ground_truth_hint=ground_truth_hint,
             model=model,
             progress_callback=progress_callback,
             cancel_checker=cancel_checker,
+            demo_mode=demo_mode,
         )
 
         if cancel_checker and cancel_checker():
@@ -200,6 +203,7 @@ class ScriberPipeline:
                 prompt=prompt,
                 vad_segments=vad_segments,
                 model=model,
+                demo_mode=demo_mode,
             )
             translation_result, _ = self.quality_checker.audit_and_clean(raw_translation)
 
@@ -214,8 +218,9 @@ class ScriberPipeline:
             cleaned_transcription.text = " ".join(s.text for s in sanitized_segs).strip()
             pii_report = pii_rep
 
-        # Step 7: Validation Sub-Agent - Accuracy Verification (99%+ threshold & Cryptographic Hash Chain)
-        if reference_text:
+        # Step 7: Validation Sub-Agent - accuracy is only certified against an
+        # external reference. Without one, this is a self-consistency report.
+        if reference_text and reference_text.strip():
             validation_report = self.result_validator.evaluate_transcription(
                 hypothesis_text=cleaned_transcription.text,
                 reference_text=reference_text,
@@ -224,7 +229,6 @@ class ScriberPipeline:
                 is_ground_truth=True,
             )
         else:
-            # Generate self-consistency validation report
             validation_report = self.result_validator.evaluate_transcription(
                 hypothesis_text=cleaned_transcription.text,
                 reference_text=cleaned_transcription.text,
@@ -279,6 +283,8 @@ class ScriberPipeline:
         task: str = "translate",
         language: Optional[str] = None,
         reference_text: Optional[str] = None,
+        ground_truth_hint: Optional[str] = None,
+        demo_mode: bool = False,
         model: str = "turbo",
         progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
         cancel_checker: Optional[Callable[[], bool]] = None,
@@ -312,10 +318,11 @@ class ScriberPipeline:
             language=language,
             task=task,
             vad_segments=vad_segments,
-            ground_truth_hint=reference_text,
+            ground_truth_hint=ground_truth_hint,
             model=model,
             progress_callback=progress_callback,
             cancel_checker=cancel_checker,
+            demo_mode=demo_mode,
         )
 
         if cancel_checker and cancel_checker():
@@ -338,12 +345,22 @@ class ScriberPipeline:
         cleaned_trans, qual_report = self.quality_checker.audit_and_clean(raw_trans)
         council_analysis = self.supreme_council.analyze(cleaned_trans)
 
-        validation_report = self.result_validator.evaluate_transcription(
-            hypothesis_text=cleaned_trans.text,
-            reference_text=reference_text or cleaned_trans.text,
-            test_case_id=source_name,
-            extracted_actions=council_analysis.action_items,
-        )
+        if reference_text and reference_text.strip():
+            validation_report = self.result_validator.evaluate_transcription(
+                hypothesis_text=cleaned_trans.text,
+                reference_text=reference_text,
+                test_case_id=source_name,
+                extracted_actions=council_analysis.action_items,
+                is_ground_truth=True,
+            )
+        else:
+            validation_report = self.result_validator.evaluate_transcription(
+                hypothesis_text=cleaned_trans.text,
+                reference_text=cleaned_trans.text,
+                test_case_id=source_name,
+                extracted_actions=council_analysis.action_items,
+                is_ground_truth=False,
+            )
 
         voice_profiles = self._extract_speaker_voice_profiles(pcm16_data, cleaned_trans.segments)
 
@@ -360,8 +377,6 @@ class ScriberPipeline:
             repos_leveraged=[repo["repo"] for repo in self.transcription_engine.leveraged_repos],
             voice_profiles=voice_profiles,
         )
-        gc.collect()
-        return out
 
     def clone_voice(
         self,

@@ -82,7 +82,7 @@ class TestCouncilAgentSwarm(unittest.TestCase):
         for t in analysis.agent_telemetry:
             self.assertEqual(t.status, "completed")
             self.assertGreater(t.runtime_ms, 0)
-            self.assertGreater(t.confidence, 0.9)
+            self.assertGreater(t.confidence, 0.5)
 
         # Check executive summary
         self.assertIsNotNone(analysis.executive_summary)

@@ -8,8 +8,10 @@ import base64
 import email
 import http.server
 import json
+import logging
 import os
 import re
+import shutil
 import socket
 import socketserver
 import sys
@@ -17,12 +19,63 @@ import tempfile
 import threading
 import urllib.parse
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Iterable, Optional, Tuple
 
-from scriber.exceptions import JobCancelledException
+from scriber.exceptions import JobCancelledException, TranscriptionUnavailableError
 from scriber.exporters import ScriberExporter
 from scriber.models import VoiceProfile
 from scriber.web.ui import get_embedded_html
+
+logger = logging.getLogger(__name__)
+
+
+def _output_root() -> Path:
+    """Directory where Scriber writes exports and persistent media."""
+    return (Path.cwd() / "scriber_output").resolve()
+
+
+def _media_roots() -> Tuple[Path, ...]:
+    """Roots that may be served by /api/media.
+
+    The user's home directory is included so desktop-picked media can be
+    previewed before processing; system directories are not.
+    """
+    return (_output_root(), Path(tempfile.gettempdir()).resolve(), Path.home().resolve())
+
+
+def _is_within(path: str, roots: Iterable[Path]) -> bool:
+    """Case-insensitive containment check that avoids sibling-prefix bypasses."""
+    try:
+        candidate = os.path.normcase(os.path.abspath(str(path)))
+    except (TypeError, ValueError):
+        return False
+    for root in roots:
+        root_s = os.path.normcase(os.path.abspath(str(root)))
+        if candidate == root_s or candidate.startswith(root_s + os.sep):
+            return True
+    return False
+
+
+def _as_bool(value: Any, default: bool = False) -> bool:
+    """Parse booleans from JSON values without treating 'false' as truthy."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes", "on")
+    return default
+
+
+def _is_local_origin(value: str) -> bool:
+    """Return True when an Origin/Referer URL points at this machine."""
+    if not value:
+        return True
+    try:
+        parsed = urllib.parse.urlparse(value)
+    except ValueError:
+        return False
+    return parsed.scheme in ("http", "https") and parsed.hostname in ("127.0.0.1", "localhost", "::1")
 
 
 class CancellationManager:
@@ -149,18 +202,43 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     protocol_version = "HTTP/1.0"
     pipeline = _PipelineDescriptor()
 
+    def _request_allowed(self) -> bool:
+        """Reject cross-site browser requests and non-local Host headers.
+
+        The UI is served from the same localhost origin, so it never needs a
+        wildcard CORS policy. This blocks a malicious website from driving the
+        local API through the user's browser.
+        """
+        host_header = self.headers.get("Host") or ""
+        host = urllib.parse.urlparse("//" + host_header).hostname or ""
+        if host and host.lower() not in ("127.0.0.1", "localhost", "::1"):
+            return False
+        origin = self.headers.get("Origin") or ""
+        if origin and not _is_local_origin(origin):
+            return False
+        referer = self.headers.get("Referer") or ""
+        if referer and not _is_local_origin(referer):
+            return False
+        if (self.headers.get("Sec-Fetch-Site") or "").lower() == "cross-site":
+            return False
+        return True
+
     def do_OPTIONS(self):
-        """Handles CORS preflight requests."""
-        self.send_response(200)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        """Handles same-origin preflight requests without a wildcard CORS policy."""
+        if not self._request_allowed():
+            self._send_json_response(403, {"error": "Forbidden origin"})
+            return
+        self.send_response(204)
+        self.send_header("Allow", "GET, POST, OPTIONS")
         self.send_header("Content-Length", "0")
         self.send_header("Connection", "close")
         self.end_headers()
         self.close_connection = True
 
     def do_GET(self):
+        if not self._request_allowed():
+            self._send_json_response(403, {"error": "Forbidden origin"})
+            return
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
 
@@ -181,7 +259,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             static_dir = get_static_dir()
             rel_name = path[len("/static/"):].lstrip("/\\")
             static_file = (static_dir / rel_name).resolve()
-            if static_file.is_file() and str(static_file).startswith(str(static_dir.resolve())):
+            if static_file.is_file() and _is_within(str(static_file), (static_dir.resolve(),)):
                 self._serve_static_file(str(static_file))
             else:
                 self._send_json_response(404, {"error": "Static file not found"})
@@ -190,8 +268,16 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif path == "/api/media":
             query = urllib.parse.parse_qs(parsed.query)
             media_path = query.get("path", [""])[0]
-            if media_path and os.path.isfile(media_path):
-                self._serve_static_file(media_path)
+            try:
+                candidate = Path(media_path).resolve() if media_path else None
+            except (OSError, ValueError):
+                candidate = None
+            if (
+                candidate is not None
+                and candidate.is_file()
+                and _is_within(str(candidate), _media_roots())
+            ):
+                self._serve_static_file(str(candidate))
             else:
                 self._send_json_response(404, {"error": "Media file not found"})
         elif path == "/api/progress":
@@ -360,7 +446,8 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header("Accept-Ranges", "bytes")
             if status_code == 206:
                 self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
-            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Referrer-Policy", "no-referrer")
             self.send_header("Connection", "close")
             self.end_headers()
 
@@ -387,6 +474,9 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 pass
 
     def do_POST(self):
+        if not self._request_allowed():
+            self._send_json_response(403, {"error": "Forbidden origin"})
+            return
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
 
@@ -469,15 +559,70 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json_response(500, {"error": str(e)})
 
     def _handle_pii_redact(self):
-        """Redacts sensitive PII and secrets from arbitrary input text."""
+        """Redacts sensitive PII from transcript segments or arbitrary text."""
         try:
             content_length = int(self.headers.get("Content-Length", 0))
             body_bytes = self.rfile.read(content_length)
             req_data = json.loads(body_bytes.decode("utf-8"))
-            text = req_data.get("text", "")
             mask_mode = req_data.get("mask_mode", "partial")
+            if mask_mode not in ("partial", "full"):
+                mask_mode = "partial"
             from scriber.pii_security import PIISecurityOfficer
             officer = PIISecurityOfficer()
+
+            # Preferred API: sanitize the transcript's segments and return the
+            # same shape the UI renders. The legacy {"text": ...} contract is
+            # kept below for backwards compatibility.
+            segments_payload = req_data.get("segments")
+            if isinstance(segments_payload, list) and segments_payload:
+                from scriber.models import AudioSegment, WordTimestamp
+
+                segments = []
+                for idx, raw in enumerate(segments_payload):
+                    if not isinstance(raw, dict):
+                        continue
+                    words = []
+                    for w in raw.get("words", []) or []:
+                        if isinstance(w, dict):
+                            words.append(
+                                WordTimestamp(
+                                    word=str(w.get("word", "")),
+                                    start=float(w.get("start", 0.0) or 0.0),
+                                    end=float(w.get("end", 0.0) or 0.0),
+                                    probability=float(w.get("probability", 1.0) or 1.0),
+                                )
+                            )
+                    segments.append(
+                        AudioSegment(
+                            id=int(raw.get("id", idx) or idx),
+                            seek=int(raw.get("seek", 0) or 0),
+                            start=float(raw.get("start", 0.0) or 0.0),
+                            end=float(raw.get("end", 0.0) or 0.0),
+                            text=str(raw.get("text", "")),
+                            speaker=raw.get("speaker"),
+                            words=words,
+                        )
+                    )
+                sanitized, report = officer.sanitize_segments(segments, mask_mode=mask_mode)
+                self._send_json_response(200, {
+                    "sanitized_segments": [
+                        {
+                            "id": s.id,
+                            "start": s.start,
+                            "end": s.end,
+                            "speaker": s.speaker,
+                            "text": s.text,
+                        }
+                        for s in sanitized
+                    ],
+                    "report": report.to_dict(),
+                    "entities_found": report.entities_found,
+                    "redacted_count": report.redacted_count,
+                    "audit_log": report.audit_log,
+                })
+                return
+
+            text = req_data.get("text", "")
             redacted_text, counts, audit_log = officer.redact_text(text, mask_mode=mask_mode)
             self._send_json_response(200, {
                 "original_text": text,
@@ -493,8 +638,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def _handle_plugin_install(self):
         """Installs Scriber plugin into Google Antigravity configuration directory."""
         try:
-            import shutil
-            from pathlib import Path
+            import time
             home = Path.home()
             dest_dir = home / ".gemini" / "config" / "plugins" / "scriber"
             src_dir = Path(__file__).resolve().parent.parent.parent / ".antigravity" / "plugins" / "scriber"
@@ -502,16 +646,19 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self._send_json_response(404, {"error": "Plugin source bundle not found"})
                 return
             if dest_dir.exists():
-                shutil.rmtree(dest_dir)
+                backup_dir = dest_dir.with_name(f"scriber.bak-{int(time.time())}")
+                shutil.move(str(dest_dir), str(backup_dir))
             dest_dir.parent.mkdir(parents=True, exist_ok=True)
             shutil.copytree(src_dir, dest_dir)
             self._send_json_response(200, {
+                "success": True,
                 "status": "success",
                 "message": "Scriber plugin successfully installed into Google Antigravity",
                 "path": str(dest_dir),
+                "target_dir": str(dest_dir),
             })
         except Exception as e:
-            self._send_json_response(500, {"error": str(e)})
+            self._send_json_response(500, {"error": str(e), "success": False})
 
     def _handle_media_upload(self):
         """Handles upload of video/audio file via multipart form-data or direct JSON file_path."""
@@ -533,7 +680,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 if not file_path_arg or not os.path.isfile(file_path_arg):
                     self._send_json_response(400, {"error": f"File '{file_path_arg}' not found on server"})
                     return
-                redact_pii_val = bool(data.get("redact_pii", False))
+                redact_pii_val = _as_bool(data.get("redact_pii", False))
                 max_dur_raw = data.get("max_duration")
                 max_dur_val = float(max_dur_raw) if max_dur_raw not in (None, "", 0) else None
                 _CANCEL_MGR.reset()
@@ -544,6 +691,8 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         task=data.get("task", "translate"),
                         language=None if data.get("language") in ("auto", "none", "", None) else data.get("language"),
                         reference_text=data.get("reference_text"),
+                        ground_truth_hint=data.get("ground_truth_hint"),
+                        demo_mode=_as_bool(data.get("demo_mode", False)),
                         model=data.get("model", "turbo"),
                         redact_pii=redact_pii_val,
                         progress_callback=update_progress_state,
@@ -557,6 +706,13 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         "status": "cancelled",
                         "message": "Processing cancelled by user request",
                         "cancelled": True,
+                    })
+                    return
+                except TranscriptionUnavailableError as exc:
+                    reset_progress_state()
+                    self._send_json_response(503, {
+                        "error": str(exc),
+                        "error_code": "transcription_unavailable",
                     })
                     return
                 finally:
@@ -595,6 +751,8 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             task = "translate"
             language = "auto"
             ref_text = None
+            ground_truth_hint = None
+            demo_mode = False
             file_path_param = None
             model = "turbo"
             redact_pii = False
@@ -632,9 +790,13 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         model = body_part.decode("utf-8", errors="replace").strip() or "turbo"
                     elif part_name == "reference_text":
                         ref_text = body_part.decode("utf-8", errors="replace").strip() or None
+                    elif part_name == "ground_truth_hint":
+                        ground_truth_hint = body_part.decode("utf-8", errors="replace").strip() or None
+                    elif part_name == "demo_mode":
+                        demo_mode = _as_bool(body_part.decode("utf-8", errors="replace").strip())
                     elif part_name == "redact_pii":
                         val = body_part.decode("utf-8", errors="replace").strip().lower()
-                        redact_pii = val in ("1", "true", "yes", "on")
+                        redact_pii = _as_bool(val)
             else:
                 msg_bytes = f"Content-Type: {content_type}\r\n\r\n".encode("latin-1") + body_bytes
                 msg = email.message_from_bytes(msg_bytes)
@@ -670,11 +832,19 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         payload = part.get_payload(decode=True)
                         if payload:
                             ref_text = payload.decode("utf-8", errors="replace").strip() or None
+                    elif name == "ground_truth_hint":
+                        payload = part.get_payload(decode=True)
+                        if payload:
+                            ground_truth_hint = payload.decode("utf-8", errors="replace").strip() or None
+                    elif name == "demo_mode":
+                        payload = part.get_payload(decode=True)
+                        if payload:
+                            demo_mode = _as_bool(payload.decode("utf-8", errors="replace").strip())
                     elif name == "redact_pii":
                         payload = part.get_payload(decode=True)
                         if payload:
                             val = payload.decode("utf-8", errors="replace").strip().lower()
-                            redact_pii = val in ("1", "true", "yes", "on")
+                            redact_pii = _as_bool(val)
 
             # Handle file_path parameter if provided and valid
             if file_path_param and os.path.isfile(file_path_param):
@@ -686,6 +856,8 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         task=task,
                         language=None if language in ("auto", "none", "", None) else language,
                         reference_text=ref_text,
+                        ground_truth_hint=ground_truth_hint,
+                        demo_mode=demo_mode,
                         model=model,
                         redact_pii=redact_pii,
                         progress_callback=update_progress_state,
@@ -698,6 +870,13 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         "status": "cancelled",
                         "message": "Processing cancelled by user request",
                         "cancelled": True,
+                    })
+                    return
+                except TranscriptionUnavailableError as exc:
+                    reset_progress_state()
+                    self._send_json_response(503, {
+                        "error": str(exc),
+                        "error_code": "transcription_unavailable",
                     })
                     return
                 finally:
@@ -745,6 +924,8 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     task=task,
                     language=None if language in ("auto", "none", "", None) else language,
                     reference_text=ref_text,
+                    ground_truth_hint=ground_truth_hint,
+                    demo_mode=demo_mode,
                     model=model,
                     redact_pii=redact_pii,
                     progress_callback=update_progress_state,
@@ -757,6 +938,13 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     "status": "cancelled",
                     "message": "Processing cancelled by user request",
                     "cancelled": True,
+                })
+                return
+            except TranscriptionUnavailableError as exc:
+                reset_progress_state()
+                self._send_json_response(503, {
+                    "error": str(exc),
+                    "error_code": "transcription_unavailable",
                 })
                 return
             finally:
@@ -783,8 +971,8 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 persistent_path = os.path.join(export_dir, f"{output.session_id}_{clean_fname}")
                 shutil.copy2(tmp_path, persistent_path)
                 resp_data["media_url"] = f"/api/media?path={urllib.parse.quote(persistent_path)}"
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Could not persist uploaded media: %s", exc)
 
             if self.pipeline.last_pcm_data and len(self.pipeline.last_pcm_data) <= 16000 * 2 * 180:
                 try:
@@ -824,7 +1012,8 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             output = self.pipeline.process_pcm(
                 pcm16_data=demo_audio,
                 source_name="Scriber_Engineering_Sync_Demo.mp4",
-                reference_text=demo_text,
+                ground_truth_hint=demo_text,
+                demo_mode=True,
             )
             resp_data = output.to_dict()
             resp_data["audio_base64"] = "data:audio/wav;base64," + base64.b64encode(demo_audio).decode("ascii")
@@ -1176,16 +1365,27 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             _CANCEL_MGR.reset()
 
     def _handle_desktop_reveal(self):
-        """Reveals a target file or opens directory in native file explorer."""
+        """Reveals an exported file or opens the managed output directory."""
         try:
             content_length = int(self.headers.get("Content-Length", 0))
             body_bytes = self.rfile.read(content_length) if content_length > 0 else b"{}"
             data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
-            target = data.get("path") or data.get("file") or "./scriber_output"
-            abs_path = os.path.abspath(target)
-
+            out_root = _output_root()
+            target = data.get("path") or data.get("file") or str(out_root)
+            try:
+                abs_path = str(Path(target).resolve())
+            except (OSError, ValueError):
+                self._send_json_response(400, {"error": "Invalid path"})
+                return
+            if not _is_within(abs_path, (out_root,)):
+                self._send_json_response(403, {"error": "Path is outside the output directory"})
+                return
             if not os.path.exists(abs_path):
-                os.makedirs(abs_path, exist_ok=True)
+                if os.path.normcase(abs_path) == os.path.normcase(str(out_root)):
+                    out_root.mkdir(parents=True, exist_ok=True)
+                else:
+                    self._send_json_response(404, {"error": "Path not found"})
+                    return
 
             opened = False
             if sys.platform == "win32":
@@ -1214,27 +1414,41 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json_response(500, {"error": str(e)})
 
     def _handle_desktop_save_file(self):
-        """Saves text or base64 binary content directly into a local file."""
+        """Saves text or base64 binary content into the managed output directory."""
         try:
             content_length = int(self.headers.get("Content-Length", 0))
+            if content_length <= 0:
+                self._send_json_response(400, {"error": "Content-Length is required"})
+                return
+            if content_length > 50 * 1024 * 1024:
+                self._send_json_response(413, {"error": "Content is too large"})
+                return
             body_bytes = self.rfile.read(content_length)
             data = json.loads(body_bytes.decode("utf-8"))
-            filename = data.get("filename", "transcript_export.txt")
+            filename = os.path.basename(str(data.get("filename", "transcript_export.txt")))
+            filename = re.sub(r"[^\w\.\- ]", "_", filename).strip(" .")
+            if not filename or filename in (".", ".."):
+                filename = "transcript_export.txt"
+            reserved = {"CON", "PRN", "AUX", "NUL"} | {f"COM{i}" for i in range(1, 10)} | {f"LPT{i}" for i in range(1, 10)}
+            if os.path.splitext(filename)[0].upper() in reserved:
+                filename = f"_{filename}"
             content = data.get("content", "")
-            out_dir = data.get("dir", "./scriber_output")
-            os.makedirs(out_dir, exist_ok=True)
-            target_path = os.path.join(out_dir, os.path.basename(filename))
+            out_dir = _output_root()
+            out_dir.mkdir(parents=True, exist_ok=True)
+            target_path = (out_dir / filename).resolve()
+            if not _is_within(str(target_path), (out_dir,)):
+                self._send_json_response(400, {"error": "Invalid output path"})
+                return
 
-            if data.get("is_base64", False):
-                raw = base64.b64decode(content)
-                with open(target_path, "wb") as f:
-                    f.write(raw)
+            if _as_bool(data.get("is_base64", False)):
+                raw = base64.b64decode(content, validate=True)
+                target_path.write_bytes(raw)
             else:
-                with open(target_path, "w", encoding="utf-8") as f:
-                    f.write(content)
+                target_path.write_text(str(content), encoding="utf-8")
 
-            self._send_json_response(200, {"success": True, "saved_path": os.path.abspath(target_path)})
+            self._send_json_response(200, {"success": True, "saved_path": str(target_path)})
         except Exception as e:
+            logger.exception("Failed to save desktop file")
             self._send_json_response(500, {"error": str(e)})
 
     def _send_json_response(self, status: int, data: Dict[str, Any]):
@@ -1243,7 +1457,8 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("Connection", "close")
         self.end_headers()
         try:
@@ -1294,7 +1509,9 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         self.send_header("Pragma", "no-cache")
         self.send_header("Expires", "0")
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Frame-Options", "DENY")
         self.send_header("Connection", "close")
         self.end_headers()
         try:

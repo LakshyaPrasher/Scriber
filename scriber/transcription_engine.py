@@ -16,7 +16,7 @@ import time
 import unicodedata
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from scriber.exceptions import JobCancelledException
+from scriber.exceptions import JobCancelledException, TranscriptionUnavailableError
 
 _NVIDIA_DIRS_REGISTERED = False
 
@@ -142,18 +142,6 @@ TOP_LEVERAGED_REPOS = [
         "description": "Interactive media player and timestamp-synchronized transcript editor",
         "key_contribution": "Synchronized audio/video playback, karaoke-style active segment highlight, click-to-seek, inline editing",
         "url": "https://github.com/BBC/react-transcript-editor",
-    },
-    {
-        "repo": "collabora/WhisperSpeech",
-        "description": "Text-to-speech system built by inverting OpenAI Whisper",
-        "key_contribution": "Whisper semantic token inversion, zero-shot voice cloning, acoustic token synthesis",
-        "url": "https://github.com/collabora/WhisperSpeech",
-    },
-    {
-        "repo": "RVC-Boss/GPT-SoVITS",
-        "description": "Few-shot and zero-shot voice cloning and speech conversion",
-        "key_contribution": "Speaker timbre extraction, fundamental pitch (F0) preservation, acoustic similarity verification",
-        "url": "https://github.com/RVC-Boss/GPT-SoVITS",
     },
 ]
 
@@ -467,8 +455,14 @@ class TranscriptionEngine:
         beam_size: int = 1,
         progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
         cancel_checker: Optional[Callable[[], bool]] = None,
+        demo_mode: bool = False,
     ) -> TranscriptionResult:
-        """Executes speech-to-text or speech translation matching Whisper's processing flow."""
+        """Executes speech-to-text or speech translation matching Whisper's processing flow.
+
+        ``ground_truth_hint`` and ``demo_mode`` are explicit demo/test escape
+        hatches. In normal mode, if no real ASR backend is available, this
+        raises ``TranscriptionUnavailableError`` instead of inventing speech.
+        """
         if cancel_checker and cancel_checker():
             raise JobCancelledException("Whisper transcription cancelled before starting")
 
@@ -484,8 +478,11 @@ class TranscriptionEngine:
                 vad_segments=vad_segments,
                 ground_truth_hint=ground_truth_hint,
                 cancel_checker=cancel_checker,
+                demo_mode=True,
             )
-            res.model_name = model_label
+            res.model_name = "ground-truth-hint"
+            res.backend_used = "explicit-ground-truth-hint (demo/test only)"
+            res.is_synthetic = True
             return res
         if self.active_backend == "faster-whisper":
             try:
@@ -502,8 +499,14 @@ class TranscriptionEngine:
                 )
             except JobCancelledException:
                 raise
-            except Exception:
-                # Clean graceful fallback to reference flow engine
+            except Exception as exc:
+                if not demo_mode:
+                    raise TranscriptionUnavailableError(
+                        "faster-whisper is installed but could not transcribe this audio "
+                        f"({type(exc).__name__}: {exc}). Install/verify the model weights "
+                        "or choose a different model; Scriber will not fabricate a transcript."
+                    ) from exc
+                # Explicit demo mode only: show the synthetic flow clearly labelled.
                 res = self._transcribe_reference_flow(
                     pcm16_data=pcm16_data,
                     duration=duration,
@@ -513,19 +516,29 @@ class TranscriptionEngine:
                     vad_segments=vad_segments,
                     ground_truth_hint=ground_truth_hint,
                     cancel_checker=cancel_checker,
+                    demo_mode=True,
                 )
-                res.backend_used += f" (fallback from {selected_model})"
+                res.backend_used += f" (synthetic demo fallback from {selected_model})"
                 res.model_name = model_label
+                res.is_synthetic = True
             return res
         elif self.active_backend == "openai-whisper":
             res = self._transcribe_openai_whisper(pcm16_data, duration, language, task)
             res.model_name = model_label
+            res.is_synthetic = False
             return res
         elif self.active_backend == "whisper.cpp":
             res = self._transcribe_whisper_cpp(pcm16_data, duration, language, task)
             res.model_name = model_label
+            res.is_synthetic = False
             return res
         else:
+            if not demo_mode:
+                raise TranscriptionUnavailableError(
+                    "No speech-recognition backend is available. Install faster-whisper "
+                    "with model weights, openai-whisper, or set WHISPER_CPP_PATH to a "
+                    "whisper.cpp executable. Scriber will not invent a transcript."
+                )
             res = self._transcribe_reference_flow(
                 pcm16_data=pcm16_data,
                 duration=duration,
@@ -534,8 +547,12 @@ class TranscriptionEngine:
                 prompt=prompt,
                 vad_segments=vad_segments,
                 ground_truth_hint=ground_truth_hint,
+                cancel_checker=cancel_checker,
+                demo_mode=True,
             )
+            res.backend_used += " (synthetic demo)"
             res.model_name = model_label
+            res.is_synthetic = True
             return res
 
     def _transcribe_reference_flow(
@@ -548,14 +565,22 @@ class TranscriptionEngine:
         vad_segments: Optional[List[Tuple[float, float, bytes]]],
         ground_truth_hint: Optional[str],
         cancel_checker: Optional[Callable[[], bool]] = None,
+        demo_mode: bool = False,
     ) -> TranscriptionResult:
-        """Autonomous reference engine implementing Whisper's exact token framing and segment flow.
-        
-        Guarantees zero-dependency local execution while faithfully adhering
-        to Whisper's multi-task token specifications.
+        """Synthetic demo/test flow.
+
+        This is NOT a speech-recognition model. It either echoes an explicit
+        ground-truth hint or (in demo mode only) returns a scripted sample.
+        Fabricated segments carry confidence 0.0 and ``is_synthetic=True``.
         """
         if cancel_checker and cancel_checker():
             raise JobCancelledException("Reference flow cancelled before starting")
+
+        if not ground_truth_hint and not demo_mode:
+            raise TranscriptionUnavailableError(
+                "The synthetic reference flow requires demo_mode=True or an explicit "
+                "ground_truth_hint. Real transcription needs an ASR backend."
+            )
 
         # Parse acoustic energy profile
         total_samples = len(pcm16_data) // 2
@@ -579,8 +604,8 @@ class TranscriptionEngine:
                 s_end = min(effective_duration, (idx + 1) * chunk_duration)
                 words = self._align_word_timestamps(sentence, s_start, s_end)
 
-                # Simulate Whisper token ids
-                tokens = [50258, 50259, 50359] + [hash(w) % 50000 for w in sentence.split()]
+                # No fabricated Whisper token IDs: this path is synthetic.
+                tokens = []
                 spk = f"Speaker_{(idx % 4) + 1}" if has_speaker_cues else "Speaker_1"
                 seg = AudioSegment(
                     id=idx,
@@ -590,16 +615,16 @@ class TranscriptionEngine:
                     text=sentence,
                     tokens=tokens,
                     temperature=0.0,
-                    avg_logprob=-0.08,
-                    compression_ratio=1.15,
-                    no_speech_prob=0.005,
+                    avg_logprob=0.0,
+                    compression_ratio=1.0,
+                    no_speech_prob=0.0,
                     words=words,
                     speaker=spk,
-                    confidence=0.995,
+                    confidence=0.0,
                 )
                 segments.append(seg)
         else:
-            # Realistic multi-speaker conversational dialogue for media uploads without ground truth
+            # Scripted sample dialogue for the explicit demo endpoint only.
             dialogue_turns = [
                 "Welcome to the Scriber studio review session. Today we are aligning on transcription, voice cloning, and production delivery.",
                 "Thank you. On the engineering side, all pipeline components have been verified, and the automatic English translation is operating smoothly.",
@@ -630,14 +655,14 @@ class TranscriptionEngine:
                     start=s_start,
                     end=s_end,
                     text=turn_text,
-                    tokens=[50258, 50259, 50359] + [hash(w) % 50000 for w in turn_text.split()],
+                    tokens=[],
                     temperature=0.0,
-                    avg_logprob=-0.08,
-                    compression_ratio=1.12,
-                    no_speech_prob=0.005,
+                    avg_logprob=0.0,
+                    compression_ratio=1.0,
+                    no_speech_prob=0.0,
                     words=words,
                     speaker="Speaker_1",
-                    confidence=0.992,
+                    confidence=0.0,
                 )
                 segments.append(seg)
 
@@ -656,12 +681,13 @@ class TranscriptionEngine:
         return TranscriptionResult(
             text=full_text,
             language=language or "en",
-            language_probability=0.998,
+            language_probability=0.0,
             duration=round(effective_duration, 3),
             segments=segments,
             task=task,
-            backend_used=f"{self.active_backend} (WhisperX+Faster-Whisper Flow)",
-            model_name="whisper-base.en",
+            backend_used="synthetic-demo-flow",
+            model_name="synthetic-demo",
+            is_synthetic=True,
         )
 
     def _align_word_timestamps(self, text: str, start: float, end: float) -> List[WordTimestamp]:
@@ -679,7 +705,7 @@ class TranscriptionEngine:
                     word=word,
                     start=round(w_start, 3),
                     end=round(w_end, 3),
-                    probability=0.995,
+                    probability=0.0,
                 )
             )
         return timestamps
@@ -875,92 +901,61 @@ class TranscriptionEngine:
             if "tiny" not in candidates:
                 candidates.append("tiny")
 
-        is_mocked = "mock" in type(faster_whisper.WhisperModel).__module__
         cache_key = (active_model_id, pref_device, pref_compute)
-        if not is_mocked:
-            with self._CACHE_LOCK:
-                model = self._MODEL_CACHE.get(cache_key)
+        with self._CACHE_LOCK:
+            model = self._MODEL_CACHE.get(cache_key)
 
         if model is None:
-            if not is_mocked:
-                with self._CACHE_LOCK:
-                    model = self._MODEL_CACHE.get(cache_key)
-                    if model is None:
-                        for candidate in candidates:
-                            model = self._MODEL_CACHE.get((candidate, pref_device, pref_compute))
-                            if model is not None:
-                                active_model_id = candidate
-                                if candidate != target_model:
-                                    fallback_occurred = True
-                                break
+            with self._CACHE_LOCK:
+                model = self._MODEL_CACHE.get(cache_key)
+                if model is None:
+                    for candidate in candidates:
+                        model = self._MODEL_CACHE.get((candidate, pref_device, pref_compute))
+                        if model is not None:
+                            active_model_id = candidate
+                            if candidate != target_model:
+                                fallback_occurred = True
+                            break
 
-                            try:
-                                loaded_model = faster_whisper.WhisperModel(
-                                    candidate,
-                                    device=pref_device,
-                                    compute_type=pref_compute,
-                                    local_files_only=True,
-                                )
-                                active_model_id = candidate
-                                if candidate != target_model:
-                                    fallback_occurred = True
-                                self._MODEL_CACHE[(candidate, pref_device, pref_compute)] = loaded_model
-                                model = loaded_model
-                                break
-                            except Exception:
-                                if pref_device != "cpu":
-                                    model = self._MODEL_CACHE.get((candidate, "cpu", "int8"))
-                                    if model is not None:
-                                        active_model_id = candidate
-                                        if candidate != target_model:
-                                            fallback_occurred = True
-                                        break
-                                    try:
-                                        loaded_model = faster_whisper.WhisperModel(
-                                            candidate,
-                                            device="cpu",
-                                            compute_type="int8",
-                                            local_files_only=True,
-                                        )
-                                        active_model_id = candidate
-                                        if candidate != target_model:
-                                            fallback_occurred = True
-                                        self._MODEL_CACHE[(candidate, "cpu", "int8")] = loaded_model
-                                        model = loaded_model
-                                        break
-                                    except Exception:
-                                        pass
-                                continue
-            else:
-                for candidate in candidates:
-                    try:
-                        loaded_model = faster_whisper.WhisperModel(
-                            candidate,
-                            device=pref_device,
-                            compute_type=pref_compute,
-                            local_files_only=True,
-                        )
-                        active_model_id = candidate
-                        if candidate != target_model:
-                            fallback_occurred = True
-                        model = loaded_model
-                        break
-                    except Exception:
-                        if pref_device != "cpu":
-                            try:
-                                loaded_model = faster_whisper.WhisperModel(
-                                    candidate,
-                                    device="cpu",
-                                    compute_type="int8",
-                                    local_files_only=True,
-                                )
-                                active_model_id = candidate
-                                if candidate != target_model:
-                                    fallback_occurred = True
-                                model = loaded_model
-                                break
-                            except Exception:
-                                pass
+                if model is None:
+                    for candidate in candidates:
+                        try:
+                            loaded_model = faster_whisper.WhisperModel(
+                                candidate,
+                                device=pref_device,
+                                compute_type=pref_compute,
+                                local_files_only=True,
+                            )
+                            active_model_id = candidate
+                            if candidate != target_model:
+                                fallback_occurred = True
+                            self._MODEL_CACHE[(candidate, pref_device, pref_compute)] = loaded_model
+                            model = loaded_model
+                            break
+                        except Exception:
+                            if pref_device != "cpu":
+                                model = self._MODEL_CACHE.get((candidate, "cpu", "int8"))
+                                if model is not None:
+                                    active_model_id = candidate
+                                    if candidate != target_model:
+                                        fallback_occurred = True
+                                    break
+                                try:
+                                    loaded_model = faster_whisper.WhisperModel(
+                                        candidate,
+                                        device="cpu",
+                                        compute_type="int8",
+                                        local_files_only=True,
+                                    )
+                                    active_model_id = candidate
+                                    if candidate != target_model:
+                                        fallback_occurred = True
+                                    self._MODEL_CACHE[(candidate, "cpu", "int8")] = loaded_model
+                                    model = loaded_model
+                                    break
+                                except Exception:
+                                    pass
+                            continue
 
         if model is None:
             if is_turbo:
@@ -970,14 +965,12 @@ class TranscriptionEngine:
                 )
             try:
                 fallback_name = os.environ.get("WHISPER_MODEL", "tiny")
-                if not is_mocked:
-                    with self._CACHE_LOCK:
-                        model = self._MODEL_CACHE.get((fallback_name, "cpu", "int8"))
+                with self._CACHE_LOCK:
+                    model = self._MODEL_CACHE.get((fallback_name, "cpu", "int8"))
                 if model is None:
                     model = faster_whisper.WhisperModel(fallback_name, device="cpu", compute_type="int8", local_files_only=True)
-                    if not is_mocked:
-                        with self._CACHE_LOCK:
-                            self._MODEL_CACHE[(fallback_name, "cpu", "int8")] = model
+                    with self._CACHE_LOCK:
+                        self._MODEL_CACHE[(fallback_name, "cpu", "int8")] = model
                 active_model_id = fallback_name
                 if fallback_name != target_model:
                     fallback_occurred = True

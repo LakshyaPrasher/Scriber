@@ -3,7 +3,7 @@
 **Date & Time**: 2026-11-04 18:06:14 UTC  
 **Execution Environment**: Local Windows Host (x64), Microsoft Edge Standalone App Window  
 **Harness Protocol**: Chrome DevTools Protocol (CDP) on port 9223 via `aiohttp` WebSocket  
-**Test Working Directory**: `C:\Users\laksh\.gemini\antigravity\scratch\criber`  
+**Test Working Directory**: `C:\Users\laksh\.gemini\antigravity\scratch\scriber`  
 **Zero Paid Cloud APIs**: Verified (100% Local Neural & Acoustic DSP Processing)  
 
 ---

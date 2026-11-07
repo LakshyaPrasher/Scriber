@@ -141,6 +141,7 @@ class QualityChecker:
             task=transcription.task,
             backend_used=transcription.backend_used,
             model_name=transcription.model_name,
+            is_synthetic=transcription.is_synthetic,
         )
 
         return cleaned_result, quality_report

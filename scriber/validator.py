@@ -34,6 +34,9 @@ class ResultValidator:
         is_ground_truth: bool = True,
     ) -> ValidationReport:
         """Compares hypothesis transcription with ground-truth reference to compute error rates."""
+        has_reference = bool(reference_text and reference_text.strip()) and bool(is_ground_truth)
+        evaluation_mode = "reference" if has_reference else "self_consistency"
+
         norm_hyp = self._normalize_for_evaluation(hypothesis_text)
         norm_ref = self._normalize_for_evaluation(reference_text)
 
@@ -49,7 +52,7 @@ class ResultValidator:
             char_dist = 0
             cer = 0.0
             accuracy_score = 1.0
-            passed_99 = True
+            passed_99 = has_reference
             matched_tokens = len(ref_words)
         else:
             edit_dist = self._levenshtein_distance(hyp_words, ref_words)
@@ -61,14 +64,23 @@ class ResultValidator:
 
             # Accuracy Score = 1.0 - WER
             accuracy_score = max(0.0, 1.0 - wer)
-            passed_99 = accuracy_score >= self.ACCURACY_THRESHOLD
+            passed_99 = has_reference and accuracy_score >= self.ACCURACY_THRESHOLD
             matched_tokens = max(0, len(ref_words) - edit_dist)
 
         # Evaluate action items precision and recall if reference provided
         precision, recall, f1 = self._evaluate_actions(extracted_actions, reference_actions)
 
         # Audit Notes
-        if is_ground_truth:
+        if not has_reference:
+            # A transcript cannot be "99% accurate" without an external reference.
+            # Report self-consistency only, and never claim the 99% audit passed.
+            audit_notes = [
+                f"Self-consistency validation anchor generated for session '{test_case_id or 'session'}'.",
+                f"Spoken transcript verified: {len(hyp_words)} words ({len(norm_hyp)} characters).",
+                "No external ground-truth reference was supplied.",
+                "STATUS: SELF-CONSISTENCY CHECK ONLY — accuracy cannot be certified without a reference.",
+            ]
+        elif is_ground_truth:
             audit_notes = [
                 f"Evaluated against ground-truth reference '{test_case_id or 'standard-benchmark'}'.",
                 f"Normalized Word Count: Reference={len(ref_words)}, Hypothesis={len(hyp_words)}.",
@@ -78,17 +90,9 @@ class ResultValidator:
                 f"Net Accuracy: {accuracy_score * 100:.2f}% (Threshold: {self.ACCURACY_THRESHOLD * 100:.1f}%).",
             ]
             if passed_99:
-                audit_notes.append("STATUS: PASSED 99%+ ACCURACY AUDIT.")
+                audit_notes.append("STATUS: PASSED ACCURACY AUDIT AGAINST REFERENCE.")
             else:
                 audit_notes.append("STATUS: FAILED ACCURACY AUDIT — Below 99% threshold.")
-        else:
-            audit_notes = [
-                f"Self-consistency validation anchor generated for session '{test_case_id or 'session'}'.",
-                f"Spoken transcript verified: {len(hyp_words)} words ({len(norm_hyp)} characters).",
-                "Self-consistency check: 100.00% integrity.",
-                "Note: No external ground-truth reference provided; audit records transcript consistency.",
-                "STATUS: PASSED SELF-CONSISTENCY INTEGRITY CHECK.",
-            ]
 
         # Cryptographic Certificate Hash & Tamper-Evident Hash Chain
         blocks, root_hash = self.build_hash_chain(
@@ -112,12 +116,14 @@ class ResultValidator:
             f1_score=f1,
             passed_99_percent=passed_99,
             test_case_id=test_case_id,
-            evaluated_tokens=len(ref_words),
-            matched_tokens=matched_tokens,
+            evaluated_tokens=len(ref_words) if has_reference else 0,
+            matched_tokens=matched_tokens if has_reference else 0,
             certificate_id=cert_id,
             audit_notes=audit_notes,
             hash_chain=blocks,
             root_hash=root_hash,
+            reference_available=has_reference,
+            evaluation_mode=evaluation_mode,
         )
 
     @classmethod
@@ -404,10 +410,14 @@ class ResultValidator:
     def _evaluate_actions(
         extracted_actions: Optional[List[ActionItem]],
         reference_actions: Optional[List[str]],
-    ) -> Tuple[float, float, float]:
-        """Calculates precision, recall, and F1 score for extracted action items."""
+    ) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+        """Calculates precision, recall, and F1 score for extracted action items.
+
+        Returns (None, None, None) when no reference action list exists: an
+        unevaluated metric must not be reported as a perfect score.
+        """
         if not reference_actions:
-            return 1.0, 1.0, 1.0
+            return None, None, None
         if not extracted_actions:
             return 0.0, 0.0, 0.0
 

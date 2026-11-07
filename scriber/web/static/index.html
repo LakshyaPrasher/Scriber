@@ -11,10 +11,7 @@
 <meta name="msapplication-TileColor" content="#08090C">
 <meta name="msapplication-TileImage" content="/assets/icon.png">
 <meta name="theme-color" content="#08090C">
-<!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Fonts use locally installed system families; no external font requests are made. -->
 <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
@@ -67,7 +64,7 @@
       <div class="logo-title">
         <div style="display:flex; align-items:center; gap:8px;">
           <h1>Scriber</h1>
-          <span class="app-version-badge" style="font-family:var(--font-mono); font-size:11px; padding:2px 7px; border-radius:6px; background:rgba(255,94,0,0.12); border:1px solid rgba(255,94,0,0.3); color:var(--tangerine); font-weight:600; letter-spacing:0.04em;">v2.0</span>
+          <span class="app-version-badge" style="font-family:var(--font-mono); font-size:12px; padding:2px 7px; border-radius:6px; background:rgba(255,94,0,0.12); border:1px solid rgba(255,94,0,0.3); color:var(--tangerine); font-weight:600; letter-spacing:0.04em;">v2.0</span>
         </div>
         <p class="subtitle">Autonomous Speech Intelligence & Voice Synthesis Studio</p>
       </div>
@@ -190,8 +187,8 @@
 
       <div class="upload-matrix-panel">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:6px;">
-          <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted);">Supported formats</span>
-          <span style="font-family:var(--font-mono); font-size:10px; color:var(--tangerine);">Direct extraction</span>
+          <span style="font-family:var(--font-mono); font-size:12px; color:var(--text-muted);">Supported formats</span>
+          <span style="font-family:var(--font-mono); font-size:12px; color:var(--tangerine);">Direct extraction</span>
         </div>
         <div class="format-matrix-grid">
           <span class="format-mono-tag">MP4</span>
@@ -207,7 +204,7 @@
           <span class="format-mono-tag">OPUS</span>
           <span class="format-mono-tag">AVI</span>
         </div>
-        <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted); margin-top:4px;">
+        <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-muted); margin-top:4px;">
           Lossless 16kHz mono speech extraction for all major container formats
         </div>
       </div>
@@ -341,7 +338,7 @@
                 <span class="export-format-tag">.JSON</span>
                 <div class="export-item-details">
                   <span class="export-item-name">Analysis JSON</span>
-                  <span class="export-item-desc">Full segments, tokens, speaker biometrics</span>
+                  <span class="export-item-desc">Full segments, tokens, speaker voice profiles</span>
                 </div>
               </button>
               <div class="export-menu-divider"></div>
@@ -359,6 +356,12 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Synthetic / Demo Content Disclosure -->
+      <div class="synthetic-warning" id="synthetic-warning" role="status" aria-live="polite" style="display:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        <span id="synthetic-warning-text">Demo content detected. This transcript was not produced from real uploaded audio.</span>
       </div>
 
       <!-- Bespoke Studio Audio Player -->
@@ -539,16 +542,16 @@
 
           <div class="trim-slider-scrub-row" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.08);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-              <span style="font-size:11px; color:var(--text-secondary); font-weight:600;">Live Trimming Sliders:</span>
-              <span id="m1-trim-slider-pill" style="font-size:10.5px; font-family:'JetBrains Mono', monospace; color:var(--tangerine);">00:00 - 00:00</span>
+              <span style="font-size:12px; color:var(--text-secondary); font-weight:600;">Live Trimming Sliders:</span>
+              <span id="m1-trim-slider-pill" style="font-size:12px; font-family:'Cascadia Mono', 'Consolas', monospace; color:var(--tangerine);">00:00 - 00:00</span>
             </div>
             <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
               <div style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px;">
-                <span style="font-size:10.5px; color:var(--text-muted); font-weight:600;">In</span>
+                <span style="font-size:12px; color:var(--text-muted); font-weight:600;">In</span>
                 <input type="range" class="editor-slider" id="m1-trim-start-bar" min="0" max="100" value="0" step="0.05" oninput="handleTrimBarInput('m1', 'start', this.value)" />
               </div>
               <div style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px;">
-                <span style="font-size:10.5px; color:var(--text-muted); font-weight:600;">Out</span>
+                <span style="font-size:12px; color:var(--text-muted); font-weight:600;">Out</span>
                 <input type="range" class="editor-slider" id="m1-trim-end-bar" min="0" max="100" value="100" step="0.05" oninput="handleTrimBarInput('m1', 'end', this.value)" />
               </div>
             </div>
@@ -585,7 +588,7 @@
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
               Meeting Intelligence
             </span>
-            <span id="council-duration-badge" style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted);"></span>
+            <span id="council-duration-badge" style="font-family:var(--font-mono); font-size:12px; color:var(--text-muted);"></span>
           </div>
           <div class="pii-shield-controls">
             <button type="button" class="btn-pii-toggle" id="btn-pii-shield" onclick="togglePIIShield()">
@@ -634,7 +637,7 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--tangerine)" stroke-width="2.2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
           Voice Cloning Studio
         </h2>
-        <p class="subtitle">Synthesize speech in the authentic voice of transcribed speakers with zero-shot acoustic timbre matching.</p>
+        <p class="subtitle">Synthesize speech matched to transcribed speaker pitch and loudness. Acoustic similarity is a heuristic, not identity verification.</p>
       </div>
 
       <!-- Step 1: Voice Selection & Acoustic Profile -->
@@ -698,7 +701,7 @@
           <!-- Dropzone for New Reference Audio File -->
           <div class="voice-ref-dropzone" id="voice-ref-dropzone" onclick="triggerVoiceRefFileDialog(event)" role="button" tabindex="0">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--tangerine)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-            <span id="voice-ref-label-text">Drop a custom audio/video clip or <strong style="color:var(--tangerine); text-decoration:underline;">browse</strong> to extract speaker biometric timbre</span>
+            <span id="voice-ref-label-text">Drop a custom audio/video clip or <strong style="color:var(--tangerine); text-decoration:underline;">browse</strong> to extract voice characteristics</span>
           </div>
           <input type="file" id="voice-ref-input" accept="audio/*,video/*,.mp4,.mp3,.wav,.m4a,.mov,.webm,.flac,.ogg,.aac,.mkv,.avi,.flv,.wmv,.opus,.wma,.3gp,.ts,.m4v" style="display:none;" onchange="handleVoiceRefSelected(event)" onclick="event.stopPropagation();" />
 
@@ -710,7 +713,7 @@
               </div>
               <div class="ref-badge-details">
                 <span class="ref-badge-title" id="voice-ref-title">Reference Audio Loaded</span>
-                <span class="ref-badge-sub" id="voice-ref-sub">Biometric Timbre Locked · Ready for Cloning & Editing</span>
+                <span class="ref-badge-sub" id="voice-ref-sub">Reference voice loaded · Ready for Synthesis & Editing</span>
               </div>
             </div>
             <button type="button" class="btn-clear-ref" onclick="clearVoiceRef()" title="Clear reference file">✕ Clear</button>
@@ -742,7 +745,7 @@
             <p class="step-desc">Enter the script or phrase you want the cloned voice to speak</p>
           </div>
         </div>
-        <textarea id="clone-text" class="clone-textarea" placeholder="Type text for the cloned voice to speak...">Welcome to Scriber. This speech was synthesized with zero-shot acoustic timbre matching and harmonic formant preservation.</textarea>
+        <textarea id="clone-text" class="clone-textarea" placeholder="Type text for the cloned voice to speak...">Welcome to Scriber. This demo speech uses pitch and loudness matching with harmonic formant synthesis.</textarea>
       </div>
 
       <!-- Step 3: Synthesize Speech -->
@@ -751,7 +754,7 @@
           <span class="step-num-badge">3</span>
           <div class="step-header-text">
             <h3 class="step-title">Synthesize Speech</h3>
-            <p class="step-desc">Generate neural speech with verified pitch and vocal tract resonance</p>
+            <p class="step-desc">Generate speech with pitch and rate matching; acoustic similarity is a heuristic, not identity verification</p>
           </div>
         </div>
 
@@ -781,15 +784,15 @@
         <div id="clone-result-box" class="clone-result-box">
           <div class="clone-result-header">
             <span class="fidelity-badge" id="clone-fidelity-badge">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              99.4% Biometric Timbre Match
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              Acoustic similarity not measured yet
             </span>
             <a id="clone-download-btn" class="btn-export" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;" download="scriber_cloned_voice.mp3">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
               Download Cloned Speech (.mp3)
             </a>
           </div>
-          <audio id="clone-audio-player" class="audio-elem" controls style="width:100%; height:38px; margin-top:8px; accent-color:var(--tangerine); outline:none;"></audio>
+          <audio id="clone-audio-player" class="audio-elem" controls style="width:100%; height:38px; margin-top:8px; accent-color:var(--tangerine);"></audio>
         </div>
       </div>
 
@@ -820,7 +823,7 @@
                   </div>
                   <div class="model-selector-text">
                     <span class="model-selector-title">Voice Synthesis Engine</span>
-                    <span class="model-selector-sub">Select neural architecture for voice cloning</span>
+                    <span class="model-selector-sub">Select a synthesis engine; unavailable engines disclose fallbacks</span>
                   </div>
                 </div>
 
@@ -829,8 +832,8 @@
                     <div class="dropdown-trigger-main">
                       <span class="status-dot-pulse"></span>
                       <div class="dropdown-trigger-text">
-                        <span class="dropdown-selected-name" id="active-voice-tag">Edge-Neural Studio</span>
-                        <span class="model-tier-badge tier-recommended" id="active-voice-badge">Studio Quality · Recommended</span>
+                        <span class="dropdown-selected-name" id="active-voice-tag">Edge Neural TTS</span>
+                        <span class="model-tier-badge tier-recommended" id="active-voice-badge">Network · Pitch-matched</span>
                       </div>
                     </div>
                     <svg class="dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -843,44 +846,44 @@
                       <div class="dropdown-item-header">
                         <div class="dropdown-item-title-wrap">
                           <span class="dropdown-item-radio" aria-hidden="true"></span>
-                          <span class="dropdown-item-title">Local GPU (F5-TTS Flow-Matching 48kHz)</span>
+                          <span class="dropdown-item-title">Local GPU (F5-TTS companion)</span>
                         </div>
-                        <span class="model-tier-badge tier-recommended">Zero-Shot · NVIDIA GPU</span>
+                        <span class="model-tier-badge tier-inversion">Optional · GPU companion</span>
                       </div>
-                      <p class="dropdown-item-desc">Local zero-shot speech flow-matching diffusion transformer (DiT) with 48kHz Vocos neural vocoder on dedicated RTX GPU.</p>
+                      <p class="dropdown-item-desc">Requires the optional local GPU speech companion. If it is unavailable, synthesis falls back to Edge-TTS or the offline formant engine and reports which backend was used.</p>
                     </div>
 
                     <div class="dropdown-item active" id="voice-opt-edge-neural" role="option" aria-selected="true" tabindex="0" onclick="selectVoiceModel('edge-neural')" onkeydown="if(event.key==='Enter'||event.key===' '){selectVoiceModel('edge-neural');event.preventDefault();}">
                       <div class="dropdown-item-header">
                         <div class="dropdown-item-title-wrap">
                           <span class="dropdown-item-radio" aria-hidden="true"></span>
-                          <span class="dropdown-item-title">Edge-Neural Studio</span>
+                          <span class="dropdown-item-title">Edge Neural TTS</span>
                         </div>
-                        <span class="model-tier-badge tier-recommended">Studio Quality · Recommended</span>
+                        <span class="model-tier-badge tier-recommended">Network · Pitch-matched</span>
                       </div>
-                      <p class="dropdown-item-desc">High-fidelity multi-speaker biometric voice cloning with instantaneous neural synthesis.</p>
+                      <p class="dropdown-item-desc">Microsoft Edge neural TTS with pitch, rate and loudness matching. This is not zero-shot speaker cloning; acoustic similarity is a heuristic, not identity verification.</p>
                     </div>
 
                     <div class="dropdown-item" id="voice-opt-whisperspeech" role="option" aria-selected="false" tabindex="0" onclick="selectVoiceModel('whisperspeech')" onkeydown="if(event.key==='Enter'||event.key===' '){selectVoiceModel('whisperspeech');event.preventDefault();}">
                       <div class="dropdown-item-header">
                         <div class="dropdown-item-title-wrap">
                           <span class="dropdown-item-radio" aria-hidden="true"></span>
-                          <span class="dropdown-item-title">WhisperSpeech</span>
+                          <span class="dropdown-item-title">WhisperSpeech (not bundled)</span>
                         </div>
-                        <span class="model-tier-badge tier-inversion">Acoustic Inversion</span>
+                        <span class="model-tier-badge tier-inversion">Unavailable · Fallback</span>
                       </div>
-                      <p class="dropdown-item-desc">Inverts Whisper transformer acoustic token representations to mirror reference speaker vocal resonance.</p>
+                      <p class="dropdown-item-desc">WhisperSpeech is not included in this build. Selecting it falls back to Edge-TTS or the offline formant engine; the actual backend is reported in the result.</p>
                     </div>
 
                     <div class="dropdown-item" id="voice-opt-gpt-sovits" role="option" aria-selected="false" tabindex="0" onclick="selectVoiceModel('gpt-sovits')" onkeydown="if(event.key==='Enter'||event.key===' '){selectVoiceModel('gpt-sovits');event.preventDefault();}">
                       <div class="dropdown-item-header">
                         <div class="dropdown-item-title-wrap">
                           <span class="dropdown-item-radio" aria-hidden="true"></span>
-                          <span class="dropdown-item-title">GPT-SoVITS</span>
+                          <span class="dropdown-item-title">GPT-SoVITS (not bundled)</span>
                         </div>
-                        <span class="model-tier-badge tier-formant">Formant Morphing</span>
+                        <span class="model-tier-badge tier-formant">Unavailable · Fallback</span>
                       </div>
-                      <p class="dropdown-item-desc">Autocorrelation pitch tracking and spectral formant resonances preserving authentic vocal timbre.</p>
+                      <p class="dropdown-item-desc">GPT-SoVITS is not included in this build. Selecting it falls back to Edge-TTS or the offline formant engine; the actual backend is reported in the result.</p>
                     </div>
                   </div>
                 </div>
@@ -890,21 +893,21 @@
             <div class="slider-col">
               <div class="slider-label">
                 <span>Volume Gain</span>
-                <span id="volume-val" style="color:var(--tangerine); font-family:'JetBrains Mono', monospace;">100%</span>
+                <span id="volume-val" style="color:var(--tangerine); font-family:'Cascadia Mono', 'Consolas', monospace;">100%</span>
               </div>
               <input type="range" id="volume-slider" class="slider-ctrl" min="50" max="150" value="100" oninput="document.getElementById('volume-val').innerText = this.value + '%'" />
             </div>
             <div class="slider-col">
               <div class="slider-label">
                 <span>Pitch Fine-Tuning</span>
-                <span id="pitch-val" style="color:var(--tangerine); font-family:'JetBrains Mono', monospace;">0 Hz</span>
+                <span id="pitch-val" style="color:var(--tangerine); font-family:'Cascadia Mono', 'Consolas', monospace;">0 Hz</span>
               </div>
               <input type="range" id="pitch-slider" class="slider-ctrl" min="-40" max="40" value="0" oninput="document.getElementById('pitch-val').innerText = (this.value >= 0 ? '+' : '') + this.value + ' Hz'" />
             </div>
             <div class="slider-col">
               <div class="slider-label">
                 <span>Speaking Rate</span>
-                <span id="rate-val" style="color:var(--tangerine); font-family:'JetBrains Mono', monospace;">0%</span>
+                <span id="rate-val" style="color:var(--tangerine); font-family:'Cascadia Mono', 'Consolas', monospace;">0%</span>
               </div>
               <input type="range" id="rate-slider" class="slider-ctrl" min="-30" max="30" value="0" oninput="document.getElementById('rate-val').innerText = (this.value >= 0 ? '+' : '') + this.value + '%'" />
             </div>
@@ -1006,16 +1009,16 @@
 
               <div class="trim-slider-scrub-row" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.08);">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                  <span style="font-size:11px; color:var(--text-secondary); font-weight:600;">Live Trimming Sliders:</span>
-                  <span id="m2-trim-slider-pill" style="font-size:10.5px; font-family:'JetBrains Mono', monospace; color:var(--tangerine);">00:00 - 00:00</span>
+                  <span style="font-size:12px; color:var(--text-secondary); font-weight:600;">Live Trimming Sliders:</span>
+                  <span id="m2-trim-slider-pill" style="font-size:12px; font-family:'Cascadia Mono', 'Consolas', monospace; color:var(--tangerine);">00:00 - 00:00</span>
                 </div>
                 <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
                   <div style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px;">
-                    <span style="font-size:10.5px; color:var(--text-muted); font-weight:600;">In</span>
+                    <span style="font-size:12px; color:var(--text-muted); font-weight:600;">In</span>
                     <input type="range" class="editor-slider" id="m2-trim-start-bar" min="0" max="100" value="0" step="0.05" oninput="handleTrimBarInput('m2', 'start', this.value)" />
                   </div>
                   <div style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px;">
-                    <span style="font-size:10.5px; color:var(--text-muted); font-weight:600;">Out</span>
+                    <span style="font-size:12px; color:var(--text-muted); font-weight:600;">Out</span>
                     <input type="range" class="editor-slider" id="m2-trim-end-bar" min="0" max="100" value="100" step="0.05" oninput="handleTrimBarInput('m2', 'end', this.value)" />
                   </div>
                 </div>

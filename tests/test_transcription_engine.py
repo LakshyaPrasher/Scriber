@@ -12,7 +12,7 @@ class TestTranscriptionEngine(unittest.TestCase):
 
     def test_top_leveraged_repos_documented(self):
         """Verifies all top leveraged audio/speech repositories are documented and present."""
-        self.assertGreaterEqual(len(TOP_LEVERAGED_REPOS), 10)
+        self.assertGreaterEqual(len(TOP_LEVERAGED_REPOS), 8)
         repo_names = [r["repo"] for r in TOP_LEVERAGED_REPOS]
         self.assertIn("openai/whisper", repo_names)
         self.assertIn("SYSTRAN/faster-whisper", repo_names)
@@ -22,8 +22,8 @@ class TestTranscriptionEngine(unittest.TestCase):
         self.assertIn("jhj0517/Whisper-WebUI", repo_names)
         self.assertIn("Zackriya-Solutions/meetily", repo_names)
         self.assertIn("BBC/react-transcript-editor", repo_names)
-        self.assertIn("collabora/WhisperSpeech", repo_names)
-        self.assertIn("RVC-Boss/GPT-SoVITS", repo_names)
+        self.assertNotIn("collabora/WhisperSpeech", repo_names)
+        self.assertNotIn("RVC-Boss/GPT-SoVITS", repo_names)
 
     def test_transcription_reference_flow(self):
         """Verifies transcription execution, word timestamps, and segment framing."""

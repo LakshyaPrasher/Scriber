@@ -35,6 +35,7 @@ class TestScriberPipeline(unittest.TestCase):
                 output = self.pipeline.process_file(
                     file_path=media_path,
                     reference_text=speech_ref,
+                    ground_truth_hint=speech_ref,
                     export_dir=export_dir,
                     export_formats=["json", "md", "srt", "vtt", "html"],
                 )
@@ -55,7 +56,8 @@ class TestScriberPipeline(unittest.TestCase):
 
                 # Sub-agent 3: Quality Check
                 self.assertFalse(output.quality_report.repetition_looping_detected)
-                self.assertGreaterEqual(output.quality_report.overall_score, 0.90)
+                self.assertTrue(output.transcription.is_synthetic)
+                self.assertEqual(output.quality_report.overall_score, 0.0)
 
                 # Sub-agent 4: Validation (Certified 99%+)
                 val = output.validation_report
@@ -71,6 +73,13 @@ class TestScriberPipeline(unittest.TestCase):
                 self.assertTrue(os.path.exists(os.path.join(export_dir, f"{base_name}_subtitles.srt")))
                 self.assertTrue(os.path.exists(os.path.join(export_dir, f"{base_name}_subtitles.vtt")))
 
+                # Also verify that reference_text alone does not dictate the transcript
+                raw_out = self.pipeline.process_file(
+                    file_path=media_path,
+                    reference_text=speech_ref,
+                )
+                self.assertEqual(raw_out.transcription.text, "No distinct speech detected in audio.")
+
             finally:
                 if os.path.exists(media_path):
                     os.remove(media_path)
@@ -85,6 +94,7 @@ class TestScriberPipeline(unittest.TestCase):
             pcm16_data=pcm_data,
             source_name="in_memory_stream.wav",
             reference_text=ref,
+            ground_truth_hint=ref,
         )
 
         self.assertEqual(output.transcription.text, ref)

@@ -150,7 +150,12 @@ def verify_pe_subsystem(exe_path: Path, expected_subsystem: int = 2) -> bool:
         return False
 
 
-def build_executable(onefile: bool = False, console: bool = False, clean: bool = False) -> int:
+def build_executable(
+    onefile: bool = False,
+    console: bool = False,
+    clean: bool = False,
+    create_shortcut: bool = False,
+) -> int:
     """Builds Scriber standalone desktop executable."""
     root_dir = Path(__file__).resolve().parent
 
@@ -306,12 +311,18 @@ def build_executable(onefile: bool = False, console: bool = False, clean: bool =
 
         # Note: Smoke-test via subprocess is omitted to prevent triggering Windows Smart App Control
         print("[+] Binary bundle verified ready for deployment.")
-        try:
-            from scriber.cli import create_desktop_shortcut
-            create_desktop_shortcut()
-            print("[+] Automatically refreshed Scriber.lnk shortcut on Desktop.")
-        except Exception as e:
-            print(f"[-] Warning: Failed to refresh Desktop shortcut ({e})")
+        shortcut_disabled = str(os.environ.get("SCRIBER_NO_SHORTCUT", "")).strip().lower() in {"1", "true", "yes", "on"}
+        if create_shortcut and not shortcut_disabled:
+            try:
+                from scriber.cli import create_desktop_shortcut
+                create_desktop_shortcut(target_exe=dist_exe)
+                print("[+] Created opted-in Scriber.lnk shortcut on Desktop.")
+            except Exception as e:
+                print(f"[-] Warning: Failed to create Desktop shortcut ({e})")
+        elif shortcut_disabled:
+            print("[*] Desktop shortcut creation disabled by SCRIBER_NO_SHORTCUT.")
+        else:
+            print("[*] Desktop shortcut not created. Pass --shortcut to opt in.")
 
         # Clean up temporary build staging folder to prevent accidental clicks on non-bundled intermediate binary
         try:
@@ -331,6 +342,7 @@ def main():
     parser.add_argument("--onefile", action="store_true", help="Package into a single standalone .exe")
     parser.add_argument("--console", action="store_true", help="Keep console window visible for debugging")
     parser.add_argument("--clean", action="store_true", help="Clean build directories before packaging")
+    parser.add_argument("--shortcut", action="store_true", help="Create a Desktop shortcut after a successful build (opt-in)")
     parser.add_argument("--verify-only", action="store_true", help="Verify assets and configuration without building")
     args = parser.parse_args()
 
@@ -340,7 +352,12 @@ def main():
         print(f"[+] Verification complete. Icon at: {ico}")
         return 0
 
-    return build_executable(onefile=args.onefile, console=args.console, clean=args.clean)
+    return build_executable(
+        onefile=args.onefile,
+        console=args.console,
+        clean=args.clean,
+        create_shortcut=args.shortcut,
+    )
 
 
 if __name__ == "__main__":

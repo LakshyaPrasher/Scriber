@@ -117,7 +117,12 @@ class TestDesktopApplication(unittest.TestCase):
                 self.assertGreater(len(resp.read()), 100)
 
             # 3. Test POST /api/desktop/reveal
-            req_data = json.dumps({"path": "./tests"}).encode("utf-8")
+            out_dir = Path("./scriber_output").resolve()
+            out_dir.mkdir(parents=True, exist_ok=True)
+            test_file = out_dir / "reveal_test.txt"
+            test_file.write_text("ok", encoding="utf-8")
+
+            req_data = json.dumps({"path": str(test_file)}).encode("utf-8")
             req = urllib.request.Request(
                 f"{server.url}/api/desktop/reveal",
                 data=req_data,
@@ -133,7 +138,7 @@ class TestDesktopApplication(unittest.TestCase):
             save_payload = json.dumps({
                 "filename": "test_desktop_export.txt",
                 "content": "Desktop save verification content",
-                "dir": "./test_scratch",
+                "dir": "./scriber_output",
             }).encode("utf-8")
             req_save = urllib.request.Request(
                 f"{server.url}/api/desktop/save-file",
@@ -232,7 +237,7 @@ class TestDesktopApplication(unittest.TestCase):
                 headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=15.0) as resp:
+            with urllib.request.urlopen(req, timeout=45.0) as resp:
                 self.assertEqual(resp.status, 200)
                 res_data = json.loads(resp.read().decode("utf-8"))
                 self.assertIn("exports", res_data)

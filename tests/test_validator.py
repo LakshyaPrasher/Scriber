@@ -73,6 +73,26 @@ class TestResultValidator(unittest.TestCase):
         self.assertEqual(results["total_cases_evaluated"], 3)
         self.assertEqual(results["average_accuracy_percentage"], "100.00%")
 
+    def test_self_consistency_mode_without_reference(self):
+        """Verifies evaluation without external reference enters self-consistency mode without claiming 99% certification."""
+        hyp = "Transcribing spoken speech without a reference."
+        report = self.validator.evaluate_transcription(hypothesis_text=hyp, reference_text="")
+
+        self.assertFalse(report.reference_available)
+        self.assertEqual(report.evaluation_mode, "self_consistency")
+        self.assertFalse(report.passed_99_percent)
+
+        report_dict = report.to_dict()
+        self.assertIsNone(report_dict["accuracy_score"])
+        self.assertIsNone(report_dict["accuracy_percentage"])
+        self.assertIsNone(report_dict["wer"])
+        self.assertIsNone(report_dict["cer"])
+        self.assertFalse(report_dict["passed_99_percent"])
+        self.assertFalse(report_dict["passed"])
+        self.assertEqual(report_dict["evaluation_mode"], "self_consistency")
+        self.assertFalse(report_dict["reference_available"])
+        self.assertTrue(report.certificate_id.startswith("CERT-CSCR-"))
+
 
 if __name__ == "__main__":
     unittest.main()

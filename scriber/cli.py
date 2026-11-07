@@ -176,9 +176,15 @@ def run_process(args):
     print(f"Discussions:  {len(cs.discussion_points)} topics identified")
     if cs.pii_report:
         print(f"PII Shield:   {cs.pii_report.redacted_count} entities secured | Compliance: {cs.pii_report.compliance_score * 100:.1f}%")
-    print(f"Net Accuracy: {val.accuracy_score * 100:.2f}% (WER: {val.wer * 100:.2f}%)")
-    print(f"Audit Status: {'✅ PASSED 99%+ ACCURACY AUDIT' if val.passed_99_percent else '⚠️ REVIEW NEEDED'}")
-    print(f"Certificate:  {val.certificate_id}")
+    if output.transcription.is_synthetic or output.audio_metadata.is_synthetic:
+        print("⚠️  DEMO/WARNING: synthetic transcript or audio was used; this is not a real transcription result.")
+    if val.reference_available and val.evaluation_mode == "reference" and val.accuracy_score is not None:
+        print(f"Net Accuracy: {val.accuracy_score * 100:.2f}% (WER: {val.wer * 100:.2f}%)")
+        print(f"Audit Status: {'✅ PASSED REFERENCE ACCURACY AUDIT' if val.passed_99_percent else '⚠️ BELOW REFERENCE THRESHOLD'}")
+    else:
+        print("Net Accuracy: not available (no ground-truth reference supplied)")
+        print("Audit Status: self-consistency check only — accuracy cannot be certified")
+    print(f"Audit Receipt: {val.certificate_id}")
     if val.root_hash:
         print(f"Hash Chain:   {val.root_hash[:20]}... (Verifiable SHA-256 root)")
 
@@ -463,6 +469,10 @@ def install_shortcuts(
     desktop_only: bool = False,
 ) -> List[Path]:
     """Installs or updates Scriber desktop and Start Menu shortcuts across Windows."""
+    if str(os.environ.get("SCRIBER_NO_SHORTCUT", "")).strip().lower() in {"1", "true", "yes", "on"}:
+        print("[*] Shortcut installation skipped (SCRIBER_NO_SHORTCUT is set).")
+        return []
+
     repo_root = Path(__file__).resolve().parent.parent
 
     target_args = ""

@@ -5,6 +5,7 @@ Handles video and audio ingestion across all standard media formats.
 from __future__ import annotations
 
 import io
+import logging
 import math
 import os
 import shutil
@@ -16,6 +17,8 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from scriber.models import AudioMetadata
+
+logger = logging.getLogger(__name__)
 
 
 class AudioExtractor:
@@ -280,11 +283,23 @@ class AudioExtractor:
                 f"Unsupported or corrupt media file format '.{ext}'."
             )
 
-        # Guarantees MP4, MOV, MKV, WebM uploads NEVER crash with unhandled RuntimeError!
-        duration = meta.duration if meta.duration > 0 else max(2.5, min(120.0, file_size / 32000.0))
+        # Last-resort fallback. There is no decoder available for this container,
+        # so make the limitation explicit rather than silently pretending the
+        # user's media was decoded.
+        try:
+            fallback_size = int(getattr(meta, "file_size_bytes", 0) or os.path.getsize(file_path))
+        except OSError:
+            fallback_size = 0
+        duration = meta.duration if meta.duration > 0 else max(2.5, min(120.0, fallback_size / 32000.0))
         meta.duration = duration
         meta.sample_rate = self.SAMPLE_RATE
         meta.channels = self.CHANNELS
+        meta.is_synthetic = True
+        logger.warning(
+            "No decoder available for %s; returning synthetic placeholder audio. "
+            "Install FFmpeg or PyAV for real transcription.",
+            file_path,
+        )
         synthetic_wav = self.create_synthetic_wav(
             f"Acoustic media stream for {os.path.basename(file_path)}",
             duration_sec=duration,

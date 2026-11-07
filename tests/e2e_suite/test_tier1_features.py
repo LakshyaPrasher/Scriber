@@ -1069,14 +1069,14 @@ class TestTier1F16EmptyProfileSimilarityCalibration(unittest.TestCase):
     """E2E Feature tests for F16: Empty Profile Similarity Calibration."""
 
     def test_f16_01_empty_profile_similarity_score_threshold(self):
-        """Verifies calculate_similarity with empty/default profile produces >= 0.990."""
+        """Verifies calculate_similarity with empty/default profile produces 0.0."""
         from scriber.voice_clone import VoiceCloner, VoiceProfiler
 
         empty_prof = VoiceProfiler._empty_profile("Speaker_1")
         pcm = generate_synthetic_pcm16(duration_sec=1.5, sample_rate=16000, frequency_hz=140.0)
         synth_prof = VoiceProfiler.profile_from_pcm16(pcm)
         score = VoiceCloner.calculate_similarity(empty_prof, synth_prof)
-        self.assertGreaterEqual(score, 0.990)
+        self.assertEqual(score, 0.0)
 
     def test_f16_02_matching_speech_similarity_score(self):
         """Verifies matching speech profile achieves >= 0.990 similarity."""
@@ -1114,14 +1114,14 @@ class TestTier1F16EmptyProfileSimilarityCalibration(unittest.TestCase):
         self.assertGreaterEqual(score_same, score_diff)
 
     def test_f16_05_test_do_post_clone_voice_regression_prevention(self):
-        """Verifies test_do_post_clone_voice logic passes without failure."""
+        """Verifies test_do_post_clone_voice logic with empty profile produces 0.0."""
         from scriber.voice_clone import VoiceCloner, VoiceProfiler
 
         prof = VoiceProfiler._empty_profile("Speaker_1")
         pcm = generate_synthetic_pcm16(duration_sec=1.0)
         synth_prof = VoiceProfiler.profile_from_pcm16(pcm)
         score = VoiceCloner.calculate_similarity(prof, synth_prof)
-        self.assertGreaterEqual(score, 0.980)
+        self.assertEqual(score, 0.0)
 
 
 # ==============================================================================
@@ -1249,13 +1249,24 @@ class TestTier1F19WindowsShortcutAutomation(unittest.TestCase):
 
     def test_f19_05_desktop_shortcut_file_generation(self):
         """Verifies shortcut script creates .lnk file without raising error."""
-        from scriber.cli import create_desktop_shortcut
+        import pathlib
+        import tempfile
+        from scriber.cli import create_windows_shortcut
+        from scriber.assets import get_icon_path
 
-        # Execute shortcut creation (idempotent)
-        try:
-            create_desktop_shortcut()
-        except Exception as e:
-            self.fail(f"create_desktop_shortcut raised exception: {e}")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_lnk = pathlib.Path(tmpdir) / "Scriber.lnk"
+            target_exe = pathlib.Path(REPO_ROOT) / "dist" / "Scriber.exe"
+            try:
+                res = create_windows_shortcut(
+                    dest_path=test_lnk,
+                    target_path=target_exe,
+                    working_dir=pathlib.Path(REPO_ROOT),
+                    icon_path=get_icon_path(),
+                )
+                self.assertTrue(res.exists())
+            except Exception as e:
+                self.fail(f"create_windows_shortcut raised exception: {e}")
 
 
 # ==============================================================================

@@ -1,14 +1,14 @@
-"""Voice Cloning & Biometric Acoustic Synthesis Module for Scriber.
+"""Voice synthesis and acoustic profiling module for Scriber.
 
-Leverages architectural patterns from:
-- collabora/WhisperSpeech (Whisper inversion, acoustic token modeling)
-- RVC-Boss/GPT-SoVITS (few-shot voice timbre cloning, pitch preservation)
-- SWivid/F5-TTS (zero-shot timbre matching and duration modeling)
+Implementation note: the default synthesis paths are Edge-TTS, Windows SAPI,
+and an offline formant vocoder. WhisperSpeech, GPT-SoVITS, and F5-TTS are NOT
+bundled; selecting those names falls back to an available engine and records
+the real backend in the result.
 
 Provides:
-1. VoiceProfiler: Deep acoustic analysis (pitch/F0, formants F1-F3, spectral tilt, spectral centroid, HNR, RMS energy, timbre categorization, neural voice match)
-2. VoiceCloner: Zero-shot voice cloning with dynamic neural voice matching, Mel-filterbank formant transfer, RMS loudness normalization, and biquad IIR harmonic vocoder
-3. Similarity Auditor: Multi-factor biometric acoustic similarity verification (>= 99% accuracy validation)
+1. VoiceProfiler: acoustic analysis (pitch/F0, formants F1-F3, spectral tilt, spectral centroid, HNR, RMS energy, timbre categorization, neural voice match)
+2. VoiceSynthesizer: neural voice matching, formant transfer, RMS loudness normalization, and biquad IIR harmonic vocoder
+3. Acoustic similarity heuristic (not biometric verification)
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ import logging
 import math
 import atexit
 import os
+import secrets
 import struct
 import subprocess
 import sys
@@ -715,6 +716,7 @@ class VoiceMicroserviceManager:
         self.host = host
         self.port = port
         self.base_url = f"http://{host}:{port}"
+        self.token = os.environ.get("SCRIBER_VOICE_TOKEN") or secrets.token_urlsafe(32)
         self.process: Optional[subprocess.Popen] = None
         self._lock = threading.Lock()
 
@@ -761,6 +763,8 @@ class VoiceMicroserviceManager:
                     self.host,
                     "--port",
                     str(self.port),
+                    "--token",
+                    self.token,
                 ]
                 self.process = subprocess.Popen(
                     cmd,
@@ -807,7 +811,11 @@ class VoiceMicroserviceManager:
         req = urllib.request.Request(
             f"{self.base_url}/synthesize",
             data=data_bytes,
-            headers={"Content-Type": "application/json", "User-Agent": "ScriberDesktop"},
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "ScriberDesktop",
+                "X-Scriber-Token": self.token,
+            },
         )
         with urllib.request.urlopen(req, timeout=15.0) as resp:
             res = json.loads(resp.read().decode("utf-8"))
@@ -830,7 +838,11 @@ class VoiceMicroserviceManager:
             req = urllib.request.Request(
                 f"{self.base_url}/shutdown",
                 data=b"{}",
-                headers={"Content-Type": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    "User-Agent": "ScriberDesktop",
+                    "X-Scriber-Token": self.token,
+                },
             )
             with urllib.request.urlopen(req, timeout=2.0) as resp:
                 pass
@@ -1051,31 +1063,49 @@ class ElevenLabsConnector:
 TOP_VOICE_MODELS = [
     {
         "id": "local-gpu",
-        "name": "Local GPU (F5-TTS Flow-Matching 48kHz)",
-        "tag": "Zero-Shot · NVIDIA Blackwell",
-        "description": "Local zero-shot speech flow-matching diffusion transformer (DiT) with 48kHz Vocos neural vocoder on dedicated RTX GPU.",
-        "architecture": "Flow-Matching DiT + Vocos 48kHz",
+        "name": "Local GPU (F5-TTS companion)",
+        "tag": "Optional · GPU companion",
+        "description": (
+            "Requires the optional local GPU speech companion service. When it is not "
+            "installed or no eligible GPU is available, synthesis falls back to Edge-TTS "
+            "or the offline formant engine and reports the backend actually used."
+        ),
+        "architecture": "External F5-TTS companion + Vocos 48kHz",
+        "bundled": False,
     },
     {
         "id": "edge-neural",
-        "name": "Edge-Neural Studio",
-        "tag": "Instant · High-Fidelity",
-        "description": "Zero-shot multi-speaker neural voice synthesis architecture with dynamic acoustic timbre matching and 0MB bulk download.",
-        "architecture": "Neural VAD + F0 Pitch Alignment",
+        "name": "Edge Neural TTS",
+        "tag": "Network · Pitch-matched",
+        "description": (
+            "Microsoft Edge neural TTS with pitch, rate and loudness matching. This is "
+            "not zero-shot speaker cloning; acoustic similarity is approximate and is "
+            "reported as a heuristic when measurable."
+        ),
+        "architecture": "Microsoft Edge TTS + pitch/rate matching",
+        "bundled": True,
     },
     {
         "id": "whisperspeech",
-        "name": "WhisperSpeech",
-        "tag": "Acoustic Inversion",
-        "description": "Inverts Whisper transformer encoder representations to generate acoustic speech tokens matching reference speaker vocal timbre.",
-        "architecture": "Whisper Acoustic Token Inversion",
+        "name": "WhisperSpeech (not bundled)",
+        "tag": "Unavailable · Fallback",
+        "description": (
+            "WhisperSpeech is not included in this build. Selecting it falls back to "
+            "Edge-TTS or the offline formant engine; the fallback is reported."
+        ),
+        "architecture": "Not bundled",
+        "bundled": False,
     },
     {
         "id": "gpt-sovits",
-        "name": "GPT-SoVITS",
-        "tag": "Harmonic Formant Morph",
-        "description": "Zero-shot voice conversion pipeline preserving speaker fundamental frequency (F0) and vocal tract formant resonances.",
-        "architecture": "F0 Autocorrelation + Spectral Resonances",
+        "name": "GPT-SoVITS (not bundled)",
+        "tag": "Unavailable · Fallback",
+        "description": (
+            "GPT-SoVITS is not included in this build. Selecting it falls back to "
+            "Edge-TTS or the offline formant engine; the fallback is reported."
+        ),
+        "architecture": "Not bundled",
+        "bundled": False,
     },
 ]
 
@@ -1537,7 +1567,11 @@ class VoiceCloner:
 
                     # Upsample 16kHz -> 48kHz via sinc filter
                     pcm_bytes = AudioEditor.resample_pcm(edge_pcm, src_sr=self.SAMPLE_RATE, dst_sr=sample_rate)
-                    backend_used = "whisperspeech-inversion" if "whisper" in model_choice else ("gpt-sovits-timbre" if "sovits" in model_choice else "edge-tts-neural")
+                    backend_used = "edge-tts-neural"
+                    if "whisper" in model_choice:
+                        fallback_chain.append("WhisperSpeech is not bundled; used Edge-TTS instead.")
+                    if "sovits" in model_choice:
+                        fallback_chain.append("GPT-SoVITS is not bundled; used Edge-TTS instead.")
                     provider = "edge-tts"
                     fallback_chain.append(f"Tier 3 (Edge-TTS Neural Studio): success (resampled to {sample_rate}Hz)")
             except Exception as e:
@@ -1572,7 +1606,9 @@ class VoiceCloner:
             offline_pcm = self._synthesize_harmonic_formant(effective_f0, effective_wpm, prompt_text, target_profile)
             offline_pcm = self._normalize_rms_energy(offline_pcm, target_rms=target_rms)
             pcm_bytes = AudioEditor.resample_pcm(offline_pcm, src_sr=self.SAMPLE_RATE, dst_sr=sample_rate)
-            backend_used = "gpt-sovits-timbre" if "sovits" in model_choice else "formant-harmonic-engine"
+            backend_used = "formant-harmonic-engine"
+            if "sovits" in model_choice:
+                fallback_chain.append("GPT-SoVITS is not bundled; used the offline formant engine instead.")
             provider = "offline-vocoder"
             fallback_chain.append(f"Tier 4 (Offline Parametric Vocoder): success (sample_rate={sample_rate}Hz)")
 
@@ -1610,7 +1646,7 @@ class VoiceCloner:
             text_prompt=prompt_text,
             audio_pcm16=pcm_bytes,
             audio_format=fmt,
-            similarity_score=round(similarity_score, 4),
+            similarity_score=round(similarity_score, 4) if similarity_score > 0.0 else None,
             synthesis_backend=backend_used,
             audio_base64=data_uri,
             duration=round(duration, 3),
@@ -1618,6 +1654,8 @@ class VoiceCloner:
             sample_rate_hz=sample_rate,
             provider=provider,
             fallback_chain=fallback_chain,
+            similarity_basis="acoustic_similarity_heuristic",
+            similarity_measured=similarity_score > 0.0,
         )
 
     def _select_neural_voice(self, profile: VoiceProfile) -> Tuple[str, float]:
@@ -1936,11 +1974,18 @@ class VoiceCloner:
 
     @classmethod
     def calculate_similarity(cls, ref_profile: VoiceProfile, synth_profile: VoiceProfile) -> float:
-        """Calculates multi-factor biometric speaker similarity between reference and synthesized profiles."""
+        """Calculates an acoustic similarity heuristic (0.0–1.0).
+
+        This is NOT biometric verification. It compares pitch, spectral
+        centroid, formants, spectral tilt, acoustic fingerprint and loudness.
+        Missing/default profiles return 0.0 because nothing was measured.
+        """
         is_empty_ref = (
             (getattr(ref_profile, "sample_duration", 1.0) <= 1.0 and getattr(ref_profile, "voice_vector", []) == [0.25] * 16)
             or (getattr(synth_profile, "sample_duration", 1.0) <= 1.0 and getattr(synth_profile, "voice_vector", []) == [0.25] * 16)
         )
+        if is_empty_ref:
+            return 0.0
 
         # 1. Pitch conformity (relative error in fundamental frequency F0 with human JND tolerance)
         f0_ref = max(60.0, ref_profile.fundamental_frequency_hz)
@@ -1963,7 +2008,7 @@ class VoiceCloner:
             s_val = max(200.0, sf[i])
             ferr = abs(r_val - s_val) / max(r_val, s_val)
             f_matches.append(max(0.0, 1.0 - max(0.0, ferr - 0.02) / 0.98))
-        formant_match = float(np.mean(f_matches)) if f_matches else 0.95
+        formant_match = float(np.mean(f_matches)) if f_matches else 0.0
 
         # 4. Spectral Tilt conformity
         tilt_ref = getattr(ref_profile, "spectral_tilt", -6.0)
@@ -1979,7 +2024,7 @@ class VoiceCloner:
             cos_sim = float(np.dot(v1, v2) / (norm1 * norm2))
             cos_sim_norm = max(0.0, min(1.0, (cos_sim + 1.0) / 2.0))
         else:
-            cos_sim_norm = 0.95
+            cos_sim_norm = 0.0
 
         # 6. Energy RMS dynamic consistency
         rms_ref = max(0.01, ref_profile.energy_rms)
@@ -1993,7 +2038,7 @@ class VoiceCloner:
         if g1 != "androgynous" and g2 != "androgynous" and g1 != g2:
             gender_penalty = 0.35
 
-        # Weighted composite biometric fidelity
+        # Weighted raw acoustic similarity (no logistic inflation)
         raw_fidelity = (
             0.30 * pitch_match
             + 0.25 * centroid_match
@@ -2003,17 +2048,7 @@ class VoiceCloner:
             + 0.05 * rms_match
         ) - gender_penalty
 
-        if is_empty_ref:
-            return 0.9950
-
-        # Calibrated logistic speaker verification score
-        # Maps acoustic distance to posterior speaker match probability
-        # Cross-gender / divergent profiles (raw <= 0.40) map to <= 0.50
-        # Matching speech synthesis (raw >= 0.68) maps to >= 0.990
-        k = 18.0
-        x0 = 0.42
-        calibrated_score = 1.0 / (1.0 + float(np.exp(-k * (raw_fidelity - x0))))
-        return round(float(np.clip(calibrated_score, 0.0, 0.9999)), 4)
+        return round(float(np.clip(raw_fidelity, 0.0, 1.0)), 4)
 
     @staticmethod
     def _pcm16_to_mp3(pcm16_bytes: bytes, sample_rate: int = 16000) -> Optional[bytes]:

@@ -31,6 +31,45 @@ class PIISecurityOfficer:
     def __init__(self, default_mask_mode: str = "partial"):
         self.default_mask_mode = default_mask_mode  # 'partial' or 'full'
 
+    @staticmethod
+    def _luhn_ok(digits: str) -> bool:
+        """Return True when a digit string passes the Luhn checksum."""
+        total = 0
+        for i, ch in enumerate(reversed(digits)):
+            n = int(ch)
+            if i % 2 == 1:
+                n *= 2
+                if n > 9:
+                    n -= 9
+            total += n
+        return total % 10 == 0
+
+    @staticmethod
+    def _replace_matches(
+        text: str,
+        pattern: re.Pattern,
+        replacer,
+    ) -> Tuple[str, int, List[str]]:
+        """Replace only matched spans, never unrelated duplicate substrings."""
+        pieces: List[str] = []
+        logs: List[str] = []
+        last = 0
+        count = 0
+        for match in pattern.finditer(text):
+            if match.start() < last:
+                continue
+            replacement, log = replacer(match)
+            if replacement is None:
+                continue
+            pieces.append(text[last:match.start()])
+            pieces.append(replacement)
+            last = match.end()
+            count += 1
+            if log:
+                logs.append(log)
+        pieces.append(text[last:])
+        return "".join(pieces), count, logs
+
     def redact_text(
         self, text: str, mask_mode: Optional[str] = None
     ) -> Tuple[str, Dict[str, int], List[str]]:
@@ -41,71 +80,95 @@ class PIISecurityOfficer:
         result = text
 
         # 1. API Keys and Tokens
-        for m in list(self.PATTERNS["api_key"].finditer(result)):
-            val = m.group(0)
+        def _api_replacement(match):
+            val = match.group(0)
             replacement = "[REDACTED_API_KEY]" if mode == "full" else f"{val[:3]}***[KEY]***{val[-2:] if len(val) > 5 else ''}"
-            result = result.replace(val, replacement)
-            counts["api_key"] = counts.get("api_key", 0) + 1
-            audit_log.append(f"Masked credential token: {val[:4]}***")
+            return replacement, f"Masked credential token: {val[:4]}***"
+
+        result, count, logs = self._replace_matches(result, self.PATTERNS["api_key"], _api_replacement)
+        if count:
+            counts["api_key"] = count
+            audit_log.extend(logs)
 
         # 2. Secret Assignments
-        for m in list(self.PATTERNS["secret_assignment"].finditer(result)):
-            val = m.group(1)
+        def _secret_replacement(match):
+            val = match.group(1)
             replacement = "[REDACTED_SECRET]" if mode == "full" else f"{val[:1]}***[SECRET]"
-            result = result.replace(val, replacement)
-            counts["secret"] = counts.get("secret", 0) + 1
-            audit_log.append(f"Masked secret value assignment: {val[:2]}***")
+            whole = match.group(0)
+            start = match.start(1) - match.start(0)
+            end = match.end(1) - match.start(0)
+            return whole[:start] + replacement + whole[end:], f"Masked secret value assignment: {val[:2]}***"
+
+        result, count, logs = self._replace_matches(result, self.PATTERNS["secret_assignment"], _secret_replacement)
+        if count:
+            counts["secret"] = count
+            audit_log.extend(logs)
 
         # 3. JWT Tokens
-        for m in list(self.PATTERNS["jwt_token"].finditer(result)):
-            val = m.group(0)
-            replacement = "[REDACTED_JWT_TOKEN]"
-            result = result.replace(val, replacement)
-            counts["jwt_token"] = counts.get("jwt_token", 0) + 1
-            audit_log.append("Masked JWT bearer token")
+        def _jwt_replacement(match):
+            return "[REDACTED_JWT_TOKEN]", "Masked JWT bearer token"
 
-        # 4. Credit Cards
-        for m in list(self.PATTERNS["credit_card"].finditer(result)):
-            val = m.group(0)
-            # Simple Luhn-like validation filter to avoid false positives on standard dates/timecodes
+        result, count, logs = self._replace_matches(result, self.PATTERNS["jwt_token"], _jwt_replacement)
+        if count:
+            counts["jwt_token"] = count
+            audit_log.extend(logs)
+
+        # 4. Credit Cards (Luhn is recorded as a confidence signal; card-like
+        # numbers are still masked defensively to avoid leaking a real card.)
+        def _card_replacement(match):
+            val = match.group(0)
             digits = re.sub(r"\D", "", val)
-            if len(digits) == 16:
-                replacement = "[REDACTED_CARD]" if mode == "full" else f"****-****-****-{digits[-4:]}"
-                result = result.replace(val, replacement)
-                counts["credit_card"] = counts.get("credit_card", 0) + 1
-                audit_log.append(f"Masked payment card ending in {digits[-4:]}")
+            if len(digits) != 16:
+                return None, ""
+            replacement = "[REDACTED_CARD]" if mode == "full" else f"****-****-****-{digits[-4:]}"
+            luhn = "Luhn verified" if self._luhn_ok(digits) else "Luhn not verified"
+            return replacement, f"Masked payment card ending in {digits[-4:]} ({luhn})"
+
+        result, count, logs = self._replace_matches(result, self.PATTERNS["credit_card"], _card_replacement)
+        if count:
+            counts["credit_card"] = count
+            audit_log.extend(logs)
 
         # 5. SSN
-        for m in list(self.PATTERNS["ssn"].finditer(result)):
-            val = m.group(0)
+        def _ssn_replacement(match):
+            val = match.group(0)
             replacement = "[REDACTED_SSN]" if mode == "full" else f"***-**-{val[-4:]}"
-            result = result.replace(val, replacement)
-            counts["ssn"] = counts.get("ssn", 0) + 1
-            audit_log.append(f"Masked SSN ending in {val[-4:]}")
+            return replacement, f"Masked SSN ending in {val[-4:]}"
+
+        result, count, logs = self._replace_matches(result, self.PATTERNS["ssn"], _ssn_replacement)
+        if count:
+            counts["ssn"] = count
+            audit_log.extend(logs)
 
         # 6. Emails
-        for m in list(self.PATTERNS["email"].finditer(result)):
-            val = m.group(0)
+        def _email_replacement(match):
+            val = match.group(0)
             if mode == "full":
                 replacement = "[REDACTED_EMAIL]"
             else:
                 user, domain = val.split("@", 1)
                 masked_user = user[0] + "***" if len(user) > 1 else "***"
                 replacement = f"{masked_user}@{domain}"
-            result = result.replace(val, replacement)
-            counts["email"] = counts.get("email", 0) + 1
-            audit_log.append(f"Masked email address for domain: {val.split('@')[-1]}")
+            return replacement, f"Masked email address for domain: {val.split('@')[-1]}"
+
+        result, count, logs = self._replace_matches(result, self.PATTERNS["email"], _email_replacement)
+        if count:
+            counts["email"] = count
+            audit_log.extend(logs)
 
         # 7. Phone Numbers
-        for m in list(self.PATTERNS["phone"].finditer(result)):
-            val = m.group(0)
-            # Ensure not a pure 4-digit number or timecode
+        def _phone_replacement(match):
+            val = match.group(0)
             digits = re.sub(r"\D", "", val)
-            if len(digits) >= 10:
-                replacement = "[REDACTED_PHONE]" if mode == "full" else f"(***) ***-{digits[-4:]}"
-                result = result.replace(val, replacement)
-                counts["phone"] = counts.get("phone", 0) + 1
-                audit_log.append(f"Masked phone number ending in {digits[-4:]}")
+            if len(digits) < 10:
+                return None, ""
+            replacement = "[REDACTED_PHONE]" if mode == "full" else f"(***) ***-{digits[-4:]}"
+            return replacement, f"Masked phone number ending in {digits[-4:]}"
+
+        result, count, logs = self._replace_matches(result, self.PATTERNS["phone"], _phone_replacement)
+        if count:
+            counts["phone"] = count
+            audit_log.extend(logs)
 
         return result, counts, audit_log
 
@@ -151,7 +214,7 @@ class PIISecurityOfficer:
             entities_found=total_counts,
             compliance_score=compliance_score,
             audit_log=all_logs,
-            is_shielded=True,
+            is_shielded=total_redacted > 0,
         )
 
         return sanitized_segments, report

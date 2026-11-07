@@ -176,9 +176,9 @@ class TestUIContracts(unittest.TestCase):
         self.assertIn("Distil-Whisper Large-v3", self.html)
         self.assertIn("Whisper Base", self.html)
         self.assertIn("WhisperX", self.html)
-        self.assertIn("Edge-Neural Studio", self.html)
-        self.assertIn("WhisperSpeech", self.html)
-        self.assertIn("GPT-SoVITS", self.html)
+        self.assertIn("Edge Neural TTS", self.html)
+        self.assertIn("WhisperSpeech (not bundled)", self.html)
+        self.assertIn("GPT-SoVITS (not bundled)", self.html)
         # Specific model option IDs
         self.assertIn('id="model-opt-turbo"', self.html)
         self.assertIn('id="model-opt-distil-large-v3"', self.html)
@@ -193,9 +193,8 @@ class TestUIContracts(unittest.TestCase):
         self.assertIn("High Speed", self.html)
         self.assertIn("Lightweight / Low-RAM", self.html)
         self.assertIn("Phoneme Aligned", self.html)
-        self.assertIn("Studio Quality · Recommended", self.html)
-        self.assertIn("Acoustic Inversion", self.html)
-        self.assertIn("Formant Morphing", self.html)
+        self.assertIn("Network · Pitch-matched", self.html)
+        self.assertIn("Unavailable · Fallback", self.html)
 
     def test_minimalist_harmonic_logo_everywhere(self):
         """Verifies complete, authoritative harmonic S monogram emblem is present."""

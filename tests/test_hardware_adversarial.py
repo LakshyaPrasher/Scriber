@@ -180,11 +180,11 @@ class TestHardwareHTTPConcurrencyAndLoad(unittest.TestCase):
 
     def test_disallowed_http_methods(self):
         """Verifies that non-GET methods to /api/hardware either return 404/405 or CORS 200/204."""
-        # OPTIONS should return 200 or 204 with CORS headers
+        # OPTIONS should return 200 or 204 with Allow headers (no wildcard CORS)
         req_opt = urllib.request.Request(f"{self.server.url}/api/hardware", method="OPTIONS")
         with urllib.request.urlopen(req_opt, timeout=5.0) as resp:
             self.assertIn(resp.status, (200, 204))
-            self.assertEqual(resp.headers.get("Access-Control-Allow-Origin"), "*")
+            self.assertIn("GET", resp.headers.get("Allow", ""))
 
         # POST should return 404 (Endpoint not found) per server design
         req_post = urllib.request.Request(

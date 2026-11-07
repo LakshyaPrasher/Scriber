@@ -435,7 +435,7 @@
         percent: 100,
         phase: 'Phase 4/4 · Complete',
         title: 'Transcription & Translation Complete',
-        subtitle: 'All speaker segments verified and ready',
+        subtitle: 'Speaker segments prepared for review',
         eta_sec: 0
       });
 
@@ -520,7 +520,7 @@
         percent: 100,
         phase: 'Phase 4/4 · Complete',
         title: 'Transcription & Translation Complete',
-        subtitle: 'All speaker segments verified and ready',
+        subtitle: 'Speaker segments prepared for review',
         eta_sec: 0
       });
 
@@ -550,6 +550,8 @@
     document.getElementById('dropzone').style.display = 'block';
     document.getElementById('processing-card').style.display = 'none';
     document.getElementById('output-viewport').style.display = 'none';
+    const syntheticWarning = document.getElementById('synthetic-warning');
+    if (syntheticWarning) syntheticWarning.style.display = 'none';
     const player = document.getElementById('audio-player');
     if (player) { player.pause(); player.currentTime = 0; }
     updatePlayPauseIcons(false);
@@ -664,10 +666,35 @@
     waveEnvelope = peaks;
   }
 
+  function updateSyntheticWarning(data) {
+    const warning = document.getElementById('synthetic-warning');
+    if (!warning) return;
+    const textElem = document.getElementById('synthetic-warning-text');
+    const transcriptSynthetic = !!(data && data.transcription && data.transcription.is_synthetic);
+    const audioSynthetic = !!(data && data.audio_metadata && data.audio_metadata.is_synthetic);
+
+    if (!transcriptSynthetic && !audioSynthetic) {
+      warning.style.display = 'none';
+      return;
+    }
+
+    let message;
+    if (transcriptSynthetic && audioSynthetic) {
+      message = 'DEMO — synthetic transcript and synthetic audio. No real media was transcribed.';
+    } else if (transcriptSynthetic) {
+      message = 'DEMO — synthetic transcript. This text was not produced by transcribing the uploaded audio.';
+    } else {
+      message = 'WARNING — synthetic test audio. The uploaded media could not be decoded, so a placeholder signal was generated.';
+    }
+    if (textElem) textElem.innerText = message;
+    warning.style.display = 'flex';
+  }
+
   /* Render Output Viewport */
   function renderTranscription(data) {
     currentResult = data;
     window.currentResult = data;
+    updateSyntheticWarning(data);
     const dropzoneElem = document.getElementById('dropzone');
     if (dropzoneElem) dropzoneElem.style.display = 'none';
     const procCard = document.getElementById('processing-card');
@@ -704,7 +731,7 @@
         if (trimmed && !trimmed.endsWith(',') && !trimmed.endsWith(';') && !trimmed.endsWith(':') && !trimmed.endsWith('.')) {
           glue = '. ';
         }
-        curCard.text = (curCard.text + glue + (s.text || '').trim()).replace(/\\s+/g, ' ').replace(/([,.:;?!])\\./g, '$1');
+        curCard.text = (curCard.text + glue + (s.text || '').trim()).replace(/\s+/g, ' ').replace(/([,.:;?!])\./g, '$1');
       }
     });
 
@@ -725,7 +752,7 @@
           return `<span class="word-token" data-start="${wStart}" data-end="${wEnd}" onclick="seekToWord(${wStart}, event)">${wText}</span> `;
         }).join('');
       } else {
-        const words = (s.text || '').trim().split(/\\s+/).filter(Boolean);
+        const words = (s.text || '').trim().split(/\s+/).filter(Boolean);
         totalWords += words.length;
         const segDur = Math.max(0.1, (s.end || 0) - (s.start || 0));
         const wordDur = segDur / Math.max(1, words.length);
@@ -816,9 +843,14 @@
   }
 
   function getCleanSegmentText(s, idx) {
-    let text = (s && s.text) ? s.text.trim() : '';
     const segElem = document.getElementById('seg-text-' + idx);
     if (segElem) {
+      if (segElem.getAttribute('data-edited') === 'true') {
+        const domRaw = (segElem.innerText || segElem.textContent || '').trim();
+        if (domRaw) {
+          return cleanExportText(domRaw);
+        }
+      }
       const tokens = segElem.querySelectorAll('.word-token');
       if (tokens && tokens.length > 0) {
         const words = [];
@@ -827,19 +859,16 @@
           if (w) words.push(w);
         });
         if (words.length > 0) {
-          const gathered = words.join(' ');
-          if (!text || segElem.getAttribute('data-edited') === 'true') {
-            text = gathered;
-          }
+          return cleanExportText(words.join(' '));
         }
       } else {
         const domRaw = (segElem.innerText || segElem.textContent || '').trim();
-        if (domRaw && (!text || segElem.getAttribute('data-edited') === 'true')) {
-          text = domRaw;
+        if (domRaw) {
+          return cleanExportText(domRaw);
         }
       }
     }
-    return cleanExportText(text);
+    return cleanExportText((s && s.text) ? s.text.trim() : '');
   }
 
   /* One-Click Prominent Full Transcript Copy with Clean Formatting Options */
@@ -850,7 +879,11 @@
       return;
     }
     const format = document.getElementById('copy-format-select') ? document.getElementById('copy-format-select').value : 'standard';
-    const segments = data.transcription.segments || [];
+    // The visible transcript is rendered from unified speaker cards. Use those so copied
+    // text matches edits and merged turns instead of the original raw segments.
+    const segments = (window.renderedSegments && window.renderedSegments.length)
+      ? window.renderedSegments
+      : (data.transcription.segments || []);
     let formatted = '';
 
     segments.forEach((s, idx) => {
@@ -899,7 +932,10 @@
     if (evt) evt.stopPropagation();
     const data = currentResult || window.currentResult;
     if (!data || !data.transcription) return;
-    const s = data.transcription.segments[idx];
+    const segments = (window.renderedSegments && window.renderedSegments.length)
+      ? window.renderedSegments
+      : (data.transcription.segments || []);
+    const s = segments[idx];
     if (!s) return;
     const rawSpk = s.speaker || 'Speaker 1';
     const cleanSpk = rawSpk.replace(/_/g, ' ');
@@ -945,10 +981,13 @@
   function handleSegmentEdit(idx, el) {
     el.setAttribute('data-edited', 'true');
     const newText = cleanExportText(el.innerText || el.textContent || '');
-    if (currentResult && currentResult.transcription && currentResult.transcription.segments[idx]) {
-      currentResult.transcription.segments[idx].text = newText;
-      showToast('Transcript edit saved', 'info');
+    if (window.renderedSegments && window.renderedSegments[idx]) {
+      window.renderedSegments[idx].text = newText;
     }
+    if (currentResult && currentResult.transcription && currentResult.transcription.segments && currentResult.transcription.segments[idx]) {
+      currentResult.transcription.segments[idx].text = newText;
+    }
+    showToast('Transcript edit saved', 'info');
   }
 
   // Intercept manual text selection copy within transcript container to guarantee spaces
@@ -1088,8 +1127,10 @@
     }
     let content = '';
     const baseSource = (data.video_source || 'scriber_transcript').replace(/\.[^/.]+$/, "");
-    let filename = `${baseSource}.${type}`;
-    const segments = (data.transcription && data.transcription.segments) ? data.transcription.segments : [];
+    const rawSegments = (data.transcription && data.transcription.segments) ? data.transcription.segments : [];
+    const segments = (window.renderedSegments && window.renderedSegments.length)
+      ? window.renderedSegments
+      : rawSegments;
 
     if (type === 'json') {
       content = JSON.stringify(data, null, 2);
@@ -1383,19 +1424,19 @@
     selectedVoiceModel = modelId;
     window.selectedVoiceModel = modelId;
     const names = {
-      'local-gpu': 'Local GPU (F5-TTS Flow-Matching 48kHz)',
-      'edge-neural': 'Edge-Neural Studio',
-      'whisperspeech': 'WhisperSpeech',
-      'gpt-sovits': 'GPT-SoVITS'
+      'local-gpu': 'Local GPU (F5-TTS companion)',
+      'edge-neural': 'Edge Neural TTS',
+      'whisperspeech': 'WhisperSpeech (not bundled)',
+      'gpt-sovits': 'GPT-SoVITS (not bundled)'
     };
     const badges = {
-      'local-gpu': 'Zero-Shot · NVIDIA GPU',
-      'edge-neural': 'Studio Quality · Recommended',
-      'whisperspeech': 'Acoustic Inversion',
-      'gpt-sovits': 'Formant Morphing'
+      'local-gpu': 'Optional · GPU companion',
+      'edge-neural': 'Network · Pitch-matched',
+      'whisperspeech': 'Unavailable · Fallback',
+      'gpt-sovits': 'Unavailable · Fallback'
     };
     const badgeClasses = {
-      'local-gpu': 'tier-recommended',
+      'local-gpu': 'tier-inversion',
       'edge-neural': 'tier-recommended',
       'whisperspeech': 'tier-inversion',
       'gpt-sovits': 'tier-formant'
@@ -1419,7 +1460,13 @@
     });
 
     closeAllModelDropdowns();
-    showToast(`Switched voice cloning engine to ${names[modelId] || modelId}`, 'info');
+    if (modelId === 'whisperspeech' || modelId === 'gpt-sovits') {
+      showToast(`${names[modelId]} is unavailable in this build; synthesis will fall back and report the engine used.`, 'info');
+    } else if (modelId === 'local-gpu') {
+      showToast('Local GPU mode requires the optional F5-TTS companion; otherwise synthesis falls back and reports the engine used.', 'info');
+    } else {
+      showToast(`Switched voice synthesis engine to ${names[modelId] || modelId}`, 'info');
+    }
   }
 
   /* ========================================================= */
@@ -1829,7 +1876,7 @@
     btn.disabled = true;
 
     try {
-      const baseName = (st.customFileName || (mode === 'm1' ? 'scriber_transcript' : 'scriber_voice')).replace(/\\.[^/.]+$/, "");
+      const baseName = (st.customFileName || (mode === 'm1' ? 'scriber_transcript' : 'scriber_voice')).replace(/\.[^/.]+$/, "");
       const payload = {
         volume: st.volume / 100,
         pitch_semitones: st.pitch,
@@ -1882,7 +1929,7 @@
 
     const pillWrap = document.getElementById('transcribed-speakers-pill-wrap');
     if (pillWrap) {
-      pillWrap.innerHTML = '<span style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-secondary); margin-right:4px;">Transcribed Speakers:</span>';
+      pillWrap.innerHTML = '<span style="font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-secondary); margin-right:4px;">Transcribed Speakers:</span>';
       profiles.forEach(function(p, idx) {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -1925,7 +1972,7 @@
       refTitle.innerText = `Transcribed Voice: ${p.speaker_id.replace(/_/g, ' ')}`;
       const f0 = p.fundamental_frequency_hz ? `${Math.round(p.fundamental_frequency_hz)}Hz` : '';
       const wpm = p.estimated_wpm ? `${Math.round(p.estimated_wpm)} WPM` : '';
-      refSub.innerText = `Biometric Timbre Locked · ${f0} · ${wpm} · Ready for Cloning & MP3 Editing`;
+      refSub.innerText = `Reference voice loaded · ${f0} · ${wpm} · Ready for Synthesis & MP3 Editing`;
       refBadge.style.display = 'flex';
     }
   }
@@ -1941,7 +1988,7 @@
     const pillWrap = document.getElementById('transcribed-speakers-pill-wrap');
     if (pillWrap) pillWrap.style.display = 'none';
     const lbl = document.getElementById('voice-ref-label-text');
-    if (lbl) lbl.innerHTML = 'Drop a custom audio/video clip or <strong style="color:var(--tangerine); text-decoration:underline;">browse</strong> to extract speaker biometric timbre';
+    if (lbl) lbl.innerHTML = 'Drop a custom audio/video clip or <strong style="color:var(--tangerine); text-decoration:underline;">browse</strong> to extract voice characteristics';
     const input = document.getElementById('voice-ref-input');
     if (input) input.value = '';
     showToast('Reference voice removed', 'info');
@@ -1989,7 +2036,7 @@
     const speakerName = fileName.replace(/\.[^/.]+$/, "");
     const lbl = document.getElementById('voice-ref-label-text');
     const origText = lbl ? lbl.innerHTML : '';
-    if (lbl) lbl.innerHTML = `<span style="color:var(--gold);">Extracting biometric timbre from ${escapeHtml(fileName)}...</span>`;
+    if (lbl) lbl.innerHTML = `<span style="color:var(--gold);">Extracting voice characteristics from ${escapeHtml(fileName)}...</span>`;
 
     startAcousticResonanceAnimation();
     setVoiceModelLocked(true);
@@ -2020,7 +2067,7 @@
         const refSub = document.getElementById('voice-ref-sub');
         if (refBadge && refTitle && refSub) {
           refTitle.innerText = `Custom Audio: ${fileName}`;
-          refSub.innerText = `${formatSec(data.duration || 10)} · Biometric Timbre Locked`;
+          refSub.innerText = `${formatSec(data.duration || 10)} · Reference voice loaded`;
           refBadge.style.display = 'flex';
         }
 
@@ -2053,7 +2100,7 @@
     }
     const lbl = document.getElementById('voice-ref-label-text');
     const origText = lbl ? lbl.innerHTML : '';
-    if (lbl) lbl.innerHTML = `<span style="color:var(--gold);">Extracting biometric timbre from ${escapeHtml(file.name)}...</span>`;
+    if (lbl) lbl.innerHTML = `<span style="color:var(--gold);">Extracting voice characteristics from ${escapeHtml(file.name)}...</span>`;
 
     startAcousticResonanceAnimation();
     setVoiceModelLocked(true);
@@ -2083,7 +2130,7 @@
         const refSub = document.getElementById('voice-ref-sub');
         if (refBadge && refTitle && refSub) {
           refTitle.innerText = `Custom Audio: ${file.name}`;
-          refSub.innerText = `${formatSec(data.duration || 10)} · Biometric Timbre Locked`;
+          refSub.innerText = `${formatSec(data.duration || 10)} · Reference voice loaded`;
           refBadge.style.display = 'flex';
         }
 
@@ -2203,9 +2250,19 @@
       const hasCustomRef = !!((audioEditorState.m2 && audioEditorState.m2.originalVoiceRefBase64) || 
                               (audioEditorState.m2 && audioEditorState.m2.referenceAudioBase64) || 
                               (selectedVoiceProfile && selectedVoiceProfile.file_path));
-      const scorePct = (data.similarity_score * 100).toFixed(1);
-      const fidelityLabel = hasCustomRef ? `${scorePct}% Biometric Match` : `Studio Master Quality (${scorePct}%)`;
-      document.getElementById('clone-fidelity-badge').innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> ${fidelityLabel}`;
+      const measured = data.similarity_measured === true && typeof data.similarity_score === 'number';
+      const scorePct = measured ? (data.similarity_score * 100).toFixed(1) : null;
+      const fidelityLabel = measured
+        ? `Acoustic Similarity (heuristic): ${scorePct}%`
+        : 'Acoustic similarity not measured';
+      const badge = document.getElementById('clone-fidelity-badge');
+      badge.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg> ${fidelityLabel}`;
+      badge.title = measured
+        ? 'Heuristic acoustic comparison of pitch, spectrum and energy — not biometric identity verification.'
+        : 'The selected engine produced audio, but no comparable reference profile was available for measurement.';
+      if (data.synthesis_backend) {
+        badge.title += ' Engine: ' + data.synthesis_backend + '.';
+      }
       const player = document.getElementById('clone-audio-player');
       player.src = data.audio_base64;
       player.currentTime = 0;
@@ -2213,7 +2270,7 @@
 
       const dlBtn = document.getElementById('clone-download-btn');
       dlBtn.href = data.audio_base64;
-      dlBtn.download = `cloned_${(selectedVoiceProfile.speaker_id || 'voice').replace(/\\s+/g, '_')}.mp3`;
+      dlBtn.download = `cloned_${(selectedVoiceProfile.speaker_id || 'voice').replace(/\s+/g, '_')}.mp3`;
 
       // Update Mode 2 Audio Editor to point to this synthesized audio
       audioEditorState.m2.referenceAudioBase64 = data.audio_base64;
@@ -2263,7 +2320,8 @@
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   /* ========================================================= */
@@ -2610,7 +2668,7 @@
     // 3. Update dynamic pitch status text
     var statusText = document.getElementById('resonance-status-text');
     if (statusText) {
-      statusText.innerText = 'Harmonic Formant Alignment · F0 Pitch: ' + effectiveF0.toFixed(1) + ' Hz · 99.4% Biometric Timbre Match';
+      statusText.innerText = 'Acoustic formant alignment · F0 Pitch: ' + effectiveF0.toFixed(1) + ' Hz · Heuristic synthesis (not biometric verification)';
     }
 
     resAnimId = requestAnimationFrame(renderResonanceLoop);
@@ -2933,13 +2991,20 @@
         chaptersWrap.style.display = 'block';
         chaptersStrip.innerHTML = chapters.map(ch => {
           const startTime = typeof ch.start_time === 'number' ? ch.start_time : (ch.seek_start || 0);
-          const quotes = Array.isArray(ch.key_quotes) && ch.key_quotes.length > 0 ? `"${escapeHtml(ch.key_quotes[0])}"` : (ch.summary || '');
+          const quotes = Array.isArray(ch.key_quotes) && ch.key_quotes.length > 0
+            ? `"${escapeHtml(ch.key_quotes[0])}"`
+            : escapeHtml(ch.summary || '');
+          const title = escapeHtml(ch.title || 'Discussion Topic');
           return `
-            <div class="chapter-card" onclick="seekTo(${startTime})" style="cursor:pointer; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:6px; padding:10px 14px; margin-bottom:8px;">
+            <div class="chapter-card" role="button" tabindex="0"
+                 onclick="seekTo(${startTime})"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();seekTo(${startTime});}"
+                 aria-label="Jump to ${title} at ${formatSec(startTime)}"
+                 style="cursor:pointer; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:6px; padding:10px 14px; margin-bottom:8px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <span style="font-weight:600; font-size:13px; color:var(--text-primary);">${escapeHtml(ch.title || 'Discussion Topic')}</span>
-                <span class="action-seek-btn" style="font-size:11px;">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                <span style="font-weight:600; font-size:13px; color:var(--text-primary);">${title}</span>
+                <span class="action-seek-btn" style="font-size:12px;">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                   ${formatSec(startTime)}
                 </span>
               </div>
@@ -2957,17 +3022,30 @@
     const certStatus = document.getElementById('audit-cert-status');
     const rootHash = document.getElementById('audit-root-hash');
     if (validation) {
-      if (certId) certId.innerText = validation.certificate_id || 'CERT-CSCR-CHAIN';
+      if (certId) certId.innerText = validation.certificate_id || 'No audit receipt';
       if (certStatus) {
+        const hasReference = validation.reference_available === true && validation.evaluation_mode !== 'self_consistency';
         const isPassed = validation.passed !== undefined ? validation.passed : validation.passed_99_percent;
-        certStatus.innerText = isPassed ? 'VALIDATED' : 'PROCESSED';
-        certStatus.style.background = isPassed ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 94, 0, 0.15)';
-        certStatus.style.color = isPassed ? 'var(--emerald)' : 'var(--tangerine)';
+        if (!hasReference) {
+          certStatus.innerText = 'SELF-CONSISTENCY';
+          certStatus.style.background = 'rgba(229, 169, 60, 0.12)';
+          certStatus.style.color = 'var(--gold)';
+          certStatus.title = 'No external ground-truth reference was supplied, so transcription accuracy cannot be certified.';
+        } else {
+          certStatus.innerText = isPassed ? 'REFERENCE PASSED' : 'BELOW THRESHOLD';
+          certStatus.style.background = isPassed ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 94, 0, 0.15)';
+          certStatus.style.color = isPassed ? 'var(--emerald)' : 'var(--tangerine)';
+          certStatus.title = isPassed
+            ? 'Transcription met the configured accuracy threshold against the supplied reference.'
+            : 'Transcription did not meet the configured accuracy threshold against the supplied reference.';
+        }
       }
       if (rootHash) {
-        const fullHash = validation.root_hash || 'SHA256-AUTHENTICATED';
-        rootHash.innerText = fullHash.length > 20 ? (fullHash.substring(0, 10) + '...' + fullHash.substring(fullHash.length - 8)) : fullHash;
-        rootHash.title = fullHash;
+        const fullHash = validation.root_hash || '';
+        rootHash.innerText = fullHash
+          ? (fullHash.length > 20 ? (fullHash.substring(0, 10) + '...' + fullHash.substring(fullHash.length - 8)) : fullHash)
+          : 'Audit hash unavailable';
+        rootHash.title = fullHash || 'No tamper-evident hash was generated for this session.';
       }
     }
   }
@@ -3000,18 +3078,51 @@
             })
           });
           const resData = await res.json();
-          if (resData.sanitized_segments) {
-            resData.sanitized_segments.forEach((seg, idx) => {
-              const segElem = document.getElementById('seg-text-' + idx);
-              if (segElem) {
-                segElem.innerText = seg.text;
-                segElem.setAttribute('data-edited', 'true');
-              }
-            });
-            showToast(`PII Shield redacted ${resData.report ? resData.report.redactions_count : 0} items!`, 'success');
+          if (!res.ok || resData.error) {
+            throw new Error(resData.error || ('HTTP ' + res.status));
           }
+          if (!Array.isArray(resData.sanitized_segments)) {
+            throw new Error('Server returned no sanitized transcript');
+          }
+
+          // The visible transcript groups consecutive turns by speaker, so rebuilt text
+          // must be regrouped the same way instead of applied by raw segment index.
+          const groups = [];
+          let group = null;
+          resData.sanitized_segments.forEach((seg) => {
+            const spk = (seg.speaker || 'Speaker 1').replace(/_/g, ' ');
+            if (!group || group.speaker !== spk) {
+              group = { speaker: spk, text: (seg.text || '').trim() };
+              groups.push(group);
+            } else {
+              const trimmed = group.text.trim();
+              const glue = trimmed && !/[.,;:!?]$/.test(trimmed) ? '. ' : ' ';
+              group.text = (group.text + glue + (seg.text || '').trim())
+                .replace(/\s+/g, ' ')
+                .replace(/([,.:;?!])\./g, '$1');
+            }
+          });
+
+          groups.forEach((g, idx) => {
+            const segElem = document.getElementById('seg-text-' + idx);
+            if (segElem) {
+              segElem.innerText = g.text;
+              segElem.setAttribute('data-edited', 'true');
+            }
+            if (window.renderedSegments && window.renderedSegments[idx]) {
+              window.renderedSegments[idx].text = g.text;
+            }
+          });
+
+          const redactedCount = (resData.report && typeof resData.report.redacted_count === 'number')
+            ? resData.report.redacted_count
+            : (typeof resData.redacted_count === 'number' ? resData.redacted_count : 0);
+          showToast(`PII Shield redacted ${redactedCount} item${redactedCount === 1 ? '' : 's'}!`, 'success');
         } catch (e) {
-          showToast('PII Redaction request failed: ' + e, 'error');
+          window.isPIIRedacted = false;
+          if (piiBtn) piiBtn.classList.remove('active');
+          if (piiText) piiText.innerText = 'PII Privacy: Off';
+          showToast('PII Redaction request failed: ' + (e && e.message ? e.message : e), 'error');
         }
       }
     } else {
@@ -3034,20 +3145,25 @@
       showToast('No cryptographic audit certificate available yet.', 'info');
       return;
     }
-    const cert = validation.certificate_id || 'CERT-CSCR-CHAIN';
-    const root = validation.root_hash || 'SHA256-ROOT-CHAIN';
-    const status = validation.passed ? 'PASSED' : 'FLAGGED';
+    const cert = validation.certificate_id || 'No audit receipt';
+    const root = validation.root_hash || 'Audit hash unavailable';
+    const hasReference = validation.reference_available === true && validation.evaluation_mode !== 'self_consistency';
+    const status = !hasReference
+      ? 'SELF-CONSISTENCY ONLY (NO REFERENCE)'
+      : (validation.passed ? 'PASSED AGAINST REFERENCE' : 'BELOW REFERENCE THRESHOLD');
     const chain = validation.hash_chain || [];
-    let receipt = `=== SCRIBER CRYPTOGRAPHIC AUDIT CERTIFICATE ===\n`;
-    receipt += `Certificate ID : ${cert}\n`;
-    receipt += `Status         : ${status}\n`;
+    let receipt = `=== SCRIBER CRYPTOGRAPHIC AUDIT RECEIPT ===\n`;
+    receipt += `Receipt ID     : ${cert}\n`;
+    receipt += `Evaluation     : ${status}\n`;
     receipt += `SHA-256 Root   : ${root}\n`;
     receipt += `Blocks in Chain: ${chain.length}\n\n`;
     receipt += `--- HASH CHAIN BLOCKS ---\n`;
     chain.forEach(b => {
-      receipt += `[Block ${b.block_id}] ${b.stage}\n  Prev: ${b.prev_hash}\n  Hash: ${b.block_hash}\n`;
+      const bIdx = b.index !== undefined ? b.index : (b.block_id !== undefined ? b.block_id : '?');
+      const bName = b.block_name || b.stage || 'Audit Step';
+      receipt += `[Block ${bIdx}] ${bName}\n  Prev: ${b.prev_hash}\n  Hash: ${b.block_hash}\n`;
     });
-    receipt += `\nProcessed and verified by Scriber Studio Engine.\n`;
+    receipt += `\nGenerated by Scriber. The hash chain verifies artifact integrity, not transcription accuracy.\n`;
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(receipt).then(() => {
@@ -3139,8 +3255,11 @@
       var isSel = selectedStudioVoice && (selectedStudioVoice.id === v.id);
       var genderClass = v.gender === 'feminine' ? 'female' : 'male';
       var genderInit = v.gender === 'feminine' ? 'F' : 'M';
+      const safeId = escapeHtml(v.id);
       return `
-        <div class="voice-suite-card ${isSel ? 'selected' : ''}" onclick="selectStudioVoice('${v.id}')">
+        <div class="voice-suite-card ${isSel ? 'selected' : ''}" role="button" tabindex="0"
+             onclick="selectStudioVoice('${safeId}')"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectStudioVoice('${safeId}');}">
           <div class="voice-card-header-row">
             <div class="voice-card-name-wrap">
               <span class="voice-avatar-badge ${genderClass}">${genderInit}</span>
@@ -3154,7 +3273,7 @@
           </div>
           <div class="voice-card-desc">${escapeHtml(v.description || '')}</div>
           <div class="voice-card-footer">
-            <button type="button" class="btn-audition-card" onclick="event.stopPropagation(); auditionVoiceCard('${v.id}')" title="Audition this voice preview">
+            <button type="button" class="btn-audition-card" onclick="event.stopPropagation(); auditionVoiceCard('${safeId}')" title="Audition this voice preview">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
               <span>Preview Script</span>
             </button>

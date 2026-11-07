@@ -40,6 +40,9 @@ class TestWhisperTurboCache(unittest.TestCase):
         )
         cls.model_bin_path = os.path.join(cls.snapshot_dir, "model.bin")
 
+    def setUp(self):
+        TranscriptionEngine.clear_model_cache()
+
     def test_turbo_cache_directory_and_model_bin_size(self):
         """Verifies model.bin exists in the HuggingFace cache snapshot and is >= 1.5 GB."""
         self.assertTrue(

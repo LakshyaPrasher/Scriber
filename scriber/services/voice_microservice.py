@@ -14,6 +14,7 @@ import json
 import logging
 import math
 import os
+import secrets
 import struct
 import sys
 import threading
@@ -29,30 +30,31 @@ logger = logging.getLogger(__name__)
 
 
 def _get_gpu_health_info(preferred_device: str = "cuda:0") -> Dict[str, Any]:
-    """Inspects hardware status for /health endpoint."""
+    """Inspects hardware status for /health endpoint without inventing telemetry."""
     try:
         from scriber.hardware import get_hardware_capabilities
         caps = get_hardware_capabilities()
         return {
-            "status": "ready",
-            "gpu_name": caps.gpu_name or "NVIDIA GeForce RTX 5050 Laptop GPU",
+            "status": "ready" if caps.cuda_available else "degraded",
+            "gpu_name": caps.gpu_name,
             "vram_total_mb": caps.vram_total_mb,
             "vram_free_mb": caps.vram_free_mb,
             "cuda_available": caps.cuda_available,
             "device": preferred_device,
             "sample_rate": 48000,
-            "backend": "f5-tts-flow-matching",
+            "backend": "formant-companion",
         }
-    except Exception:
+    except Exception as exc:
         return {
-            "status": "ready",
-            "gpu_name": "NVIDIA GeForce RTX GPU",
-            "vram_total_mb": 8151.0,
-            "vram_free_mb": 5381.0,
-            "cuda_available": True,
+            "status": "unavailable",
+            "gpu_name": None,
+            "vram_total_mb": 0.0,
+            "vram_free_mb": 0.0,
+            "cuda_available": False,
             "device": preferred_device,
             "sample_rate": 48000,
-            "backend": "f5-tts-flow-matching",
+            "backend": "formant-companion",
+            "error": f"{type(exc).__name__}: {exc}",
         }
 
 
@@ -96,10 +98,12 @@ class NeuralFlowMatchingEngine:
         ref_text: Optional[str] = None,
         speed: float = 1.0,
         sample_rate: int = 48000,
-    ) -> Tuple[bytes, float, float]:
+    ) -> Tuple[bytes, float, Optional[float]]:
         """Synthesizes speech conditioned on prompt text and optional reference audio at 48kHz.
         
-        Returns (pcm_bytes, duration_sec, similarity_score).
+        Returns (pcm_bytes, duration_sec, similarity_score). similarity_score is
+        None because this companion performs formant synthesis, not biometric
+        verification.
         """
         sr = sample_rate or self.SAMPLE_RATE
         if self._model is None:
@@ -213,7 +217,8 @@ class NeuralFlowMatchingEngine:
         pcm_samples = (full_signal * 32767.0).astype(np.int16)
         pcm_bytes = pcm_samples.tobytes()
         duration_sec = float(len(pcm_samples)) / float(sr)
-        similarity_score = 0.996 if ref_audio_pcm else 0.992
+        # This formant path does not measure speaker similarity.
+        similarity_score = None
 
         return pcm_bytes, duration_sec, similarity_score
 
@@ -229,27 +234,32 @@ class VoiceMicroserviceHandler(BaseHTTPRequestHandler):
 
     engine: Optional[NeuralFlowMatchingEngine] = None
     server_controller: Optional[VoiceMicroserviceServer] = None
+    auth_token: Optional[str] = None
 
     def log_message(self, format: str, *args: Any):
         """Suppress standard HTTP server access logs to stdout."""
         pass
+
+    def _authorized(self) -> bool:
+        """Checks the per-launch token for mutating endpoints."""
+        if not self.auth_token:
+            return True
+        return self.headers.get("X-Scriber-Token") == self.auth_token
 
     def _send_json(self, status_code: int, data: Dict[str, Any]):
         body = json.dumps(data).encode("utf-8")
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
         self.end_headers()
         self.wfile.write(body)
 
     def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_response(204)
+        self.send_header("Allow", "GET, POST, OPTIONS")
+        self.send_header("Content-Length", "0")
         self.end_headers()
 
     def do_GET(self):
@@ -264,12 +274,18 @@ class VoiceMicroserviceHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         path = self.path.split("?")[0]
         if path == "/shutdown":
+            if not self._authorized():
+                self._send_json(403, {"error": "Forbidden"})
+                return
             self._send_json(200, {"status": "shutting down"})
             if self.server_controller:
                 threading.Thread(target=self.server_controller.stop, daemon=True).start()
             return
 
         if path == "/synthesize":
+            if not self._authorized():
+                self._send_json(403, {"error": "Forbidden"})
+                return
             try:
                 content_len = int(self.headers.get("Content-Length", 0))
                 body = self.rfile.read(content_len)
@@ -305,8 +321,8 @@ class VoiceMicroserviceHandler(BaseHTTPRequestHandler):
                     "audio_pcm16_base64": b64_pcm,
                     "sample_rate": sr,
                     "duration": round(dur, 3),
-                    "backend": "f5-tts-flow-matching",
-                    "similarity_score": round(sim, 4),
+                    "backend": "formant-companion",
+                    "similarity_score": round(sim, 4) if sim is not None else None,
                 }
                 self._send_json(200, resp)
 
@@ -326,11 +342,13 @@ class VoiceMicroserviceServer:
         port: int = 18840,
         device: str = "cuda:0",
         fp16: bool = True,
+        token: Optional[str] = None,
     ):
         self.host = host
         self.port = port
         self.device = device
         self.fp16 = fp16
+        self.token = token or os.environ.get("SCRIBER_VOICE_TOKEN") or secrets.token_urlsafe(32)
         self.engine = NeuralFlowMatchingEngine(device=device, fp16=fp16)
         self._server: Optional[_ThreadedHTTPServer] = None
         self._thread: Optional[threading.Thread] = None
@@ -347,6 +365,7 @@ class VoiceMicroserviceServer:
             {
                 "engine": self.engine,
                 "server_controller": self,
+                "auth_token": self.token,
             },
         )
 
@@ -382,6 +401,7 @@ def main():
     parser.add_argument("--port", type=int, default=18840, help="Bind port (default: 18840)")
     parser.add_argument("--device", default="cuda:0", help="Inference device (default: cuda:0)")
     parser.add_argument("--fp16", action="store_true", default=True, help="Use FP16 precision")
+    parser.add_argument("--token", default=None, help="Shared auth token for /synthesize and /shutdown")
     args = parser.parse_args()
 
     server = VoiceMicroserviceServer(
@@ -389,6 +409,7 @@ def main():
         port=args.port,
         device=args.device,
         fp16=args.fp16,
+        token=args.token,
     )
     server.start()
     print(f"Scriber companion microservice running on http://{args.host}:{args.port}")

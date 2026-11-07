@@ -64,6 +64,7 @@ class AudioMetadata:
     file_size_bytes: int
     file_format: str
     bitrate_kbps: Optional[int] = None
+    is_synthetic: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return dataclasses.asdict(self)
@@ -111,6 +112,7 @@ class TranscriptionResult:
     task: str = "transcribe"  # 'transcribe' or 'translate'
     backend_used: str = "whisper-flow"
     model_name: str = "whisper-base-en"
+    is_synthetic: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -121,6 +123,7 @@ class TranscriptionResult:
             "task": self.task,
             "backend_used": self.backend_used,
             "model_name": self.model_name,
+            "is_synthetic": self.is_synthetic,
             "segments": [s.to_dict() for s in self.segments],
         }
 
@@ -265,6 +268,7 @@ class AgentTelemetry:
     confidence: float
     status: str  # 'active', 'completed', 'idle'
     summary: str
+    confidence_basis: str = "heuristic"
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -273,6 +277,7 @@ class AgentTelemetry:
             "model_tier": self.model_tier,
             "runtime_ms": round(self.runtime_ms, 2),
             "confidence": round(self.confidence, 4),
+            "confidence_basis": self.confidence_basis,
             "status": self.status,
             "summary": self.summary,
         }
@@ -324,9 +329,9 @@ class ValidationReport:
     accuracy_score: float  # 0.0 to 1.0 (target: >= 0.99)
     wer: float  # Word Error Rate (target: <= 0.01)
     cer: float  # Character Error Rate
-    precision: float
-    recall: float
-    f1_score: float
+    precision: Optional[float]
+    recall: Optional[float]
+    f1_score: Optional[float]
     passed_99_percent: bool
     test_case_id: Optional[str] = None
     evaluated_tokens: int = 0
@@ -335,18 +340,23 @@ class ValidationReport:
     audit_notes: List[str] = field(default_factory=list)
     hash_chain: List[HashChainBlock] = field(default_factory=list)
     root_hash: str = ""
+    reference_available: bool = True
+    evaluation_mode: str = "reference"  # "reference" or "self_consistency"
 
     def to_dict(self) -> Dict[str, Any]:
+        has_reference = bool(self.reference_available and self.evaluation_mode == "reference")
         return {
-            "accuracy_score": round(self.accuracy_score, 4),
-            "accuracy_percentage": f"{self.accuracy_score * 100:.2f}%",
-            "wer": round(self.wer, 4),
-            "cer": round(self.cer, 4),
-            "precision": round(self.precision, 4),
-            "recall": round(self.recall, 4),
-            "f1_score": round(self.f1_score, 4),
+            "accuracy_score": round(self.accuracy_score, 4) if has_reference else None,
+            "accuracy_percentage": f"{self.accuracy_score * 100:.2f}%" if has_reference else None,
+            "wer": round(self.wer, 4) if has_reference else None,
+            "cer": round(self.cer, 4) if has_reference else None,
+            "precision": round(self.precision, 4) if self.precision is not None else None,
+            "recall": round(self.recall, 4) if self.recall is not None else None,
+            "f1_score": round(self.f1_score, 4) if self.f1_score is not None else None,
             "passed_99_percent": self.passed_99_percent,
             "passed": self.passed_99_percent,
+            "reference_available": has_reference,
+            "evaluation_mode": self.evaluation_mode,
             "test_case_id": self.test_case_id,
             "evaluated_tokens": self.evaluated_tokens,
             "matched_tokens": self.matched_tokens,
@@ -443,7 +453,7 @@ class VoiceCloneResult:
     text_prompt: str
     audio_pcm16: bytes
     audio_format: str
-    similarity_score: float  # Biometric match >= 0.99
+    similarity_score: Optional[float]  # Acoustic heuristic similarity; None when unmeasured
     synthesis_backend: str
     audio_base64: str
     duration: float
@@ -451,6 +461,8 @@ class VoiceCloneResult:
     sample_rate_hz: int = 48000
     provider: str = "local"
     fallback_chain: List[str] = field(default_factory=list)
+    similarity_basis: str = "acoustic_similarity_heuristic"
+    similarity_measured: bool = True
 
     def to_dict(self) -> Dict[str, Any]:
         d = {
@@ -460,8 +472,10 @@ class VoiceCloneResult:
             "sample_rate_hz": self.sample_rate_hz,
             "provider": self.provider,
             "fallback_chain": list(self.fallback_chain),
-            "similarity_score": round(self.similarity_score, 4),
-            "similarity_percentage": f"{self.similarity_score * 100:.2f}%",
+            "similarity_score": round(self.similarity_score, 4) if self.similarity_score is not None else None,
+            "similarity_percentage": f"{self.similarity_score * 100:.2f}%" if self.similarity_score is not None else None,
+            "similarity_basis": self.similarity_basis,
+            "similarity_measured": self.similarity_measured,
             "synthesis_backend": self.synthesis_backend,
             "audio_base64": self.audio_base64,
             "duration": round(self.duration, 3),

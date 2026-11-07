@@ -978,13 +978,13 @@ class TestTier2F16SimilarityCalibrationBoundaries(unittest.TestCase):
     """Boundary & Corner cases for F16: Similarity Calibration."""
 
     def test_f16_b01_identical_empty_profiles(self):
-        """Verifies comparing two identical empty profiles yields >= 0.99 similarity."""
+        """Verifies comparing two identical empty profiles yields 0.0 similarity."""
         from scriber.voice_clone import VoiceCloner, VoiceProfiler
 
         p1 = VoiceProfiler._empty_profile("Spk1")
         p2 = VoiceProfiler._empty_profile("Spk2")
         score = VoiceCloner.calculate_similarity(p1, p2)
-        self.assertGreaterEqual(score, 0.99)
+        self.assertEqual(score, 0.0)
 
     def test_f16_b02_zero_f0_pitch_sanitization(self):
         """Verifies profile with F0 = 0.0 is clamped to minimum 60Hz without ZeroDivisionError."""

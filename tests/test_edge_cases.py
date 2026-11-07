@@ -51,6 +51,7 @@ class TestScriberEdgeCases(unittest.TestCase):
             pcm16_data=pcm_data,
             source_name="unicode_test.wav",
             reference_text=text_with_unicode,
+            ground_truth_hint=text_with_unicode,
         )
 
         self.assertEqual(output.transcription.text, text_with_unicode)

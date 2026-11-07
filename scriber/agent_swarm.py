@@ -123,9 +123,10 @@ class ExecutiveBrieferAgent:
             agent_name=self.PROFILE.name,
             model_tier=self.PROFILE.model_tier,
             runtime_ms=elapsed_ms,
-            confidence=0.992,
+            confidence=min(0.9, 0.55 + 0.05 * len(action_items) + 0.05 * len(decisions)),
             status="completed",
             summary=f"Synthesized '{headline}' with {len(decisions)} ratified decisions and {len(takeaways)} core takeaways.",
+            confidence_basis="heuristic_rule_coverage",
         )
         return summary, telemetry
 
@@ -274,9 +275,10 @@ class ActionItemAuditorAgent:
             agent_name=self.PROFILE.name,
             model_tier=self.PROFILE.model_tier,
             runtime_ms=elapsed_ms,
-            confidence=0.985,
+            confidence=min(0.9, 0.5 + 0.04 * len(items)),
             status="completed",
-            summary=f"Extracted {len(items)} high-confidence commitments with owner attribution and deadlines.",
+            summary=f"Extracted {len(items)} commitments with owner attribution and deadlines.",
+            confidence_basis="heuristic_pattern_match",
         )
         return items, telemetry
 
@@ -319,9 +321,10 @@ class ThematicChapterArchitectAgent:
                 agent_name=self.PROFILE.name,
                 model_tier=self.PROFILE.model_tier,
                 runtime_ms=elapsed_ms,
-                confidence=0.990,
+                confidence=0.5,
                 status="completed",
                 summary="No segments to partition.",
+                confidence_basis="heuristic_empty_input",
             )
             return points, topics, telemetry
 
@@ -428,9 +431,10 @@ class ThematicChapterArchitectAgent:
             agent_name=self.PROFILE.name,
             model_tier=self.PROFILE.model_tier,
             runtime_ms=elapsed_ms,
-            confidence=0.988,
+            confidence=min(0.9, 0.5 + 0.05 * len(points)),
             status="completed",
             summary=f"Mapped dialogue into {len(points)} thematic chapters ({', '.join(topics[:3])}{'...' if len(topics) > 3 else ''}).",
+            confidence_basis="heuristic_topic_clustering",
         )
         return points, topics, telemetry
 
@@ -472,12 +476,13 @@ class PIISecurityOfficerAgent:
             agent_name=self.PROFILE.name,
             model_tier=self.PROFILE.model_tier,
             runtime_ms=elapsed_ms,
-            confidence=0.999,
+            confidence=report.compliance_score,
             status="completed",
             summary=(
                 f"Audited {len(segments)} segments. Redacted {report.redacted_count} sensitive entities. "
                 f"Compliance Score: {report.compliance_score * 100:.1f}%."
             ),
+            confidence_basis="regex_compliance_score",
         )
         return report, telemetry
 
@@ -516,9 +521,10 @@ class AcousticQAAgent:
             agent_name=self.PROFILE.name,
             model_tier=self.PROFILE.model_tier,
             runtime_ms=elapsed_ms,
-            confidence=0.995,
+            confidence=min(0.9, 0.5 + 0.05 * len(stats)),
             status="completed",
-            summary=f"Verified acoustic continuity across {len(stats)} distinct biometric speakers and {len(segments)} turns.",
+            summary=f"Verified acoustic continuity across {len(stats)} distinct speakers and {len(segments)} turns.",
+            confidence_basis="heuristic_speaker_continuity",
         )
         return stats, telemetry
 
