@@ -260,7 +260,7 @@ class TestMemoryAndResourceLeaks(unittest.TestCase):
         initial_mem = get_current_process_memory_bytes()
         initial_threads = threading.active_count()
 
-        iterations = 50
+        iterations = int(os.environ.get("SCRIBER_STRESS_CYCLES", "10"))
         for _ in range(iterations):
             caps = get_hardware_capabilities(force_refresh=True)
             self.assertIsInstance(caps, HardwareCapabilities)

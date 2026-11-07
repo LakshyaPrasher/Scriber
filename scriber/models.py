@@ -13,7 +13,7 @@ class WordTimestamp:
     word: str
     start: float
     end: float
-    probability: float = 1.0
+    probability: Optional[float] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return dataclasses.asdict(self)
@@ -34,7 +34,7 @@ class AudioSegment:
     no_speech_prob: float = 0.01
     words: List[WordTimestamp] = field(default_factory=list)
     speaker: Optional[str] = None
-    confidence: float = 0.99
+    confidence: Optional[float] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -50,7 +50,7 @@ class AudioSegment:
             "no_speech_prob": round(self.no_speech_prob, 4),
             "words": [w.to_dict() for w in self.words],
             "speaker": self.speaker,
-            "confidence": round(self.confidence, 4),
+            "confidence": round(self.confidence, 4) if self.confidence is not None else None,
         }
 
 
@@ -140,7 +140,7 @@ class ActionItem:
     context_quote: str = ""
     start_time: float = 0.0
     end_time: float = 0.0
-    confidence: float = 0.99
+    confidence: Optional[float] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -155,7 +155,7 @@ class ActionItem:
             "start_time": round(self.start_time, 2),
             "seek_start": round(self.start_time, 2),
             "end_time": round(self.end_time, 2),
-            "confidence": round(self.confidence, 3),
+            "confidence": round(self.confidence, 3) if self.confidence is not None else None,
         }
 
     @staticmethod
@@ -395,7 +395,7 @@ class CouncilAnalysis:
 
 @dataclass
 class VoiceProfile:
-    """Speaker acoustic biometric profile for voice cloning."""
+    """Speaker acoustic vocal profile for voice cloning."""
     speaker_id: str
     fundamental_frequency_hz: float  # Mean F0 pitch (Hz)
     pitch_min_hz: float

@@ -113,7 +113,7 @@
               <span class="status-dot-pulse"></span>
               <div class="dropdown-trigger-text">
                 <span class="dropdown-selected-name" id="active-transcribe-tag">Whisper Turbo</span>
-                <span class="model-tier-badge tier-recommended" id="active-transcribe-badge">Best Accuracy · Recommended</span>
+                <span class="model-tier-badge tier-recommended" id="active-transcribe-badge">High Accuracy · Recommended</span>
               </div>
             </div>
             <svg class="dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -128,9 +128,9 @@
                   <span class="dropdown-item-radio" aria-hidden="true"></span>
                   <span class="dropdown-item-title">Whisper Turbo</span>
                 </div>
-                <span class="model-tier-badge tier-recommended">Best Accuracy · Recommended</span>
+                <span class="model-tier-badge tier-recommended">High Accuracy · Recommended</span>
               </div>
-              <p class="dropdown-item-desc">OpenAI large-v3-turbo architecture with 8x accelerated INT8 execution. SOTA benchmark accuracy.</p>
+              <p class="dropdown-item-desc">OpenAI large-v3-turbo architecture with 8x accelerated INT8 execution.</p>
             </div>
 
             <div class="dropdown-item" id="model-opt-distil-large-v3" role="option" aria-selected="false" tabindex="0" onclick="selectTranscribeModel('distil-large-v3')" onkeydown="if(event.key==='Enter'||event.key===' '){selectTranscribeModel('distil-large-v3');event.preventDefault();}">
@@ -141,7 +141,7 @@
                 </div>
                 <span class="model-tier-badge tier-speed">High Speed</span>
               </div>
-              <p class="dropdown-item-desc">Distilled Whisper architecture matching Large-v3 accuracy with 50% fewer parameters and 6x real-time speed.</p>
+              <p class="dropdown-item-desc">Distilled Whisper variant with 50% fewer parameters for accelerated inference.</p>
             </div>
 
             <div class="dropdown-item" id="model-opt-base" role="option" aria-selected="false" tabindex="0" onclick="selectTranscribeModel('base')" onkeydown="if(event.key==='Enter'||event.key===' '){selectTranscribeModel('base');event.preventDefault();}">
@@ -1136,7 +1136,7 @@
 </div>
 
 <!-- Floating Toast Container -->
-<div id="toast-container"></div>
+<div id="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
 
 <script src="/static/app.js"></script>
 

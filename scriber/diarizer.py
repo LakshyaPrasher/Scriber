@@ -1,12 +1,12 @@
-"""Acoustic Speaker Diarization & Biometric Memory Engine.
+"""Acoustic Speaker Diarization & Timbre Memory Engine.
 
 Performs genuine voice-based speaker recognition:
 1. Slices 16kHz PCM audio for each transcription segment.
-2. Extracts acoustic voice biometric embeddings (F0 pitch, spectral centroid, ZCR, dynamic timbre).
+2. Extracts acoustic voice embeddings (F0 pitch, spectral centroid, ZCR, dynamic timbre).
 3. Maintains persistent SpeakerMemory across the entire recording:
    - Compares incoming speech to known speaker acoustic centroids using cosine similarity & pitch compatibility.
    - Only assigns a new speaker when an authentic voice change is detected (similarity < threshold).
-   - Re-identifies previous speakers when they talk again later in the audio (biometric voice memory).
+   - Re-identifies previous speakers when they talk again later in the audio (acoustic voice memory).
 4. Groups consecutive same-speaker turns into cohesive, beautifully formatted English dialogue blocks.
 5. Polishes English grammar, capitalization, technical acronyms, and punctuation.
 """
@@ -205,7 +205,7 @@ class SpeakerMemory:
         is_active_speaker: bool = False,
         pause_sec: float = 0.0,
     ) -> float:
-        """Computes continuous probabilistic biometric match score between new audio chunk and this speaker."""
+        """Computes continuous probabilistic match score between new audio chunk and this speaker."""
         # 192-d Deep ONNX Neural Embedding branch
         if len(vector) == 192 and len(self.centroid_vector) == 192:
             n_vec = np.linalg.norm(vector)
@@ -319,7 +319,7 @@ class AcousticDiarizer:
         progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
         cancel_checker: Optional[Callable[[], bool]] = None,
     ) -> List[AudioSegment]:
-        """Analyzes acoustic voice characteristics of each segment and assigns speakers based on real vocal biometrics."""
+        """Analyzes acoustic voice characteristics of each segment and assigns speakers based on real vocal timbre."""
         if cancel_checker and cancel_checker():
             raise JobCancelledException("Diarization cancelled before starting")
 
@@ -490,7 +490,7 @@ class AcousticDiarizer:
                     "percent": pct,
                     "stage": "diarization",
                     "phase": f"Phase 4/4 · Diarizing ({pct}%)",
-                    "title": "Biometric Diarization & Speaker Separation",
+                    "title": "Acoustic Diarization & Speaker Separation",
                     "subtitle": f"Profiling speaker segment {idx_seg + 1} of {total_segs}...",
                     "current_time_sec": round(seg.end, 2),
                     "total_duration_sec": round(segments[-1].end if segments else 0.0, 2),
@@ -613,7 +613,7 @@ class AcousticDiarizer:
 
         clusters = [c for c in clusters if c]
 
-        # Inter-cluster centroid consolidation: merge any remaining clusters that share matching vocal biometrics
+        # Inter-cluster centroid consolidation: merge any remaining clusters that share matching vocal timbre
         if len(clusters) > 1 and len(clusters) <= 80:
             c_vecs = [np.sum([extracted_info[idx][2] for idx in c], axis=0) for c in clusters]
             c_f0s = [float(np.mean([extracted_info[idx][1].fundamental_frequency_hz for idx in c])) for c in clusters]
@@ -1021,7 +1021,10 @@ class AcousticDiarizer:
                         current.words.extend(seg.words)
                     if seg.tokens:
                         current.tokens.extend(seg.tokens)
-                    current.confidence = round((current.confidence + seg.confidence) / 2.0, 3)
+                    if current.confidence is not None and seg.confidence is not None:
+                        current.confidence = round((current.confidence + seg.confidence) / 2.0, 3)
+                    elif seg.confidence is not None:
+                        current.confidence = seg.confidence
                 else:
                     # Finalize current speaker block and begin new one
                     grouped.append(current)

@@ -189,7 +189,7 @@ class TestUIContracts(unittest.TestCase):
         self.assertIn('id="voice-opt-gpt-sovits"', self.html)
         # Model tier badges
         self.assertIn("model-tier-badge", self.html)
-        self.assertIn("Best Accuracy · Recommended", self.html)
+        self.assertIn("High Accuracy · Recommended", self.html)
         self.assertIn("High Speed", self.html)
         self.assertIn("Lightweight / Low-RAM", self.html)
         self.assertIn("Phoneme Aligned", self.html)

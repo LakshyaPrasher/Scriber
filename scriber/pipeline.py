@@ -100,6 +100,8 @@ class ScriberPipeline:
         self.last_audio_meta = audio_meta
         self.last_file_path = file_path
 
+        effective_demo_mode = demo_mode or bool(audio_meta.is_synthetic)
+
         if cancel_checker and cancel_checker():
             raise JobCancelledException("Pipeline processing cancelled after extraction")
 
@@ -147,8 +149,12 @@ class ScriberPipeline:
             model=model,
             progress_callback=progress_callback,
             cancel_checker=cancel_checker,
-            demo_mode=demo_mode,
+            demo_mode=effective_demo_mode,
         )
+        if audio_meta.is_synthetic:
+            raw_transcription.is_synthetic = True
+            for seg in raw_transcription.segments:
+                seg.confidence = 0.0
 
         if cancel_checker and cancel_checker():
             raise JobCancelledException("Pipeline processing cancelled prior to diarization")
@@ -158,7 +164,7 @@ class ScriberPipeline:
                 "percent": 80,
                 "stage": "diarization",
                 "phase": "Phase 4/4 · Diarization & Polish",
-                "title": "Biometric Diarization & English Synthesis",
+                "title": "Acoustic Diarization & English Synthesis",
                 "subtitle": f"Diarizing {len(raw_transcription.segments)} transcribed segments...",
                 "total_duration_sec": round(audio_meta.duration, 2),
                 "elapsed_sec": round(time.time() - start_time, 1),
@@ -229,15 +235,16 @@ class ScriberPipeline:
                 is_ground_truth=True,
             )
         else:
+            # Self-consistency mode intentionally has no reference text.
             validation_report = self.result_validator.evaluate_transcription(
                 hypothesis_text=cleaned_transcription.text,
-                reference_text=cleaned_transcription.text,
+                reference_text="",
                 test_case_id=os.path.basename(file_path),
                 extracted_actions=council_analysis.action_items,
                 is_ground_truth=False,
             )
 
-        # Step 8: Speaker Voice Profiling (Biometric Extraction for Voice Cloning)
+        # Step 8: Speaker Voice Profiling (Acoustic Timbre Extraction for Voice Cloning)
         voice_profiles = self._extract_speaker_voice_profiles(pcm16_data, cleaned_transcription.segments)
 
         duration_sec = time.time() - start_time
@@ -354,9 +361,10 @@ class ScriberPipeline:
                 is_ground_truth=True,
             )
         else:
+            # Self-consistency mode intentionally has no reference text.
             validation_report = self.result_validator.evaluate_transcription(
                 hypothesis_text=cleaned_trans.text,
-                reference_text=cleaned_trans.text,
+                reference_text="",
                 test_case_id=source_name,
                 extracted_actions=council_analysis.action_items,
                 is_ground_truth=False,
@@ -419,7 +427,7 @@ class ScriberPipeline:
         pcm16_data: bytes,
         segments: List[Any],
     ) -> List[VoiceProfile]:
-        """Profiles vocal acoustic biometrics for each speaker in the media."""
+        """Profiles vocal acoustic timbre for each speaker in the media."""
         profiles: List[VoiceProfile] = []
         speakers = sorted(list({s.speaker for s in segments if getattr(s, "speaker", None)}))
         if not speakers:

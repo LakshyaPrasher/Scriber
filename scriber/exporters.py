@@ -123,9 +123,9 @@ class ScriberExporter:
 
         lines.extend([
             "",
-            "## 🛡️ Quality & Verification Audit",
-            f"- **Confidence Score:** {qual.confidence_avg * 100:.1f}%",
-            f"- **Quality Audit:** {qual.overall_score * 100:.1f}%",
+            "## 🛡️ Quality & Confidence Heuristics",
+            f"- **ASR Confidence Proxy:** {qual.confidence_avg * 100:.1f}%",
+            f"- **Quality Score:** {qual.overall_score * 100:.1f}%",
             f"- **Repetition Looping Detected:** {'Yes' if qual.repetition_looping_detected else 'No'}",
             f"- **Silence Hallucinations Culled:** {qual.hallucinations_culled}",
             f"- **Validation Certificate:** `{val.certificate_id}`",

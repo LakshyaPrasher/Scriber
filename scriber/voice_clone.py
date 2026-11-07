@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 
 class VoiceProfiler:
-    """Extracts speaker acoustic biometric characteristics from 16kHz mono PCM audio."""
+    """Extracts speaker acoustic characteristics from 16kHz mono PCM audio."""
 
     SAMPLE_RATE = 16000
 
@@ -109,7 +109,7 @@ class VoiceProfiler:
         speaker_id: str = "Speaker_1",
         sample_rate: Optional[int] = None,
     ) -> VoiceProfile:
-        """Analyzes raw 16-bit signed PCM audio bytes and extracts a biometric VoiceProfile."""
+        """Analyzes raw 16-bit signed PCM audio bytes and extracts an acoustic VoiceProfile."""
         if not pcm16_data:
             return cls._empty_profile(speaker_id)
 
@@ -129,7 +129,7 @@ class VoiceProfiler:
             else:
                 pcm16_data = pcm16_data[44:]
 
-        # Resample non-16kHz audio to 16kHz for biometric profiling
+        # Resample non-16kHz audio to 16kHz for acoustic profiling
         if detected_sr and detected_sr != cls.SAMPLE_RATE:
             pcm16_data = AudioEditor.resample_pcm(pcm16_data, src_sr=detected_sr, dst_sr=cls.SAMPLE_RATE)
         elif detected_sr is None and len(pcm16_data) >= 1920:
@@ -649,7 +649,7 @@ class VoiceProfiler:
         voiced_ratio: float,
         timbre_bands: Optional[List[float]] = None,
     ) -> List[float]:
-        """Constructs a normalized 16-dimensional biometric acoustic vector."""
+        """Constructs a normalized 16-dimensional acoustic vector."""
         norm_f0 = (float(np.clip((f0_mean - 60.0) / 340.0, 0.0, 1.0)) - 0.5) * 1.2
         norm_f0_std = (float(np.clip(f0_std / 50.0, 0.0, 1.0)) - 0.5) * 0.2
         norm_centroid = (float(np.clip((centroid - 500.0) / 3500.0, 0.0, 1.0)) - 0.5) * 1.0
@@ -1442,7 +1442,7 @@ STUDIO_VOICES: List[Dict[str, Any]] = [
 
 
 class VoiceCloner:
-    """Clones a speaker's voice to synthesize new spoken phrases with verified biometric fidelity."""
+    """Clones a speaker's voice to synthesize new spoken phrases with acoustic timbre matching."""
 
     SAMPLE_RATE = 16000
     models = TOP_VOICE_MODELS
@@ -1699,7 +1699,7 @@ class VoiceCloner:
         import edge_tts
         import miniaudio
 
-        # Select explicit voice or closest voice timbre matching speaker biometrics
+        # Select explicit voice or closest voice timbre matching speaker acoustic profile
         if voice_id and any(v["id"] == voice_id for v in getattr(self, "STUDIO_VOICES", [])):
             voice = voice_id
             diff_hz = max(-45.0, min(45.0, pitch_shift_hz))

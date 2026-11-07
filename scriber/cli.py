@@ -299,7 +299,7 @@ def run_clone_voice(args):
         sys.exit(1)
 
     print(f"\n=======================================================")
-    print(f"  🎙️ Scriber Voice Cloning & Biometric Synthesis")
+    print(f"  🎙️ Scriber Voice Cloning & Acoustic Synthesis")
     print(f"=======================================================")
     print(f"Source Media:  {args.file}")
     print(f"Target Text:   \"{args.text}\"")
@@ -315,10 +315,10 @@ def run_clone_voice(args):
 
     extractor = AudioExtractor()
     pcm16_data, meta = extractor.extract_pcm16(args.file)
-    print(f"[*] Profiling speaker vocal biometrics (F0, formants, timbre)...")
+    print(f"[*] Profiling speaker vocal timbre (F0, formants, spectral energy)...")
     profile = VoiceProfiler.profile_from_pcm16(pcm16_data, speaker_id=args.speaker)
 
-    print(f"\n[+] Extracted Biometric Voice Profile:")
+    print(f"\n[+] Extracted Acoustic Voice Profile:")
     print(f"    - Gender Estimate:   {profile.gender_estimate.upper()}")
     print(f"    - Pitch (F0 Mean):   {profile.fundamental_frequency_hz:.1f} Hz (Range: {profile.pitch_min_hz:.1f} - {profile.pitch_max_hz:.1f} Hz)")
     print(f"    - Spectral Centroid: {profile.spectral_centroid_hz:.1f} Hz")

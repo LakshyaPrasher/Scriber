@@ -149,15 +149,15 @@ TOP_TRANSCRIBE_MODELS = [
     {
         "id": "turbo",
         "name": "Whisper Turbo (large-v3-turbo)",
-        "tag": "SOTA Accuracy · 8x Speed",
-        "description": "OpenAI state-of-the-art transformer architecture with CTranslate2 INT8 execution. Instant on-demand execution with zero bulk pre-download.",
+        "tag": "High Accuracy · 8x Speed",
+        "description": "OpenAI transformer architecture with CTranslate2 INT8 execution. Instant on-demand execution with zero bulk pre-download.",
         "params": "809M INT8",
     },
     {
         "id": "distil-large-v3",
         "name": "Distil-Whisper Large-v3",
-        "tag": "6x Speed · SOTA Precision",
-        "description": "Hugging Face distilled Whisper architecture matching Large-v3 benchmark accuracy with 50% fewer decoder parameters and 6x real-time speed.",
+        "tag": "6x Speed · Compact",
+        "description": "Hugging Face distilled Whisper architecture with 50% fewer decoder parameters and 6x real-time speed.",
         "params": "756M INT8",
     },
     {
@@ -182,14 +182,14 @@ SUPPORTED_TRANSCRIBE_MODELS = {
         "name": "Whisper Turbo (large-v3-turbo)",
         "ct2_name": "deepdml/faster-whisper-large-v3-turbo-ct2",
         "params": "809M INT8",
-        "description": "OpenAI SOTA transformer architecture with 4 decoder layers, offering 8x speedup over large-v3 while retaining near-identical WER.",
+        "description": "OpenAI transformer architecture with 4 decoder layers, offering 8x speedup over large-v3 while retaining strong accuracy.",
     },
     "distil-large-v3": {
         "id": "distil-large-v3",
         "name": "Distil-Whisper Large-v3",
         "ct2_name": "Systran/faster-distil-whisper-large-v3",
         "params": "756M INT8",
-        "description": "Hugging Face distilled Whisper architecture matching Large-v3 benchmark accuracy with 50% fewer decoder parameters and 6x real-time speed.",
+        "description": "Hugging Face distilled Whisper architecture with 50% fewer decoder parameters and 6x real-time speed.",
     },
     "base": {
         "id": "base",
@@ -242,7 +242,7 @@ MODEL_EVALUATION_MATRIX = {
         "timestamp_accuracy": "~20ms (cross-attention)",
         "silence_robustness": "High",
         "multilingual_count": 99,
-        "evaluation_verdict": "SOTA general-purpose multilingual model with 4 decoder layers offering an 8x speedup over large-v3 while retaining near-identical WER.",
+        "evaluation_verdict": "OpenAI multilingual model with 4 decoder layers offering an 8x speedup over large-v3 while retaining strong accuracy.",
     },
     "distil-large-v3": {
         "id": "distil-large-v3",
@@ -628,7 +628,7 @@ class TranscriptionEngine:
             dialogue_turns = [
                 "Welcome to the Scriber studio review session. Today we are aligning on transcription, voice cloning, and production delivery.",
                 "Thank you. On the engineering side, all pipeline components have been verified, and the automatic English translation is operating smoothly.",
-                "I confirmed the biometric timbre matching and speaker profile extraction for voice synthesis are meeting target accuracy.",
+                "I confirmed the acoustic timbre matching and speaker profile extraction for voice synthesis are meeting target accuracy.",
                 "Excellent. All action items and conversation takeaways have been documented for one-click copy and export.",
                 "Let us proceed with the final release sign-off and ensure all team deliverables remain synchronized.",
             ]
@@ -1116,7 +1116,7 @@ class TranscriptionEngine:
                     tokens=[],
                     words=[],
                     speaker="Speaker 1",
-                    confidence=0.9,
+                    confidence=0.0,
                 )
             )
 
@@ -1161,6 +1161,7 @@ class TranscriptionEngine:
             res = model.transcribe(tmp_path, language=language, task=task)
             segments = []
             for idx, s in enumerate(res.get("segments", [])):
+                no_sp = float(s.get("no_speech_prob", 0.0) or 0.0)
                 segments.append(
                     AudioSegment(
                         id=idx,
@@ -1172,13 +1173,14 @@ class TranscriptionEngine:
                         temperature=s.get("temperature", 0.0),
                         avg_logprob=s.get("avg_logprob", 0.0),
                         compression_ratio=s.get("compression_ratio", 1.0),
-                        no_speech_prob=s.get("no_speech_prob", 0.0),
+                        no_speech_prob=no_sp,
+                        confidence=round(max(0.0, min(1.0, 1.0 - no_sp)), 3),
                     )
                 )
             return TranscriptionResult(
                 text=res.get("text", "").strip(),
                 language=res.get("language", language or "en"),
-                language_probability=0.99,
+                language_probability=None,
                 duration=duration,
                 segments=segments,
                 task=task,

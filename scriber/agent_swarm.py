@@ -8,7 +8,7 @@ Council Specialist Subagents:
 2. ActionItemAuditorAgent (pro tier): Forensic commitment extraction, assignee normalization, deadlines.
 3. ThematicChapterArchitectAgent (flash tier): Semantic topic clustering, chapters, soundbites.
 4. PIISecurityOfficerAgent (flash tier): Detection, redaction, and compliance scoring for secrets/PII.
-5. AcousticQAAgent (flash tier): Biometric speaker continuity, turn analytics, and fidelity signoff.
+5. AcousticQAAgent (flash tier): Acoustic speaker continuity, turn analytics, and fidelity signoff.
 """
 
 from __future__ import annotations
@@ -254,6 +254,15 @@ class ActionItemAuditorAgent:
                                 due_date = dm.group(0).title()
                                 break
 
+                        base_conf = 0.65
+                        if assignee and assignee != "Unassigned":
+                            base_conf += 0.15
+                        if due_date:
+                            base_conf += 0.10
+                        if getattr(seg, "confidence", None) is not None and seg.confidence > 0:
+                            base_conf += min(0.10, seg.confidence * 0.10)
+                        item_confidence = round(min(0.95, base_conf), 3)
+
                         item = ActionItem(
                             id=f"ACT-{len(items) + 1:03d}",
                             task=task[0].upper() + task[1:] if task else task,
@@ -264,7 +273,7 @@ class ActionItemAuditorAgent:
                             context_quote=s_clean,
                             start_time=seg.start,
                             end_time=seg.end,
-                            confidence=0.985,
+                            confidence=item_confidence,
                         )
                         items.append(item)
                         break
@@ -488,22 +497,22 @@ class PIISecurityOfficerAgent:
 
 
 class AcousticQAAgent:
-    """Specialist Subagent: Acoustic Quality & Biometric Assurance (Model Tier: Flash)."""
+    """Specialist Subagent: Acoustic Quality Assurance (Model Tier: Flash)."""
 
     PROFILE = AgentProfile(
         id="acoustic-qa-inspector",
-        name="Acoustic Quality & Biometric Assurance Agent",
+        name="Acoustic Quality & Assurance Agent",
         role="Acoustic Fidelity & Integrity Inspector",
         model_tier="flash",
         description="Validates speaker consistency, monitors hallucination ratios, and issues cryptographic audit receipts.",
         capabilities=[
             "Speaker turn continuity auditing",
-            "Biometric speaker memory verification",
+            "Speaker acoustic memory verification",
             "Audio channel balance and speaking WPM metrics",
             "Validation audit readiness certification",
         ],
         system_prompt=(
-            "You are the Acoustic Quality & Biometric Assurance Agent in the Scriber Supreme Council. "
+            "You are the Acoustic Quality & Assurance Agent in the Scriber Supreme Council. "
             "Inspect acoustic segmentation integrity, verify conversational continuity, and confirm zero phantom speakers."
         ),
     )

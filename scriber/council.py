@@ -164,6 +164,15 @@ class SupremeCouncil:
                         # Extract potential deadline
                         due_date = self._extract_deadline(s_clean)
 
+                        base_conf = 0.65
+                        if assignee and assignee != "Unassigned":
+                            base_conf += 0.15
+                        if due_date:
+                            base_conf += 0.10
+                        if getattr(seg, "confidence", None) is not None and seg.confidence > 0:
+                            base_conf += min(0.10, seg.confidence * 0.10)
+                        item_confidence = round(min(0.95, base_conf), 3)
+
                         item = ActionItem(
                             id=f"ACT-{len(items) + 1:03d}",
                             task=task,
@@ -174,7 +183,7 @@ class SupremeCouncil:
                             context_quote=s_clean,
                             start_time=seg.start,
                             end_time=seg.end,
-                            confidence=0.985,
+                            confidence=item_confidence,
                         )
                         items.append(item)
                         break  # Match only one pattern per sentence

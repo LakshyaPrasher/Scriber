@@ -75,7 +75,7 @@ flowchart LR
 
 ## Performance Benchmarks
 
-Measured on local hardware (NVIDIA GeForce RTX 5050 Laptop GPU, Windows 11):
+Measured on local hardware (NVIDIA GeForce RTX 5050 Laptop GPU, Windows 11; illustrative historical measurements on the listed hardware, not a CI guarantee):
 
 | Media Sample | Duration | Processing Time | Real-Time Factor | Diarization Result |
 | :--- | :---: | :---: | :---: | :---: |

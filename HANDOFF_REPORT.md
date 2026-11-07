@@ -33,7 +33,7 @@
 - Removed plaintext GitHub PAT from `.git/config`; remote URL is now clean.
 - Removed CORS `*` wildcard; Host/Origin checks added; save and reveal restricted to `./scriber_output` with `Path.resolve()` allow-list. `/api/media` is restricted to output root + temp + the user's home directory (broader than intended; see `RE_AUDIT_REPORT.md` P1-1).
 - PII span-based redaction with Luhn credit-card validation; honest `is_shielded`.
-- Arbitrary file write/reveal endpoints locked down; `/api/media` read scope is still broader than intended (see `RE_AUDIT_REPORT.md` P1-1).
+- Arbitrary file write/reveal endpoints locked down; `/api/media` read scope strictly restricted to `scriber_output`, system temp, and explicitly registered user-selected files via allow-list (P1-1 resolved).
 - Microservice: honest GPU health fields, no fake telemetry, `similarity_score` null when unmeasured, CORS removed, token-protected `/shutdown` and `/synthesize`.
 - Microservice manager generates a per-launch token and passes it via `--token` / `X-Scriber-Token`.
 
@@ -44,7 +44,7 @@
 - Removed fabricated Whisper token IDs; removed WhisperSpeech/GPT-SoVITS/F5-TTS from `TOP_LEVERAGED_REPOS`; model labels are truthful ("not bundled / fallback").
 - `calculate_similarity` returns raw acoustic heuristic; 0.0 for empty profiles; no logistic inflation; no hardcoded 99.4%.
 - Voice backend labels honest (Edge-TTS / SAPI / formant-companion).
-- Agent swarm telemetry uses computed heuristic scores + `confidence_basis` labels; however, per-item `ActionItem.confidence` is still hardcoded `0.985` (see `RE_AUDIT_REPORT.md` P1-2).
+- Agent swarm and action items use computed dynamic heuristic confidence scores; hardcoded 0.985 and 0.99 defaults eliminated (P1-2 resolved).
 - Version uses `__version__` everywhere; removed "Certified 99%+ Accuracy".
 
 ### Validation semantics (P1)

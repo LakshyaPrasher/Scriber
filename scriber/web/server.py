@@ -19,7 +19,7 @@ import tempfile
 import threading
 import urllib.parse
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Tuple
+from typing import Any, Dict, Iterable, Optional, Set, Tuple, Union
 
 from scriber.exceptions import JobCancelledException, TranscriptionUnavailableError
 from scriber.exporters import ScriberExporter
@@ -28,6 +28,33 @@ from scriber.web.ui import get_embedded_html
 
 logger = logging.getLogger(__name__)
 
+_ALLOWED_MEDIA_FILES: Set[str] = set()
+_ALLOWED_MEDIA_LOCK = threading.Lock()
+
+
+def register_allowed_media_file(path: Union[str, Path, None]) -> None:
+    """Registers an explicit file path allowed to be served via /api/media."""
+    if not path:
+        return
+    try:
+        norm = os.path.normcase(os.path.realpath(str(path)))
+        with _ALLOWED_MEDIA_LOCK:
+            _ALLOWED_MEDIA_FILES.add(norm)
+    except Exception:
+        pass
+
+
+def is_allowed_media_file(path: Union[str, Path, None]) -> bool:
+    """Checks whether an explicit path has been registered in the allow-list."""
+    if not path:
+        return False
+    try:
+        norm = os.path.normcase(os.path.realpath(str(path)))
+        with _ALLOWED_MEDIA_LOCK:
+            return norm in _ALLOWED_MEDIA_FILES
+    except Exception:
+        return False
+
 
 def _output_root() -> Path:
     """Directory where Scriber writes exports and persistent media."""
@@ -35,22 +62,21 @@ def _output_root() -> Path:
 
 
 def _media_roots() -> Tuple[Path, ...]:
-    """Roots that may be served by /api/media.
-
-    The user's home directory is included so desktop-picked media can be
-    previewed before processing; system directories are not.
-    """
-    return (_output_root(), Path(tempfile.gettempdir()).resolve(), Path.home().resolve())
+    """Roots that may be served by /api/media without prior registration."""
+    return (_output_root(), Path(tempfile.gettempdir()).resolve())
 
 
 def _is_within(path: str, roots: Iterable[Path]) -> bool:
-    """Case-insensitive containment check that avoids sibling-prefix bypasses."""
+    """Case-insensitive containment check using realpath to prevent link traversal."""
     try:
-        candidate = os.path.normcase(os.path.abspath(str(path)))
+        candidate = os.path.normcase(os.path.realpath(str(path)))
     except (TypeError, ValueError):
         return False
     for root in roots:
-        root_s = os.path.normcase(os.path.abspath(str(root)))
+        try:
+            root_s = os.path.normcase(os.path.realpath(str(root)))
+        except (TypeError, ValueError):
+            continue
         if candidate == root_s or candidate.startswith(root_s + os.sep):
             return True
     return False
@@ -275,7 +301,11 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             if (
                 candidate is not None
                 and candidate.is_file()
-                and _is_within(str(candidate), _media_roots())
+                and (
+                    _is_within(str(candidate), _media_roots())
+                    or is_allowed_media_file(candidate)
+                    or (self.pipeline and str(candidate) == str(getattr(self.pipeline, "last_file_path", None)))
+                )
             ):
                 self._serve_static_file(str(candidate))
             else:
@@ -322,13 +352,17 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             from scriber.hardware import get_system_performance_telemetry
             self._send_json_response(200, get_system_performance_telemetry())
         elif path == "/api/voice/credentials":
-            # Paid cloud APIs removed for zero financial exposure
+            vm_key = os.environ.get("VOICEMAKER_API_KEY", "")
+            el_key = os.environ.get("ELEVENLABS_API_KEY", "")
+            vm_active = bool(vm_key)
+            el_active = bool(el_key)
             self._send_json_response(200, {
-                "voicemaker_configured": False,
-                "elevenlabs_configured": False,
-                "voicemaker_masked_key": "",
-                "elevenlabs_masked_key": "",
+                "voicemaker_configured": vm_active,
+                "elevenlabs_configured": el_active,
+                "voicemaker_masked_key": (vm_key[:4] + "..." + vm_key[-4:]) if len(vm_key) >= 8 else ("***" if vm_key else ""),
+                "elevenlabs_masked_key": (el_key[:4] + "..." + el_key[-4:]) if len(el_key) >= 8 else ("***" if el_key else ""),
                 "zero_financial_exposure": True,
+                "note": "Stored in process memory only; not used by local synthesis engines.",
             })
         elif path == "/api/agents":
             from scriber.agent_swarm import CouncilAgentSwarm
@@ -584,12 +618,14 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     words = []
                     for w in raw.get("words", []) or []:
                         if isinstance(w, dict):
+                            raw_prob = w.get("probability")
+                            prob_val = float(raw_prob) if raw_prob not in (None, "") else None
                             words.append(
                                 WordTimestamp(
                                     word=str(w.get("word", "")),
                                     start=float(w.get("start", 0.0) or 0.0),
                                     end=float(w.get("end", 0.0) or 0.0),
-                                    probability=float(w.get("probability", 1.0) or 1.0),
+                                    probability=prob_val,
                                 )
                             )
                     segments.append(
@@ -680,6 +716,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 if not file_path_arg or not os.path.isfile(file_path_arg):
                     self._send_json_response(400, {"error": f"File '{file_path_arg}' not found on server"})
                     return
+                register_allowed_media_file(file_path_arg)
                 redact_pii_val = _as_bool(data.get("redact_pii", False))
                 max_dur_raw = data.get("max_duration")
                 max_dur_val = float(max_dur_raw) if max_dur_raw not in (None, "", 0) else None
@@ -848,6 +885,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             # Handle file_path parameter if provided and valid
             if file_path_param and os.path.isfile(file_path_param):
+                register_allowed_media_file(file_path_param)
                 _CANCEL_MGR.reset()
                 reset_progress_state(file_name=os.path.basename(file_path_param))
                 try:
@@ -914,6 +952,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
                 tmp_path = tmp.name
                 tmp.write(file_data)
+            register_allowed_media_file(tmp_path)
 
             _CANCEL_MGR.reset()
             _CANCEL_MGR.register_temp_file(tmp_path)
@@ -1129,7 +1168,7 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json_response(500, {"error": str(e)})
 
     def _handle_voice_profiling(self):
-        """Extracts speaker biometric VoiceProfile from an uploaded reference audio/video file or local path."""
+        """Extracts speaker acoustic VoiceProfile from an uploaded reference audio/video file or local path."""
         tmp_path = None
         try:
             content_type = self.headers.get("Content-Type", "")
@@ -1187,6 +1226,8 @@ class ScriberHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             else:
                 self._send_json_response(400, {"error": "No file or file_path provided for voice profiling"})
                 return
+
+            register_allowed_media_file(target_file)
 
             pcm_data, meta = self.pipeline.audio_extractor.extract_pcm16(target_file, max_duration=45.0)
             from scriber.voice_clone import VoiceProfiler

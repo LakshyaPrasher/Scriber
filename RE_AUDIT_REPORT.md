@@ -483,4 +483,27 @@ Manual checks:
 
 ---
 
+## 10. Residual Remediation Sign-Off (2026-11-07)
+
+All residual findings identified in this report have been resolved and verified in code and tests:
+
+| ID | Issue | Remediation Status | Verification |
+|---|---|---|---|
+| **P1-1** | `/api/media` home-directory read scope | **Fixed** | `Path.home()` removed; scope restricted to `scriber_output`, system temp, and explicit `register_allowed_media_file()` registry using `os.path.realpath`. |
+| **P1-2** | Hardcoded `0.985`/`0.99` confidences | **Fixed** | `AudioSegment.confidence` and `ActionItem.confidence` default to `None`; dynamic heuristic computation implemented in `agent_swarm.py` and `council.py`; OpenAI fallback computes `1 - no_speech_prob`. |
+| **P2-1** | “Biometric” labels across user-facing surfaces | **Fixed** | Replaced across `cli.py`, `pipeline.py`, `diarizer.py`, `agent_swarm.py`, `voice_clone.py`, `models.py`, and `voice_microservice.py`. |
+| **P2-2** | Synthetic placeholder audio treated as real | **Fixed** | When placeholder audio is extracted, `pipeline.py` marks `is_synthetic=True` and sets `confidence=0.0` across segments. |
+| **P2-3** | “Verified” / “SOTA” wording overclaims | **Fixed** | Updated `quality.py` to “evaluated with high confidence heuristic”, `exporters.py` to “ASR Confidence Proxy”, and `validator.py` to “transcript analyzed”. |
+| **P2-4** | Model dropdown accuracy claims | **Fixed** | Replaced with “High Accuracy · Recommended” and descriptive, non-comparative architecture summaries in `index.html`, `app.js`, and `transcription_engine.py`. |
+| **P2-5** | Voice credentials API inconsistency | **Fixed** | GET `/api/voice/credentials` derives status from active environment variables consistent with POST. |
+| **P3-1** | Toast container live region | **Fixed** | Added `role="status" aria-live="polite" aria-atomic="false"` to `#toast-container`. |
+| **P3-2** | Microservice engine docstring/text | **Fixed** | Clarified formant engine fallback; removed “verified” from fallback tokens. |
+| **P3-3** | `.env` not ignored | **Fixed** | Added `.venv/`, `.env`, `.env.*`, `!.env.example` to `.gitignore`. |
+| **P3-4** | README benchmark table reproducibility | **Fixed** | Qualified benchmark table as illustrative historical measurements on specified hardware. |
+| **P3-5** | Placeholder metrics | **Fixed** | Set no-speech segment confidence to `0.0`; `language_probability` and `WordTimestamp.probability` default to `None`. |
+| **P3-6** | Self-consistency reference passing | **Fixed** | In no-reference mode, `pipeline.py` passes `reference_text=""` with explicit comments. |
+| **P3-7** | Slow hardware adversarial test | **Fixed** | Bounded iterations to 10 (`SCRIBER_STRESS_CYCLES`), reducing test execution from 120s to ~20s. |
+
+---
+
 **End of re-audit report.**

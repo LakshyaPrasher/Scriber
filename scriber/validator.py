@@ -76,7 +76,7 @@ class ResultValidator:
             # Report self-consistency only, and never claim the 99% audit passed.
             audit_notes = [
                 f"Self-consistency validation anchor generated for session '{test_case_id or 'session'}'.",
-                f"Spoken transcript verified: {len(hyp_words)} words ({len(norm_hyp)} characters).",
+                f"Spoken transcript analyzed: {len(hyp_words)} words ({len(norm_hyp)} characters).",
                 "No external ground-truth reference was supplied.",
                 "STATUS: SELF-CONSISTENCY CHECK ONLY — accuracy cannot be certified without a reference.",
             ]

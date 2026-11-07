@@ -1380,7 +1380,7 @@
       'whisperx': 'WhisperX'
     };
     const badges = {
-      'turbo': 'Best Accuracy · Recommended',
+      'turbo': 'High Accuracy · Recommended',
       'distil-large-v3': 'High Speed',
       'base': 'Lightweight / Low-RAM',
       'whisperx': 'Phoneme Aligned'

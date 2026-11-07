@@ -73,7 +73,7 @@ class QualityChecker:
                 continue
 
             # 4. Check confidence
-            if seg.confidence < 0.80 or seg.avg_logprob < -0.8:
+            if (seg.confidence is not None and seg.confidence < 0.80) or seg.avg_logprob < -0.8:
                 low_confidence_flagged += 1
 
             # 5. Ensure timestamp monotonicity
@@ -99,7 +99,7 @@ class QualityChecker:
             recommendations.append("Audio contains extensive pauses or ambient silence between speech turns.")
 
         # Compute overall quality score
-        conf_scores = [s.confidence for s in cleaned_segments] if cleaned_segments else [0.0]
+        conf_scores = [s.confidence for s in cleaned_segments if s.confidence is not None]
         avg_confidence = sum(conf_scores) / float(len(conf_scores)) if conf_scores else 0.0
 
         penalty = 0.0
@@ -113,7 +113,7 @@ class QualityChecker:
         overall_score = max(0.0, min(1.0, avg_confidence - penalty))
 
         if overall_score >= 0.95:
-            recommendations.append("Audio clarity is exceptional; transcription verified with high confidence.")
+            recommendations.append("Audio clarity is exceptional; transcription evaluated with high confidence heuristic.")
         elif overall_score >= 0.90:
             recommendations.append("Good transcription quality; minor acoustic artifacts resolved.")
         else:

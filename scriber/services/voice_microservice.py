@@ -70,7 +70,7 @@ def _pcm16_to_wav(pcm_bytes: bytes, sample_rate: int = 48000) -> bytes:
 
 
 class NeuralFlowMatchingEngine:
-    """Zero-shot neural flow-matching speech synthesis engine at 48kHz."""
+    """Zero-shot formant-matching speech synthesis engine with companion fallback."""
 
     SAMPLE_RATE = 48000
 
@@ -121,9 +121,9 @@ class NeuralFlowMatchingEngine:
 
         words = [w for w in text.strip().split() if w]
         if not words:
-            words = ["Scriber", "neural", "flow", "matching", "speech", "synthesis", "verified."]
+            words = ["Scriber", "formant", "speech", "synthesis", "ready."]
 
-        # Biometric reference conditioning
+        # Reference pitch conditioning
         base_f0 = 142.0
         formants = [620.0, 1680.0, 2750.0, 3600.0]
         timbre_brightness = 1.0
