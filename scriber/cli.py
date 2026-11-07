@@ -375,16 +375,16 @@ def get_default_shortcut_destinations(desktop_only: bool = False) -> List[Path]:
     """Resolves standard Windows shortcut target destinations."""
     desktop = Path(os.path.expanduser("~/Desktop"))
     destinations = [desktop / "Scriber.lnk"]
+    userprofile = os.environ.get("USERPROFILE")
+    if userprofile:
+        onedrive_desktop = Path(userprofile) / "OneDrive" / "Desktop"
+        if onedrive_desktop.is_dir() and onedrive_desktop.resolve() != desktop.resolve():
+            destinations.append(onedrive_desktop / "Scriber.lnk")
     if not desktop_only:
         appdata = os.environ.get("APPDATA")
         if appdata:
             programs_dir = Path(appdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs"
             destinations.append(programs_dir / "Scriber.lnk")
-        userprofile = os.environ.get("USERPROFILE")
-        if userprofile:
-            onedrive_desktop = Path(userprofile) / "OneDrive" / "Desktop"
-            if onedrive_desktop.is_dir():
-                destinations.append(onedrive_desktop / "Scriber.lnk")
     return destinations
 
 
