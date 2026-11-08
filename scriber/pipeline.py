@@ -1,0 +1,503 @@
+"""Scriber Pipeline: Autonomous orchestrator uniting the 4 Sub-Agents.
+
+Sub-Agent Hierarchy:
+1. GitHub Engine: Whisper Flow & Model Architectures (openai/whisper, faster-whisper, whisperX, whisper.cpp, meetily)
+2. Quality Checker: Hallucination elimination, repetition penalties, compression ratio checks
+3. Supreme Council: Action Items, Discussion Points, Decisions, Executive Summaries
+4. Result Validator: Mathematical WER/CER computation and 99%+ accuracy certification
+"""
+
+from __future__ import annotations
+
+import gc
+import os
+import time
+import uuid
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+from scriber.audio_editor import AudioEditor
+from scriber.audio_extractor import AudioExtractor
+from scriber.council import SupremeCouncil
+from scriber.diarizer import AcousticDiarizer
+from scriber.exporters import ScriberExporter
+from scriber.transcription_engine import TranscriptionEngine
+from scriber.models import (
+    AudioMetadata,
+    ScriberOutput,
+    VoiceCloneResult,
+    VoiceProfile,
+)
+from scriber.exceptions import JobCancelledException
+from scriber.quality import QualityChecker
+from scriber.validator import ResultValidator
+from scriber.voice_clone import VoiceCloner, VoiceProfiler
+
+
+class ScriberPipeline:
+    """End-to-end video intelligence, transcription, and voice cloning pipeline."""
+
+
+    def __init__(
+        self,
+        backend_preference: str = "auto",
+        energy_threshold: float = 0.015,
+        use_llm_if_available: bool = True,
+        diarization_threshold: float = 0.48,
+        max_speakers: int = 10,
+    ):
+        self.audio_extractor = AudioExtractor()
+        self.audio_editor = AudioEditor()
+        self.transcription_engine = TranscriptionEngine(backend_preference=backend_preference)
+        self.github_engine = self.transcription_engine
+        self.diarizer = AcousticDiarizer(similarity_threshold=diarization_threshold, max_speakers=max_speakers)
+        self.quality_checker = QualityChecker()
+        self.supreme_council = SupremeCouncil(use_llm_if_available=use_llm_if_available)
+        self.result_validator = ResultValidator()
+        self.voice_cloner = VoiceCloner()
+        self.last_pcm_data: Optional[bytes] = None
+        self.last_audio_meta: Optional[Any] = None
+        self.last_file_path: Optional[str] = None
+
+    def process_file(
+        self,
+        file_path: str,
+        task: str = "translate",  # Automatically translate non-English speech directly to English
+        language: Optional[str] = None,
+        prompt: Optional[str] = None,
+        reference_text: Optional[str] = None,
+        ground_truth_hint: Optional[str] = None,
+        demo_mode: bool = False,
+        export_dir: Optional[str] = None,
+        export_formats: Optional[List[str]] = None,
+        model: str = "turbo",
+        redact_pii: bool = False,
+        progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+        max_duration: Optional[float] = None,
+        cancel_checker: Optional[Callable[[], bool]] = None,
+    ) -> ScriberOutput:
+        """Processes any video or audio file through the 4-subagent pipeline."""
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Pipeline processing cancelled before starting")
+
+        start_time = time.time()
+        session_id = f"sess_{uuid.uuid4().hex[:10]}"
+
+        if progress_callback:
+            progress_callback({
+                "percent": 5,
+                "stage": "extraction",
+                "phase": "Step 1 of 4 · Reading audio",
+                "title": "Opening the media file",
+                "subtitle": f"Reading the speech track from {os.path.basename(file_path)}...",
+                "file_name": os.path.basename(file_path),
+                "elapsed_sec": round(time.time() - start_time, 1),
+            })
+
+        # Step 1: Ingest & Extract 16kHz mono PCM
+        pcm16_data, audio_meta = self.audio_extractor.extract_pcm16(file_path, max_duration=max_duration)
+        self.last_pcm_data = pcm16_data
+        self.last_audio_meta = audio_meta
+        self.last_file_path = file_path
+
+        effective_demo_mode = demo_mode or bool(audio_meta.is_synthetic)
+
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Pipeline processing cancelled after extraction")
+
+        if progress_callback:
+            dur_fmt = f"{int(audio_meta.duration // 60):02d}:{int(audio_meta.duration % 60):02d}"
+            progress_callback({
+                "percent": 12,
+                "stage": "vad",
+                "phase": "Step 2 of 4 · Finding speech",
+                "title": "Finding where people speak",
+                "subtitle": f"Scanning {dur_fmt} of audio for speech and pauses...",
+                "total_duration_sec": round(audio_meta.duration, 2),
+                "elapsed_sec": round(time.time() - start_time, 1),
+            })
+
+        # Step 2: VAD Silence Chunking (mirroring WhisperX / Silero VAD)
+        vad_segments = self.audio_extractor.split_vad_segments(
+            pcm16_data=pcm16_data,
+            energy_threshold=0.015,
+        )
+
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Pipeline processing cancelled after VAD segmentation")
+
+        if progress_callback:
+            progress_callback({
+                "percent": 20,
+                "stage": "transcription",
+                "phase": "Step 3 of 4 · Writing transcript",
+                "title": "Transcribing speech",
+                "subtitle": f"Found {len(vad_segments)} speech turns. Writing the transcript...",
+                "total_duration_sec": round(audio_meta.duration, 2),
+                "elapsed_sec": round(time.time() - start_time, 1),
+            })
+
+        # Step 3: Transcription Engine - Whisper Flow Speech-to-Text
+        raw_transcription = self.transcription_engine.transcribe(
+            pcm16_data=pcm16_data,
+            duration=audio_meta.duration,
+            language=language,
+            task=task,
+            prompt=prompt,
+            vad_segments=vad_segments,
+            ground_truth_hint=ground_truth_hint,
+            model=model,
+            progress_callback=progress_callback,
+            cancel_checker=cancel_checker,
+            demo_mode=effective_demo_mode,
+        )
+        if audio_meta.is_synthetic:
+            raw_transcription.is_synthetic = True
+            for seg in raw_transcription.segments:
+                seg.confidence = 0.0
+
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Pipeline processing cancelled prior to post-processing")
+
+        # Step 3.5: Clean continuous transcription segments (diarization bypassed)
+        for seg in raw_transcription.segments:
+            seg.speaker = None
+        raw_transcription.speakers = []
+        raw_transcription.text = " ".join(s.text for s in raw_transcription.segments).strip()
+
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Pipeline processing cancelled prior to post-processing")
+
+        if progress_callback:
+            progress_callback({
+                "percent": 96,
+                "stage": "quality",
+                "phase": "Step 4 of 4 · Polishing transcript",
+                "title": "Finishing the transcript",
+                "subtitle": "Preparing the text, voice profile and exports...",
+                "total_duration_sec": round(audio_meta.duration, 2),
+                "elapsed_sec": round(time.time() - start_time, 1),
+            })
+
+        # Step 4: Quality Check Sub-Agent - Hallucination Guard & Repetition Penalty
+        cleaned_transcription, quality_report = self.quality_checker.audit_and_clean(raw_transcription)
+
+        # Step 5 (Optional): If source language was not English and translation was also requested
+        translation_result = None
+        if language and language != "en" and task == "transcribe":
+            raw_translation = self.transcription_engine.transcribe(
+                pcm16_data=pcm16_data,
+                duration=audio_meta.duration,
+                language=language,
+                task="translate",
+                prompt=prompt,
+                vad_segments=vad_segments,
+                model=model,
+                demo_mode=demo_mode,
+            )
+            translation_result, _ = self.quality_checker.audit_and_clean(raw_translation)
+
+        # Step 6: Supreme Council Sub-Agent (Multi-Agent Swarm) - Extract Action Items, Discussion Points, Summary
+        council_analysis = self.supreme_council.analyze(cleaned_transcription, redact_pii=redact_pii)
+
+        # If PII redaction was explicitly requested, also sanitize the main transcript segments
+        pii_report = council_analysis.pii_report
+        if redact_pii and hasattr(self.supreme_council, "swarm"):
+            sanitized_segs, pii_rep = self.supreme_council.swarm.pii_officer.officer.sanitize_segments(cleaned_transcription.segments)
+            cleaned_transcription.segments = sanitized_segs
+            cleaned_transcription.text = " ".join(s.text for s in sanitized_segs).strip()
+            pii_report = pii_rep
+
+        # Step 7: Validation Sub-Agent - accuracy is only certified against an
+        # external reference. Without one, this is a self-consistency report.
+        if reference_text and reference_text.strip():
+            validation_report = self.result_validator.evaluate_transcription(
+                hypothesis_text=cleaned_transcription.text,
+                reference_text=reference_text,
+                test_case_id=os.path.basename(file_path),
+                extracted_actions=council_analysis.action_items,
+                is_ground_truth=True,
+            )
+        else:
+            # Self-consistency mode intentionally has no reference text.
+            validation_report = self.result_validator.evaluate_transcription(
+                hypothesis_text=cleaned_transcription.text,
+                reference_text="",
+                test_case_id=os.path.basename(file_path),
+                extracted_actions=council_analysis.action_items,
+                is_ground_truth=False,
+            )
+
+        # Step 8: Speaker Voice Profiling (Acoustic Timbre Extraction for Voice Cloning)
+        voice_profiles = self._extract_speaker_voice_profiles(pcm16_data, cleaned_transcription.segments)
+
+        duration_sec = time.time() - start_time
+
+        if progress_callback:
+            progress_callback({
+                "percent": 100,
+                "stage": "complete",
+                "phase": "Complete · 100%",
+                "title": "Transcription & Translation Complete",
+                "subtitle": f"Processed {len(raw_transcription.segments)} segments in {duration_sec:.1f}s",
+                "total_duration_sec": round(audio_meta.duration, 2),
+                "elapsed_sec": round(duration_sec, 1),
+                "eta_sec": 0.0,
+            })
+
+        output = ScriberOutput(
+            session_id=session_id,
+            video_source=os.path.basename(file_path),
+            audio_metadata=audio_meta,
+            transcription=cleaned_transcription,
+            translation=translation_result,
+            council_analysis=council_analysis,
+            quality_report=quality_report,
+            validation_report=validation_report,
+            processing_time_seconds=duration_sec,
+            repos_leveraged=[repo["repo"] for repo in self.transcription_engine.leveraged_repos],
+            voice_profiles=voice_profiles,
+            pii_report=pii_report,
+            audio_pcm16=pcm16_data,
+        )
+
+        # Step 9: Multi-format Exporters (JSON, Markdown, HTML, SRT, VTT)
+        if export_dir:
+            self._export_all_formats(output, export_dir, export_formats or ["json", "md", "srt", "vtt", "html"])
+
+        gc.collect()
+        return output
+
+    def process_pcm(
+        self,
+        pcm16_data: bytes,
+        source_name: str = "stream_input.wav",
+        task: str = "translate",
+        language: Optional[str] = None,
+        reference_text: Optional[str] = None,
+        ground_truth_hint: Optional[str] = None,
+        demo_mode: bool = False,
+        model: str = "turbo",
+        progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+        cancel_checker: Optional[Callable[[], bool]] = None,
+    ) -> ScriberOutput:
+        """Processes in-memory PCM bytes (useful for serverless Lambda execution)."""
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Process PCM cancelled before starting")
+
+        start_time = time.time()
+        session_id = f"sess_{uuid.uuid4().hex[:10]}"
+
+        duration = len(pcm16_data) / (16000.0 * 2.0)
+        from scriber.models import AudioMetadata
+        audio_meta = AudioMetadata(
+            filename=source_name,
+            duration=duration,
+            sample_rate=16000,
+            channels=1,
+            file_size_bytes=len(pcm16_data),
+            file_format="pcm16",
+        )
+
+        self.last_pcm_data = pcm16_data
+        self.last_audio_meta = audio_meta
+        self.last_file_path = source_name
+
+        vad_segments = self.audio_extractor.split_vad_segments(pcm16_data)
+        raw_trans = self.transcription_engine.transcribe(
+            pcm16_data=pcm16_data,
+            duration=duration,
+            language=language,
+            task=task,
+            vad_segments=vad_segments,
+            ground_truth_hint=ground_truth_hint,
+            model=model,
+            progress_callback=progress_callback,
+            cancel_checker=cancel_checker,
+            demo_mode=demo_mode,
+        )
+
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Process PCM cancelled prior to post-processing")
+
+        # Step 3.5: Clean continuous transcription segments (diarization bypassed)
+        for seg in raw_trans.segments:
+            seg.speaker = None
+        raw_trans.speakers = []
+        raw_trans.text = " ".join(s.text for s in raw_trans.segments).strip()
+
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Process PCM cancelled prior to post-processing")
+
+        cleaned_trans, qual_report = self.quality_checker.audit_and_clean(raw_trans)
+        council_analysis = self.supreme_council.analyze(cleaned_trans)
+
+        if reference_text and reference_text.strip():
+            validation_report = self.result_validator.evaluate_transcription(
+                hypothesis_text=cleaned_trans.text,
+                reference_text=reference_text,
+                test_case_id=source_name,
+                extracted_actions=council_analysis.action_items,
+                is_ground_truth=True,
+            )
+        else:
+            # Self-consistency mode intentionally has no reference text.
+            validation_report = self.result_validator.evaluate_transcription(
+                hypothesis_text=cleaned_trans.text,
+                reference_text="",
+                test_case_id=source_name,
+                extracted_actions=council_analysis.action_items,
+                is_ground_truth=False,
+            )
+
+        voice_profiles = self._extract_speaker_voice_profiles(pcm16_data, cleaned_trans.segments)
+
+        return ScriberOutput(
+            session_id=session_id,
+            video_source=source_name,
+            audio_metadata=audio_meta,
+            transcription=cleaned_trans,
+            translation=None,
+            council_analysis=council_analysis,
+            quality_report=qual_report,
+            validation_report=validation_report,
+            processing_time_seconds=time.time() - start_time,
+            repos_leveraged=[repo["repo"] for repo in self.transcription_engine.leveraged_repos],
+            voice_profiles=voice_profiles,
+            audio_pcm16=pcm16_data,
+        )
+
+    def clone_voice(
+        self,
+        profile: VoiceProfile,
+        text_prompt: str,
+        pitch_shift_hz: float = 0.0,
+        rate_shift_pct: float = 0.0,
+        output_format: str = "mp3",
+        reference_pcm: Optional[bytes] = None,
+        backend: str = "edge-neural",
+        sample_rate: int = 48000,
+        cancel_checker: Optional[Callable[[], bool]] = None,
+        voice_id: Optional[str] = None,
+        volume: float = 1.0,
+        **kwargs,
+    ) -> VoiceCloneResult:
+        """Clones speech matching the given speaker profile and reference audio."""
+        if cancel_checker and cancel_checker():
+            raise JobCancelledException("Voice cloning cancelled before starting")
+        # Voice cloning must use the reference PCM explicitly selected for this
+        # speaker/job. Never fall back to pipeline-global state (last_pcm_data /
+        # reference_pcm), which would clone a previous request's audio on a
+        # shared/multi-threaded server.
+        target_ref = reference_pcm
+        result = self.voice_cloner.clone_voice(
+            profile=profile,
+            text_prompt=text_prompt,
+            pitch_shift_hz=pitch_shift_hz,
+            rate_shift_pct=rate_shift_pct,
+            output_format=output_format,
+            reference_pcm=target_ref,
+            backend=backend,
+            sample_rate=sample_rate,
+            cancel_checker=cancel_checker,
+            voice_id=voice_id,
+            volume=volume,
+            **kwargs,
+        )
+        gc.collect()
+        return result
+
+    def _extract_speaker_voice_profiles(
+        self,
+        pcm16_data: bytes,
+        segments: List[Any],
+    ) -> List[VoiceProfile]:
+        """Profiles vocal acoustic timbre from representative media audio."""
+        if not pcm16_data:
+            return []
+
+        sample_rate = 16000
+        max_bytes_needed = sample_rate * 2 * 30  # 30 seconds of representative speech
+        spk_bytes_list: List[bytes] = []
+        accum_bytes = 0
+
+        picks = min(len(segments), 12) if segments else 0
+        if picks > 0:
+            step = max(1, len(segments) // picks)
+            chosen = [segments[i] for i in range(0, len(segments), step)][:picks]
+            quota = max(int(0.6 * sample_rate * 2), max_bytes_needed // max(1, len(chosen)))
+            for s in chosen:
+                start_byte = int(getattr(s, "start", 0.0) * sample_rate * 2)
+                end_byte = min(len(pcm16_data), int(getattr(s, "end", 0.0) * sample_rate * 2), start_byte + quota)
+                if start_byte < end_byte:
+                    spk_bytes_list.append(pcm16_data[start_byte:end_byte])
+                    accum_bytes += end_byte - start_byte
+                    if accum_bytes >= max_bytes_needed:
+                        break
+
+        ref_pcm = b"".join(spk_bytes_list) if spk_bytes_list else pcm16_data[:max_bytes_needed]
+        vp = VoiceProfiler.profile_from_pcm16(ref_pcm, speaker_id="Studio_Voice")
+        return [vp]
+
+    def _export_all_formats(self, output: ScriberOutput, export_dir: str, formats: List[str]) -> None:
+        """Saves output across all specified file formats."""
+        os.makedirs(export_dir, exist_ok=True)
+        base = os.path.splitext(output.video_source)[0]
+
+        if "json" in formats:
+            with open(os.path.join(export_dir, f"{base}_intelligence.json"), "w", encoding="utf-8") as f:
+                f.write(ScriberExporter.to_json(output))
+
+        if "md" in formats or "markdown" in formats:
+            with open(os.path.join(export_dir, f"{base}_report.md"), "w", encoding="utf-8") as f:
+                f.write(ScriberExporter.to_markdown(output))
+
+        if "html" in formats:
+            with open(os.path.join(export_dir, f"{base}_dashboard.html"), "w", encoding="utf-8") as f:
+                f.write(ScriberExporter.to_html(output))
+
+        if "srt" in formats:
+            with open(os.path.join(export_dir, f"{base}_subtitles.srt"), "w", encoding="utf-8") as f:
+                f.write(ScriberExporter.to_srt(output))
+
+        if "vtt" in formats:
+            with open(os.path.join(export_dir, f"{base}_subtitles.vtt"), "w", encoding="utf-8") as f:
+                f.write(ScriberExporter.to_vtt(output))
+
+        if "txt" in formats:
+            with open(os.path.join(export_dir, f"{base}_transcript.txt"), "w", encoding="utf-8") as f:
+                f.write(ScriberExporter.to_txt(output))
+
+    def edit_audio(
+        self,
+        pcm_data: Optional[bytes] = None,
+        file_path: Optional[str] = None,
+        volume: float = 1.0,
+        pitch_semitones: float = 0.0,
+        start_sec: float = 0.0,
+        end_sec: Optional[float] = None,
+        filename: Optional[str] = None,
+        output_dir: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Edits audio with volume gain, pitch shift, and trimming, then exports to high-bitrate MP3."""
+        target_pcm = pcm_data
+        if not target_pcm and file_path and os.path.isfile(file_path):
+            target_pcm, _ = self.audio_extractor.extract_pcm16(file_path)
+        if not target_pcm:
+            raise ValueError("No audio stream available to edit. Please provide pcm_data or file_path.")
+
+        effective_output_dir = output_dir or os.environ.get("SCRIBER_OUTPUT_DIR") or "./scriber_output"
+        return self.audio_editor.process_and_export(
+            pcm_data=target_pcm,
+            sr=16000,
+            volume=volume,
+            pitch_semitones=pitch_semitones,
+            start_sec=start_sec,
+            end_sec=end_sec,
+            filename=filename or "scriber_edited_audio.mp3",
+            output_dir=effective_output_dir,
+        )
+
+
+
+

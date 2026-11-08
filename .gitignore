@@ -1,0 +1,76 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+env/
+venv/
+.venv/
+ENV/
+.env
+.env.*
+!.env.example
+
+# Packaging & Distribution
+build/
+dist/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+*.spec.bak
+
+# Testing & Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+*.log
+benchmark_output/
+test_scratch/
+tests/suite_20_samples/suite_20_results.json
+
+# OS & Desktop Artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+*.lnk
+
+# IDE, Editor & Workspace Artifacts
+.vscode/
+.idea/
+*.swp
+*.bak
+*~
+.antigravity/
+.agents/
+
+# Application Outputs & Local Binaries
+bin/
+scriber_output/
+*.onnx
+*.wav
+*.mp4
+*.mkv
+*.mov
+*.webm
+*.aac
+*.m4a
+*.flac
+*.tmp
+tmp*
+cloned_output.*
+temp_*
+.mypy_cache/
+.ruff_cache/
+

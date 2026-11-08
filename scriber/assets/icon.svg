@@ -1,0 +1,41 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Deep Obsidian Canvas -->
+    <linearGradient id="scBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#12151D" />
+      <stop offset="50%" stop-color="#0A0B0F" />
+      <stop offset="100%" stop-color="#050608" />
+    </linearGradient>
+
+    <!-- Vibrant Tangerine-Vermilion to Amber-Gold Gradient -->
+    <linearGradient id="scWaveGrad" x1="15%" y1="10%" x2="85%" y2="90%">
+      <stop offset="0%" stop-color="#FF3800" />
+      <stop offset="45%" stop-color="#FF5E00" />
+      <stop offset="80%" stop-color="#FFA826" />
+      <stop offset="100%" stop-color="#FFC043" />
+    </linearGradient>
+
+    <!-- Accent Acoustic Core Gradient -->
+    <linearGradient id="scCoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFA826" />
+      <stop offset="100%" stop-color="#FF5E00" />
+    </linearGradient>
+
+    <!-- Precision Hairline Glow -->
+    <filter id="scSubtleBloom" x="-15%" y="-15%" width="130%" height="130%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Obsidian Precision Beveled Squircle (100% Symmetrical) -->
+  <rect x="28" y="28" width="456" height="456" rx="96" fill="url(#scBgGrad)" stroke="rgba(255, 94, 0, 0.22)" stroke-width="2" />
+  <rect x="30" y="30" width="452" height="452" rx="94" fill="none" stroke="rgba(255, 255, 255, 0.05)" stroke-width="1" />
+
+  <!-- Symmetrical Harmonic Monogram Emblem -->
+  <g filter="url(#scSubtleBloom)">
+    <!-- Continuous Symmetrical Sculpted Ribbon S -->
+    <path d="M 364 196 C 364 126 316 76 256 76 C 196 76 148 126 148 184 C 148 268 364 244 364 328 C 364 386 316 436 256 436 C 196 436 148 386 148 316 L 204 316 C 204 362 228 380 256 380 C 284 380 308 362 308 328 C 308 276 204 236 204 184 C 204 150 228 132 256 132 C 284 132 308 150 308 196 Z"
+          fill="url(#scWaveGrad)" />
+  </g>
+</svg>

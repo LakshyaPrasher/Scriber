@@ -1,0 +1,178 @@
+"""Scriber Native Desktop Application Entry Point.
+
+Launch standalone desktop studio:
+    Scriber.exe
+    py run_desktop.py
+
+CLI Subcommands & Desktop Flags:
+    py run_desktop.py --mode [webview|edge|browser]
+    py run_desktop.py --port 8080 --fullscreen --debug
+    py run_desktop.py process <media_file> [options]
+    py run_desktop.py benchmark
+    py run_desktop.py info
+"""
+
+from __future__ import annotations
+
+import argparse
+import multiprocessing
+import os
+import sys
+
+# Ensure adjacent virtualenv site-packages and repo root are in sys.path
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+if _current_dir not in sys.path:
+    sys.path.insert(0, _current_dir)
+_venv_site = os.path.join(_current_dir, ".venv", "Lib", "site-packages")
+if os.path.isdir(_venv_site) and _venv_site not in sys.path:
+    sys.path.insert(1, _venv_site)
+
+# Prevent Windows Smart App Control blocks
+os.environ["AIOHTTP_NO_EXTENSIONS"] = "1"
+# Ensure WebView2 audio playback without gesture restrictions
+if "--autoplay-policy=no-user-gesture-required" not in os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", ""):
+    os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (
+        "--autoplay-policy=no-user-gesture-required --enable-features=AudioServiceOutOfProcess "
+        + os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "")
+    ).strip()
+
+# Call freeze_support() at the very top of the script for frozen Windows executables
+multiprocessing.freeze_support()
+
+# Windows GUI guard: ensure stdout/stderr/stdin exist and record errors when running under Subsystem 2 (GUI / pythonw.exe)
+if sys.stdout is None or sys.stderr is None:
+    try:
+        import tempfile
+        log_dir = os.path.join(
+            os.environ.get("LOCALAPPDATA", tempfile.gettempdir()),
+            "Scriber",
+            "Logs",
+        )
+        os.makedirs(log_dir, exist_ok=True)
+        log_file = open(os.path.join(log_dir, "desktop.log"), "a", encoding="utf-8", buffering=1)
+        if sys.stdout is None:
+            sys.stdout = log_file
+        if sys.stderr is None:
+            sys.stderr = log_file
+    except Exception:
+        if sys.stdout is None:
+            sys.stdout = open(os.devnull, "w", encoding="utf-8")
+        if sys.stderr is None:
+            sys.stderr = open(os.devnull, "w", encoding="utf-8")
+
+if sys.stdin is None:
+    try:
+        sys.stdin = open(os.devnull, "r", encoding="utf-8")
+    except Exception:
+        pass
+
+import atexit
+import signal
+from scriber.desktop import launch_desktop
+
+
+def _cleanup_handler():
+    try:
+        from scriber.single_instance import release_single_instance
+        release_single_instance()
+    except Exception:
+        pass
+    try:
+        from scriber.voice_clone import VoiceMicroserviceManager
+        VoiceMicroserviceManager().shutdown()
+    except Exception:
+        pass
+
+
+atexit.register(_cleanup_handler)
+try:
+    signal.signal(signal.SIGINT, lambda s, f: (_cleanup_handler(), sys.exit(128 + s)))
+    signal.signal(signal.SIGTERM, lambda s, f: (_cleanup_handler(), sys.exit(128 + s)))
+except (ValueError, AttributeError):
+    pass
+
+
+def parse_and_run() -> int:
+    """Parses command-line arguments and dispatches to desktop window or CLI subcommands."""
+    # If no arguments provided, launch desktop studio window directly
+    if len(sys.argv) <= 1:
+        return launch_desktop()
+
+    first_arg = sys.argv[1].lower()
+
+    # If first argument is a known CLI subcommand, dispatch to CLI
+    cli_commands = {"process", "benchmark", "info", "clone-voice", "serve", "app", "shortcut"}
+    if first_arg in cli_commands:
+        import scriber.cli
+        scriber.cli.main()
+        return 0
+
+    # Support running embedded modules (e.g. voice microservice companion) when frozen
+    if first_arg == "-m" and len(sys.argv) > 2:
+        mod_name = sys.argv[2]
+        if mod_name in ("scriber.services.voice_microservice", "services.voice_microservice", "voice_microservice"):
+            from scriber.services.voice_microservice import main as microservice_main
+            sys.argv = [sys.argv[0]] + sys.argv[3:]
+            microservice_main()
+            return 0
+        else:
+            import runpy
+            sys.argv = [sys.argv[0]] + sys.argv[3:]
+            runpy.run_module(mod_name, run_name="__main__")
+            return 0
+
+    if first_arg in ("voice-microservice", "microservice"):
+        from scriber.services.voice_microservice import main as microservice_main
+        sys.argv = [sys.argv[0]] + sys.argv[2:]
+        microservice_main()
+        return 0
+
+    # Otherwise, handle top-level desktop flags and help
+    parser = argparse.ArgumentParser(
+        prog="Scriber",
+        description="Scriber Native Desktop Application & Autonomous Studio",
+    )
+    parser.add_argument("--port", type=int, default=None, help="Port to bind server (default: auto)")
+    parser.add_argument("--host", default="127.0.0.1", help="Host interface (default: 127.0.0.1)")
+    parser.add_argument(
+        "--mode",
+        default="auto",
+        choices=["auto", "webview", "edge", "browser"],
+        help="Desktop window engine (default: auto)",
+    )
+    parser.add_argument("--fullscreen", action="store_true", help="Launch in fullscreen mode")
+    parser.add_argument("--debug", action="store_true", help="Enable developer tools and debug logging")
+
+    args = parser.parse_args()
+
+    return launch_desktop(
+        host=args.host,
+        port=args.port,
+        mode=args.mode,
+        fullscreen=args.fullscreen,
+        debug=args.debug,
+    )
+
+
+if __name__ == "__main__":
+    multiprocessing.freeze_support()
+    try:
+        sys.exit(parse_and_run())
+    except Exception as exc:
+        import traceback
+        err_text = traceback.format_exc()
+        try:
+            import tempfile
+            log_dir = os.path.join(os.environ.get("LOCALAPPDATA", tempfile.gettempdir()), "Scriber", "Logs")
+            os.makedirs(log_dir, exist_ok=True)
+            with open(os.path.join(log_dir, "desktop_crash.log"), "a", encoding="utf-8") as f:
+                f.write(err_text + "\n")
+        except Exception:
+            pass
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                ctypes.windll.user32.MessageBoxW(0, f"Scriber encountered an error during launch:\n\n{exc}", "Scriber Desktop Error", 0x10)
+            except Exception:
+                pass
+        sys.exit(1)
